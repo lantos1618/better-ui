@@ -79,9 +79,28 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
     handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput)
   ): ToolBuilder<TNewInput, TNewOutput>;
   
+  define<TNewInput, TNewOutput>(
+    inputSchema: z.ZodType<TNewInput>,
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput),
+    renderer?: ((data: TNewOutput) => ReactElement)
+  ): ToolDefinition<TNewInput, TNewOutput>;
+  
+  // Shorthand aliases
+  in<TSchema extends AnyZodSchema>(
+    schema: TSchema
+  ): ToolBuilder<z.infer<TSchema>, TOutput>;
+  
+  ex<TNewOutput>(
+    handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput)
+  ): ToolBuilder<TInput, TNewOutput>;
+  
+  out(component: ((data: TOutput) => ReactElement)): ToolBuilder<TInput, TOutput>;
+  
   quick(): ToolBuilder<TInput, TOutput>;
   
   build(): ToolDefinition<TInput, TOutput>;
+  
+  create(): ToolDefinition<TInput, TOutput>;
   
   done(): ToolDefinition<TInput, TOutput>;
 }

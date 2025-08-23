@@ -56,6 +56,11 @@ Current working branch for AUI enhancements and improvements.
 - ✅ Caching and optimization
 - ✅ Comprehensive test coverage
 - ✅ Example implementations
+- ✅ Ultra-concise API methods (t, in, ex, out)
+- ✅ One-liner tool creation with define()
+- ✅ Batch tool definition with defineTools()
+- ✅ AI control tools for frontend/backend
+- ✅ Quick mode auto-building
 
 ## Usage Examples
 
@@ -90,9 +95,31 @@ const searchTool = aui
 4. **Progressive Enhancement**: Server-first with client optimization
 5. **Type Inference**: Advanced TypeScript for seamless DX
 
+## Latest Enhancements (lantos-aui branch)
+
+### New Ultra-Concise API Methods
+1. **t()** - Shorthand for tool()
+2. **in()** - Shorthand for input()
+3. **ex()** - Shorthand for execute()
+4. **out()** - Shorthand for render()
+5. **define()** - One-liner tool creation
+6. **create()** - Tool creation with auto-registration
+7. **defineTools()** - Batch tool definition
+
+### AI Control Tools
+Comprehensive suite of tools enabling AI to control:
+- **UI Control** - Manipulate DOM elements
+- **Backend Control** - Execute server operations
+- **Navigation** - Control app routing
+- **Form Control** - Fill and submit forms
+- **API Calls** - Make authenticated API requests
+- **State Management** - Manage application state
+
 ## Future Considerations
 - WebSocket integration for real-time tools
 - GraphQL support for complex queries
 - Tool composition and chaining
 - Visual tool builder UI
 - Performance monitoring dashboard
+- Tool versioning and migration
+- Tool analytics and usage tracking
