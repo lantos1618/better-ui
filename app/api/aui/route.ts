@@ -19,9 +19,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
+    if (body.toolCalls) {
+      const toolCalls: ToolCall[] = body.toolCalls;
+      const results = await executor.executeBatch(toolCalls);
+      return NextResponse.json({ results });
+    }
+    
     if (!body.toolCall) {
       return NextResponse.json(
-        { error: 'Missing toolCall in request body' },
+        { error: 'Missing toolCall or toolCalls in request body' },
         { status: 400 }
       );
     }
@@ -33,7 +39,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Tool execution error:', error);
     return NextResponse.json(
-      { error: 'Failed to execute tool' },
+      { error: 'Failed to execute tool', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -44,7 +50,10 @@ export async function GET() {
     name: tool.name,
     description: tool.description,
     inputSchema: tool.inputSchema._def,
+    outputSchema: tool.outputSchema?._def,
+    isServerOnly: tool.isServerOnly,
+    metadata: tool.metadata,
   }));
 
-  return NextResponse.json({ tools });
+  return NextResponse.json({ tools, count: tools.length });
 }

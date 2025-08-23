@@ -1,12 +1,16 @@
 import { createToolBuilder } from './core/builder';
 import { globalRegistry } from './core/registry';
 import type { ToolDefinition, ToolRegistry } from './types';
+import { z } from 'zod';
 
 export * from './types';
 export { createRegistry } from './core/registry';
+export { ClientToolExecutor } from './client/executor';
 
 class AUI {
   private registry: ToolRegistry;
+  
+  z = z;
 
   constructor(registry?: ToolRegistry) {
     this.registry = registry || globalRegistry;
@@ -31,5 +35,6 @@ class AUI {
 }
 
 export const aui = new AUI();
+export { z };
 
 export default aui;

@@ -40,3 +40,4 @@ notes from Lyndon
 - you can open and view github issues
 - don't delete the agent director please (don't delete yourself)
 - commit and push frequently
+- check errors

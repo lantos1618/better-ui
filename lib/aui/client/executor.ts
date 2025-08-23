@@ -126,7 +126,55 @@ export class ClientToolExecutor {
   }
 
   async executeBatch(toolCalls: ToolCall[]): Promise<ToolResult[]> {
-    return Promise.all(toolCalls.map(call => this.execute(call)));
+    const localCalls: ToolCall[] = [];
+    const remoteCalls: ToolCall[] = [];
+    const results: Map<string, ToolResult> = new Map();
+
+    for (const call of toolCalls) {
+      const tool = this.tools.get(call.toolName);
+      if (tool?.clientExecute) {
+        localCalls.push(call);
+      } else {
+        remoteCalls.push(call);
+      }
+    }
+
+    if (localCalls.length > 0) {
+      const localResults = await Promise.all(
+        localCalls.map(call => this.execute(call))
+      );
+      localResults.forEach(result => results.set(result.id, result));
+    }
+
+    if (remoteCalls.length > 0) {
+      try {
+        const response = await fetch(this.apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ toolCalls: remoteCalls }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const { results: remoteResults } = await response.json();
+        remoteResults.forEach((result: ToolResult) => results.set(result.id, result));
+      } catch (error) {
+        remoteCalls.forEach(call => {
+          results.set(call.id, {
+            id: call.id,
+            toolName: call.toolName,
+            output: null,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+      }
+    }
+
+    return toolCalls.map(call => results.get(call.id)!);
   }
 
   clearCache(): void {
