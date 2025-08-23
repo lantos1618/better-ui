@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { ToolExecutor } from '../server/executor';
 import { createRegistry } from '../core/registry';
 import aui from '../index';
-import type { ToolCall } from '../types';
+import type { ToolCall } from '../types/index';
 
 describe('Tool Executor', () => {
   let executor: ToolExecutor;

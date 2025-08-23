@@ -7,20 +7,20 @@ import aui, { z } from '../index';
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+  .execute(async ({ input }: { input: any }) => ({ temp: 72, city: input.city }))
+  .render(({ data }: { data: any }) => <div>{data.city}: {data.temp}°</div>)
   .build();
 
 // 2. Complex tool with client optimization
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // Server-side database search
     console.log('Searching database for:', input.query);
     return { results: [`Result for ${input.query}`] };
   })
-  .clientExecute(async ({ input, ctx }) => {
+  .clientExecute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Client-side with caching
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
@@ -32,7 +32,7 @@ const complexTool = aui
     ctx.cache.set(input.query, result);
     return result;
   })
-  .render(({ data }) => (
+  .render(({ data }: { data: any }) => (
     <div className="search-results">
       {data.results.map((item: string, i: number) => (
         <div key={i}>{item}</div>

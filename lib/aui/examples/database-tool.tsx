@@ -11,7 +11,7 @@ const databaseTool = aui
     limit: z.number().optional().default(10)
   }))
   .serverOnly() // Marks as server-only execution
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // This would connect to your database
     // Example with mock data:
     const results = {
@@ -24,7 +24,7 @@ const databaseTool = aui
     };
     return results;
   })
-  .render(({ data }) => (
+  .render(({ data }: { data: any }) => (
     <div className="database-results">
       <p className="text-sm text-gray-600 mb-2">Found {data.count} rows</p>
       <div className="space-y-2">
