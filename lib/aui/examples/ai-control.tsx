@@ -95,16 +95,16 @@ const stateTool = aui.ai('state', {
     switch (input.operation) {
       case 'set':
         localStorage.setItem(input.key, JSON.stringify(input.value));
-        return { success: true, key: input.key, value: input.value };
+        return { success: true, operation: input.operation, key: input.key, value: input.value };
       case 'get':
         const value = localStorage.getItem(input.key);
-        return { success: true, key: input.key, value: value ? JSON.parse(value) : null };
+        return { success: true, operation: input.operation, key: input.key, value: value ? JSON.parse(value) : null };
       case 'delete':
         localStorage.removeItem(input.key);
-        return { success: true, key: input.key };
+        return { success: true, operation: input.operation, key: input.key };
       case 'clear':
         localStorage.clear();
-        return { success: true };
+        return { success: true, operation: input.operation };
     }
   },
   execute: async (input) => {

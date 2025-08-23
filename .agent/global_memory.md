@@ -1,83 +1,72 @@
-# AUI (Assistant-UI) Global Memory
+# AUI (Assistant-UI) Implementation Memory
 
 ## Project Overview
-AUI is an ultra-concise API for enabling AI to control frontend and backend operations in Next.js/Vercel applications through tool calls.
+Building a concise and elegant API for AI to control both frontend and backend in Next.js/Vercel applications.
 
-## Key Design Principles
-1. **Ultra-Concise API**: Minimize boilerplate, maximize expressiveness
-2. **AI Control**: Enable seamless frontend/backend control through tool calls
-3. **Type Safety**: Full TypeScript support with Zod schemas
-4. **Flexibility**: Support both simple and complex use cases
-5. **Elegance**: Beautiful, intuitive API that's a joy to use
+## Key Architecture Decisions
+1. **Fluent Builder Pattern**: Tool creation using method chaining
+2. **Ultra-Concise API**: Multiple levels of conciseness from verbose to single-character methods
+3. **Dual Execution**: Support for both server and client-side execution
+4. **AI Optimization**: Built-in retry, timeout, and caching mechanisms
 
-## Core Components
-- **Builder Pattern**: Fluent interface for tool creation
-- **Tool Registry**: Global and scoped tool management
-- **Dual Execution**: Server and client execution modes
-- **React Integration**: Native rendering components
-- **Context System**: Built-in caching and state management
+## Implementation Status
+- ✅ Core AUI builder pattern implemented
+- ✅ Server and client executors
+- ✅ Multiple conciseness levels (tool(), t(), do(), ai())
+- ✅ Rendering system for React components
+- ✅ Type-safe with Zod schemas
+- ✅ Global registry for tool management
+- ✅ AI control examples (UI, DB, State, Navigation)
 
 ## API Patterns Implemented
 
-### Basic Pattern (User's Request)
-```tsx
-// Simple tool - just 2 methods
-const simpleTool = aui
-  .tool('weather')
-  .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
-
-// Complex tool - adds client optimization
-const complexTool = aui
-  .tool('search')
-  .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => db.search(input.query))
-  .clientExecute(async ({ input, ctx }) => {
-    const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
-  })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();
+### 1. Standard Pattern
+```typescript
+aui.tool('name')
+  .input(schema)
+  .execute(handler)
+  .render(component)
+  .build()
 ```
 
-### Ultra-Concise Variations
-1. **Ultra-Short**: `t()`, `in()`, `ex()`, `out()`
-2. **One-Liner**: `define()` for complete tool in one call
-3. **Quick Mode**: Auto-build after render
-4. **Batch Definition**: `defineTools()` for multiple tools
-5. **Helper Functions**: `simple()`, `server()`, `contextual()`, `ai()`
+### 2. Ultra-Concise Pattern
+```typescript
+aui.t('name')
+  .i(schema)
+  .e(handler)
+  .r(component)
+  .b()
+```
 
-## Implementation Status
-✅ Core builder pattern
-✅ Type system and interfaces
-✅ Server execution handlers
-✅ Client execution with caching
-✅ React rendering system
-✅ Example tools (weather, search, database, etc.)
-✅ Comprehensive test suite (76 tests passing)
-✅ Ultra-concise API variations
-✅ AI-optimized control patterns
+### 3. One-Liner Pattern
+```typescript
+aui.do('name', handler)
+```
 
-## Key Files
-- `/lib/aui/index.ts` - Main entry point and AUI class
-- `/lib/aui/core/builder.ts` - Tool builder implementation
-- `/lib/aui/client/executor.ts` - Client-side execution
-- `/lib/aui/server/handler.ts` - Server-side handlers
-- `/lib/aui/types.ts` - TypeScript interfaces
-- `/lib/aui/examples/` - Usage examples
-- `/lib/aui/__tests__/` - Test suite
+### 4. AI-Optimized Pattern
+```typescript
+aui.ai('name', {
+  execute: handler,
+  retry: 3,
+  timeout: 5000,
+  cache: true
+})
+```
 
-## Testing
-All 76 tests passing across 5 test suites:
-- builder.test.ts - Core builder pattern
-- executor.test.ts - Execution logic
-- aui-api.test.ts - Main API surface
-- aui-concise.test.ts - Concise patterns
-- ultra-concise.test.ts - Ultra-concise shortcuts
+## Tool Categories
+1. **Simple Tools**: Basic server execution
+2. **Complex Tools**: Client + server with caching
+3. **AI Control Tools**: Frontend/backend control
+4. **Server-Only Tools**: Secure backend operations
 
-## Branch Information
-- Branch: lantos-aui
-- Status: Implementation complete and tested
-- Ready for: Integration and deployment
+## Testing Coverage
+- Unit tests for builder pattern
+- Tests for executor (server/client)
+- Integration tests for tool registration
+- AI control capability tests
+
+## Next Steps
+- Performance optimization for large-scale tool registries
+- Enhanced error handling with AI-friendly messages
+- Real-time tool execution monitoring
+- Tool composition and chaining capabilities

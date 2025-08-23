@@ -10,7 +10,7 @@ const chatTool = aui
     conversationId: z.string().optional(),
     model: z.enum(['gpt-4', 'claude', 'llama']).optional().default('gpt-4')
   }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // Server: Call AI API
     const response = {
       reply: `I received your message: "${input.message}"`,
@@ -20,7 +20,7 @@ const chatTool = aui
     };
     return response;
   })
-  .clientExecute(async ({ input, ctx }) => {
+  .clientExecute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Client: Optimistic UI with streaming
     const tempResponse = {
       reply: '...',
@@ -37,7 +37,7 @@ const chatTool = aui
     
     return { ...response, status: 'complete' };
   })
-  .render(({ data, input }) => (
+  .render(({ data, input }: { data: any; input: any }) => (
     <div className="chat-message space-y-3">
       <div className="user-message p-3 bg-blue-50 rounded-lg">
         <p className="text-sm font-medium text-blue-900">You</p>

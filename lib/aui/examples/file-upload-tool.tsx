@@ -11,7 +11,7 @@ const fileUploadTool = aui
     fileSize: z.number(),
     content: z.string() // base64 encoded
   }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // Server: Save file to storage
     const fileUrl = `/uploads/${Date.now()}-${input.fileName}`;
     return {
@@ -21,7 +21,7 @@ const fileUploadTool = aui
       uploadedAt: new Date().toISOString()
     };
   })
-  .clientExecute(async ({ input, ctx }) => {
+  .clientExecute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Client: Show preview immediately, upload in background
     const preview = {
       url: `data:${input.fileType};base64,${input.content}`,
@@ -41,7 +41,7 @@ const fileUploadTool = aui
     
     return preview;
   })
-  .render(({ data }) => (
+  .render(({ data }: { data: any }) => (
     <div className="file-upload-result p-4 border rounded">
       <div className="flex items-center gap-3">
         {data.type.startsWith('image/') && (

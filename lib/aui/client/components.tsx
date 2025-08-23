@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import type { ToolCall, ToolResult, ToolDefinition } from '../types';
+import type { ToolCall, ToolResult, ToolDefinition } from '../types/index';
 import { ClientToolExecutor } from './executor';
 
 interface ToolRendererProps {

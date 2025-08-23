@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { ToolExecutorProvider, ToolRenderer } from '@/lib/aui/client';
 import tools, { weatherSimple, searchComplex } from '@/lib/aui/tools';
+import { AUIShowcase } from '@/lib/aui/examples/complete-aui-showcase';
 import type { ToolCall } from '@/lib/aui';
 
 export default function AUIDemo() {
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);
   const [weatherCity, setWeatherCity] = useState('San Francisco');
   const [searchQuery, setSearchQuery] = useState('artificial intelligence');
-  const [activeTab, setActiveTab] = useState<'simple' | 'complex'>('simple');
+  const [activeTab, setActiveTab] = useState<'simple' | 'complex' | 'showcase'>('showcase');
 
   const executeWeatherTool = () => {
     const toolCall: ToolCall = {
@@ -43,6 +44,12 @@ export default function AUIDemo() {
         
         <div className="flex gap-2 mb-6">
           <button
+            onClick={() => setActiveTab('showcase')}
+            className={`px-4 py-2 rounded ${activeTab === 'showcase' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+          >
+            Complete Showcase
+          </button>
+          <button
             onClick={() => setActiveTab('simple')}
             className={`px-4 py-2 rounded ${activeTab === 'simple' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
           >
@@ -56,7 +63,9 @@ export default function AUIDemo() {
           </button>
         </div>
         
-        {activeTab === 'simple' ? (
+        {activeTab === 'showcase' ? (
+          <AUIShowcase />
+        ) : activeTab === 'simple' ? (
           <div className="mb-8">
             <div className="bg-gray-50 rounded-lg p-6 mb-4">
               <h3 className="font-mono text-sm mb-2">Simple Tool Pattern:</h3>
