@@ -63,6 +63,19 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
   
   serverOnly(): ToolBuilder<TInput, TOutput>;
   
+  // New concise methods
+  run<TNewOutput>(
+    handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput),
+    renderer?: ((data: TNewOutput) => ReactElement)
+  ): ToolBuilder<TInput, TNewOutput> | ToolDefinition<TInput, TNewOutput>;
+  
+  handle<TNewInput, TNewOutput>(
+    inputSchema: z.ZodType<TNewInput>,
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput)
+  ): ToolBuilder<TNewInput, TNewOutput>;
+  
+  quick(): ToolBuilder<TInput, TOutput>;
+  
   build(): ToolDefinition<TInput, TOutput>;
   
   done(): ToolDefinition<TInput, TOutput>;

@@ -8,8 +8,8 @@ import aui from '@/lib/aui';
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+  .execute(async ({ input }: { input: { city: string } }) => ({ temp: 72, city: input.city }))
+  .render(({ data }: { data: { temp: number; city: string } }) => <div>{data.city}: {data.temp}°</div>)
   .build();
 
 // ======================================
@@ -18,8 +18,8 @@ const simpleTool = aui
 const syncTool = aui
   .tool('greeting')
   .input(z.object({ name: z.string() }))
-  .execute(({ input }) => `Hello, ${input.name}!`)
-  .render(({ data }) => <h1>{data}</h1>)
+  .execute(({ input }: { input: { name: string } }) => `Hello, ${input.name}!`)
+  .render(({ data }: { data: string }) => <h1>{data}</h1>)
   .done(); // alias for build()
 
 // ======================================
@@ -28,16 +28,16 @@ const syncTool = aui
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: { query: string } }) => {
     // Server-side: database search
     return await db.search(input.query);
   })
-  .client(async ({ input, ctx }) => {
+  .client(async ({ input, ctx }: { input: { query: string }; ctx: any }) => {
     // Client-side: check cache first, then fetch
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
+  .render(({ data }: { data: any }) => <SearchResults results={data} />)
   .build();
 
 // ======================================
@@ -50,11 +50,11 @@ const serverOnlyTool = aui
     data: z.record(z.any())
   }))
   .serverOnly()
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: { table: string; data: Record<string, any> } }) => {
     // This will only run on server
     return await db.insert(input.table, input.data);
   })
-  .render(({ data }) => <div>Inserted: {data.id}</div>)
+  .render(({ data }: { data: { id: number } }) => <div>Inserted: {data.id}</div>)
   .build();
 
 // ======================================
@@ -64,11 +64,11 @@ const aiTool = aui
   .tool('stock-price')
   .description('Get real-time stock price for a given ticker symbol')
   .input(z.object({ ticker: z.string() }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: { ticker: string } }) => {
     const price = await fetchStockPrice(input.ticker);
     return { ticker: input.ticker, price };
   })
-  .render(({ data }) => (
+  .render(({ data }: { data: { ticker: string; price: number } }) => (
     <div className="stock-card">
       <span>{data.ticker}</span>
       <span className="price">${data.price}</span>
@@ -82,11 +82,11 @@ const aiTool = aui
 const contextAwareTool = aui
   .tool('user-profile')
   .input(z.object({ userId: z.string().optional() }))
-  .execute(async ({ input, ctx }) => {
-    const id = input.userId || ctx.userId || 'anonymous';
+  .execute(async ({ input, ctx }: { input: { userId?: string }; ctx?: any }) => {
+    const id = input.userId || ctx?.userId || 'anonymous';
     return await fetchUserProfile(id);
   })
-  .render(({ data }) => <UserProfile user={data} />)
+  .render(({ data }: { data: any }) => <UserProfile user={data} />)
   .build();
 
 // ======================================
@@ -99,10 +99,15 @@ const contextAwareTool = aui
 // Usage in React component
 // ======================================
 export function ToolDemo() {
-  const [result, setResult] = React.useState(null);
+  const [result, setResult] = React.useState<any>(null);
   
   const runTool = async () => {
-    const executor = new ClientToolExecutor();
+    // Mock executor for demo
+    const executor = {
+      execute: async (call: any) => ({ 
+        output: { temp: 72, city: call.input.city } 
+      })
+    };
     const result = await executor.execute({
       id: '1',
       toolName: 'weather',
@@ -136,5 +141,3 @@ const SearchResults = ({ results }: any) => (
 );
 
 const UserProfile = ({ user }: any) => <div>{user.name}</div>;
-
-const ClientToolExecutor = () => ({ execute: async (call: any) => ({ output: { temp: 72, city: call.input.city } }) });

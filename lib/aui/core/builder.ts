@@ -10,6 +10,7 @@ import type {
 
 class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput, TOutput> {
   private config: Partial<ToolDefinition<TInput, TOutput>> = {};
+  private _quickMode = false;
 
   constructor(name: string) {
     this.config.name = name;
@@ -47,6 +48,26 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
       }
       return Promise.resolve(result);
     };
+    
+    // Auto-build in quick mode
+    if (this._quickMode && this.config.render) {
+      return this.build() as any;
+    }
+    return this as any;
+  }
+
+  // Shorthand: combine execute and render for ultra-concise API
+  run<TNewOutput>(
+    handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput),
+    renderer?: ((data: TNewOutput) => ReactElement)
+  ): ToolBuilder<TInput, TNewOutput> | ToolDefinition<TInput, TNewOutput> {
+    this.execute(handler as any);
+    if (renderer) {
+      this.render(renderer as any);
+      if (this._quickMode) {
+        return this.build() as any;
+      }
+    }
     return this as any;
   }
 
@@ -83,6 +104,27 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
     this.config.render = component.length === 1
       ? (props: any) => (component as any)(props.data)
       : component as any;
+    
+    // Auto-build in quick mode if execute is already set
+    if (this._quickMode && this.config.execute) {
+      return this.build() as any;
+    }
+    return this;
+  }
+
+  // Ultra-concise: set both input and execute in one go
+  handle<TNewInput, TNewOutput>(
+    inputSchema: z.ZodType<TNewInput>,
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput)
+  ): ToolBuilder<TNewInput, TNewOutput> {
+    this.input(inputSchema as any);
+    this.execute(handler as any);
+    return this as any;
+  }
+
+  // Enable quick mode for auto-building
+  quick(): ToolBuilder<TInput, TOutput> {
+    this._quickMode = true;
     return this;
   }
 
@@ -125,3 +167,6 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
 export function createToolBuilder(name: string): ToolBuilder {
   return new ToolBuilderImpl(name);
 }
+
+// Export shortcuts for ultra-concise API
+export const tool = createToolBuilder;
