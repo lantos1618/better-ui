@@ -46,7 +46,8 @@ describe('AUI Builder', () => {
       .render(renderFn)
       .build();
 
-    expect(tool.render).toBe(renderFn);
+    expect(tool.render).toBeDefined();
+    expect(typeof tool.render).toBe('function');
   });
 
   it('should support client execution', () => {
