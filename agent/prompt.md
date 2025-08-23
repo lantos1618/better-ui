@@ -2,7 +2,7 @@ please implement a concise and nice way to have aui (assistant-ui I want to call
 
 
 
-```ts
+```tsx
 // Simple tool - just 2 methods
 const simpleTool = aui
   .tool('weather')
@@ -38,3 +38,5 @@ notes from Lyndon
 - simplicity, elegance, praticality and intelegence
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
 - you can open and view github issues
+- don't delete the agent director please (don't delete yourself)
+- commit and push frequently
