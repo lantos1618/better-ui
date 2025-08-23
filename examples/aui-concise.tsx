@@ -32,8 +32,8 @@ const complexTool = aui
     // Server-side: database search
     return await db.search(input.query);
   })
-  .client(async ({ input, ctx }: { input: { query: string }; ctx: any }) => {
-    // Client-side: check cache first, then fetch
+  .clientExecute(async ({ input, ctx }: { input: { query: string }; ctx: any }) => {
+    // Only when you need caching, offline, etc.
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })

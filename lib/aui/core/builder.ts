@@ -91,6 +91,14 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
   ): ToolBuilder<TInput, TOutput> {
     return this.clientExecute(handler);
   }
+  
+  // Ultra-concise alias
+  clientEx(
+    handler: ((params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput) |
+             ((input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput)
+  ): ToolBuilder<TInput, TOutput> {
+    return this.clientExecute(handler);
+  }
 
   serverOnly(): ToolBuilder<TInput, TOutput> {
     this.config.isServerOnly = true;
