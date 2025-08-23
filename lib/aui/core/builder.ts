@@ -6,7 +6,7 @@ import type {
   ToolContext,
   ToolDefinition,
   ToolExecuteParams,
-} from '../types';
+} from '../types/index';
 
 class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput, TOutput> {
   private config: Partial<ToolDefinition<TInput, TOutput>> = {};

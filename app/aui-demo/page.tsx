@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ToolExecutorProvider, ToolRenderer } from '@/lib/aui/client';
 import tools, { weatherSimple, searchComplex } from '@/lib/aui/tools';
-import type { ToolCall } from '@/lib/aui/types';
+import type { ToolCall } from '@/lib/aui';
 
 export default function AUIDemo() {
   const [toolCalls, setToolCalls] = useState<ToolCall[]>([]);

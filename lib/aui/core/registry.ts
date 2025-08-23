@@ -1,4 +1,4 @@
-import type { ToolDefinition, ToolRegistry } from '../types';
+import type { ToolDefinition, ToolRegistry } from '../types/index';
 
 class ToolRegistryImpl implements ToolRegistry {
   tools: Map<string, ToolDefinition> = new Map();
