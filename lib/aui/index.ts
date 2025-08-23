@@ -147,6 +147,69 @@ class AUI {
   getTool(name: string) {
     return this.registry.get(name);
   }
+
+  // Ultra-concise: create tool with just a function
+  do<TInput = any, TOutput = any>(
+    name: string,
+    handler: ((input: TInput) => Promise<TOutput> | TOutput) |
+             {
+               input?: z.ZodType<TInput>;
+               execute: (input: TInput) => Promise<TOutput> | TOutput;
+               render?: (data: TOutput) => ReactElement;
+               client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
+             }
+  ): ToolDefinition<TInput, TOutput> {
+    const tool = this.tool(name).do(handler);
+    this.register(tool);
+    return tool;
+  }
+
+  // AI-optimized tool creation with built-in reliability
+  ai<TInput = any, TOutput = any>(
+    name: string,
+    config: {
+      input?: z.ZodType<TInput>;
+      execute: (input: TInput) => Promise<TOutput> | TOutput;
+      client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
+      render?: (data: TOutput) => ReactElement;
+      retry?: number;
+      timeout?: number;
+      cache?: boolean;
+    }
+  ): ToolDefinition<TInput, TOutput> {
+    const tool = this.tool(name).ai(config);
+    this.register(tool);
+    return tool;
+  }
+
+  // Batch AI tool creation
+  aiTools(tools: Record<string, {
+    input?: z.ZodType<any>;
+    execute: (input: any) => Promise<any> | any;
+    client?: (input: any, ctx: ToolContext) => Promise<any> | any;
+    render?: (data: any) => ReactElement;
+    retry?: number;
+    timeout?: number;
+    cache?: boolean;
+  }>): Record<string, ToolDefinition> {
+    const definitions: Record<string, ToolDefinition> = {};
+    
+    for (const [name, config] of Object.entries(tools)) {
+      definitions[name] = this.ai(name, config);
+    }
+    
+    return definitions;
+  }
+
+  // Enable/disable AI optimizations globally
+  setAIMode(enabled: boolean, options?: { retry?: number; timeout?: number; cache?: boolean }) {
+    this.aiModeEnabled = enabled;
+    this.aiOptions = options || {};
+    return this;
+  }
+
+  private aiModeEnabled = false;
+  private aiOptions: { retry?: number; timeout?: number; cache?: boolean } = {};
 }
 
 // Create the global AUI instance

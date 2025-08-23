@@ -206,6 +206,109 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
   done(): ToolDefinition<TInput, TOutput> {
     return this.build();
   }
+
+  // Ultra-concise: single method to do everything
+  do<TNewInput = TInput, TNewOutput = TOutput>(
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput) |
+             { 
+               input?: z.ZodType<TNewInput>;
+               execute: (input: TNewInput) => Promise<TNewOutput> | TNewOutput;
+               render?: (data: TNewOutput) => ReactElement;
+               client?: (input: TNewInput, ctx: ToolContext) => Promise<TNewOutput> | TNewOutput;
+             }
+  ): ToolDefinition<TNewInput, TNewOutput> {
+    if (typeof handler === 'function') {
+      // Simple function form
+      this.execute(handler as any);
+    } else {
+      // Object configuration form
+      if (handler.input) {
+        this.input(handler.input as any);
+      }
+      this.execute(handler.execute as any);
+      if (handler.client) {
+        this.clientExecute(handler.client as any);
+      }
+      if (handler.render) {
+        this.render(handler.render as any);
+      }
+    }
+    return this.build() as any;
+  }
+
+  // AI-optimized method for tool calls
+  ai<TNewInput = TInput, TNewOutput = TOutput>(
+    config: {
+      input?: z.ZodType<TNewInput>;
+      execute: (input: TNewInput) => Promise<TNewOutput> | TNewOutput;
+      client?: (input: TNewInput, ctx: ToolContext) => Promise<TNewOutput> | TNewOutput;
+      render?: (data: TNewOutput) => ReactElement;
+      retry?: number;
+      timeout?: number;
+      cache?: boolean;
+    }
+  ): ToolDefinition<TNewInput, TNewOutput> {
+    if (config.input) {
+      this.input(config.input as any);
+    }
+    
+    // Wrap execute with retry logic for AI reliability
+    const originalExecute = config.execute;
+    const retryCount = config.retry || 3;
+    
+    this.execute(async (input: any) => {
+      let lastError;
+      for (let i = 0; i < retryCount; i++) {
+        try {
+          return await Promise.resolve(originalExecute(input));
+        } catch (error) {
+          lastError = error;
+          if (i < retryCount - 1) {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+          }
+        }
+      }
+      throw lastError;
+    });
+    
+    if (config.client) {
+      this.clientExecute(config.client as any);
+    }
+    
+    if (config.render) {
+      this.render(config.render as any);
+    }
+    
+    this.metadata({ 
+      aiOptimized: true, 
+      retry: retryCount,
+      timeout: config.timeout,
+      cache: config.cache 
+    });
+    
+    return this.build() as any;
+  }
+
+  // One-character aliases for ultimate conciseness
+  i<TSchema extends AnyZodSchema>(schema: TSchema): ToolBuilder<z.infer<TSchema>, TOutput> {
+    return this.input(schema);
+  }
+
+  e<TNewOutput>(handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput)): ToolBuilder<TInput, TNewOutput> {
+    return this.execute(handler as any);
+  }
+
+  r(component: ((data: TOutput) => ReactElement)): ToolBuilder<TInput, TOutput> {
+    return this.render(component as any);
+  }
+
+  c(handler: ((input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput)): ToolBuilder<TInput, TOutput> {
+    return this.clientExecute(handler as any);
+  }
+
+  b(): ToolDefinition<TInput, TOutput> {
+    return this.build();
+  }
 }
 
 export function createToolBuilder(name: string): ToolBuilder {
