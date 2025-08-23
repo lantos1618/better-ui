@@ -30,7 +30,7 @@ const complexTool = aui
 
 
 notes from Lyndon
-- use .agent directory to store important meta infomation (global_memory.md, todos.md, plan.md)
+- use .agent directory to store important meta infomation as (global_memory.md, todos.md, plan.md) this will help you on resets
 - use github issues to help manage state (longterm todos, bugs and issues)
 - use testing
 - cleanup after yourself (clean up files after yourself, you can self terminate if you think you are done done)
