@@ -7,3 +7,8 @@ export {
   useToolExecutor,
   useToolExecution,
 } from './components';
+export {
+  useTool,
+  useToolRenderer,
+  useToolBatch,
+} from './hooks';

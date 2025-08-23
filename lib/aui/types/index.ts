@@ -31,12 +31,16 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
   ): ToolBuilder<z.infer<TSchema>, TOutput>;
   
   execute<TNewOutput>(
-    handler: ((params: { input: TInput }) => Promise<TNewOutput>) |
-             ((params: { input: TInput; ctx: ToolContext }) => Promise<TNewOutput>)
+    handler: ((params: { input: TInput }) => Promise<TNewOutput> | TNewOutput) |
+             ((params: { input: TInput; ctx: ToolContext }) => Promise<TNewOutput> | TNewOutput)
   ): ToolBuilder<TInput, TNewOutput>;
   
   clientExecute(
-    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>
+    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput
+  ): ToolBuilder<TInput, TOutput>;
+  
+  client(
+    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput
   ): ToolBuilder<TInput, TOutput>;
   
   render(
@@ -48,6 +52,8 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
   serverOnly(): ToolBuilder<TInput, TOutput>;
   
   build(): ToolDefinition<TInput, TOutput>;
+  
+  done(): ToolDefinition<TInput, TOutput>;
 }
 
 export interface ToolRegistry {

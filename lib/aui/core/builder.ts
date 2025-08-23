@@ -24,25 +24,31 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
   }
 
   execute<TNewOutput>(
-    handler: ((params: { input: TInput }) => Promise<TNewOutput>) | 
-             ((params: { input: TInput; ctx: ToolContext }) => Promise<TNewOutput>)
+    handler: ((params: { input: TInput }) => Promise<TNewOutput> | TNewOutput) | 
+             ((params: { input: TInput; ctx: ToolContext }) => Promise<TNewOutput> | TNewOutput)
   ): ToolBuilder<TInput, TNewOutput> {
     this.config.execute = async (params: ToolExecuteParams<TInput>) => {
       const handlerLength = handler.length;
-      if (handlerLength === 1 && !handler.toString().includes('ctx')) {
-        return (handler as any)({ input: params.input });
-      }
-      return (handler as any)(params);
+      const result = handlerLength === 1 && !handler.toString().includes('ctx')
+        ? (handler as any)({ input: params.input })
+        : (handler as any)(params);
+      return Promise.resolve(result);
     };
     return this as any;
   }
 
   clientExecute(
-    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>
+    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput
   ): ToolBuilder<TInput, TOutput> {
-    this.config.clientExecute = handler as any;
+    this.config.clientExecute = async (params) => Promise.resolve(handler(params)) as any;
     this.config.isServerOnly = false;
     return this;
+  }
+
+  client(
+    handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput
+  ): ToolBuilder<TInput, TOutput> {
+    return this.clientExecute(handler);
   }
 
   serverOnly(): ToolBuilder<TInput, TOutput> {
@@ -64,7 +70,7 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
 
   build(): ToolDefinition<TInput, TOutput> {
     if (!this.config.inputSchema) {
-      throw new Error(`Tool "${this.config.name}" must have an input schema`);
+      this.config.inputSchema = z.object({}) as any;
     }
     if (!this.config.execute) {
       throw new Error(`Tool "${this.config.name}" must have an execute handler`);
@@ -74,6 +80,10 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
     }
 
     return this.config as ToolDefinition<TInput, TOutput>;
+  }
+
+  done(): ToolDefinition<TInput, TOutput> {
+    return this.build();
   }
 }
 
