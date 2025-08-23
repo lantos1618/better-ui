@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ToolExecutor } from '@/lib/aui/server/executor';
 import { globalRegistry } from '@/lib/aui/core/registry';
 import { registerDefaultTools } from '@/lib/aui/tools';
-import type { ToolCall } from '@/lib/aui/types';
+import type { ToolCall } from '@/lib/aui';
 
 // Register default tools on startup
 registerDefaultTools();

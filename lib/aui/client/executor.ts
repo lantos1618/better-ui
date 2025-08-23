@@ -1,6 +1,6 @@
 'use client';
 
-import type { ToolCall, ToolContext, ToolDefinition, ToolResult } from '../types';
+import type { ToolCall, ToolContext, ToolDefinition, ToolResult } from '../types/index';
 
 export interface ClientExecutorOptions {
   apiUrl?: string;

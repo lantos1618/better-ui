@@ -1,10 +1,10 @@
 import { createToolBuilder, tool as toolBuilder } from './core/builder';
 import { globalRegistry } from './core/registry';
-import type { ToolDefinition, ToolRegistry, ToolBuilder, ToolContext } from './types';
+import type { ToolDefinition, ToolRegistry, ToolBuilder, ToolContext } from './types/index';
 import { z } from 'zod';
 import { ReactElement } from 'react';
 
-export * from './types';
+export * from './types/index';
 export { createRegistry } from './core/registry';
 export { ClientToolExecutor } from './client/executor';
 

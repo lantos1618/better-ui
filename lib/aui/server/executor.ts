@@ -1,4 +1,4 @@
-import type { ToolCall, ToolContext, ToolResult } from '../types';
+import type { ToolCall, ToolContext, ToolResult } from '../types/index';
 import { globalRegistry } from '../core/registry';
 
 export interface ExecutorOptions {
