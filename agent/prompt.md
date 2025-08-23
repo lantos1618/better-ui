@@ -30,14 +30,12 @@ const complexTool = aui
 
 
 notes from Lyndon
-- use .agent directory to store important meta infomation as (global_memory.md, todos.md, plan.md) this will help you on resets
-- use github issues to help manage state (longterm todos, bugs and issues)
+- use .agent directory to store important meta infomation as files (global_memory.md, todos.md, plan.md, scratchpad.md)
+- order your todos as an estimate
+- you can open and view github issues (gh-cli)
+- cleanup after yourself (clean up files after you are done, you can self terminate if you think you are done done)
 - use testing
-- cleanup after yourself (clean up files after yourself, you can self terminate if you think you are done done)
 - A good heuristic is to spend 80% of your time on the actual porting, and 20% on the testing.
 - simplicity, elegance, praticality and intelegence
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
-- you can open and view github issues
-- don't delete the agent director please (don't delete yourself)
-- commit and push frequently
-- check errors
+- use frequent git commits and pushes 
