@@ -11,7 +11,7 @@
 - [x] Create .agent directory with metadata
 
 ## In Progress 🔄
-- [ ] Run lint and type checks
+None currently.
 
 ## Future Enhancements 📋
 - [ ] Add WebSocket support for real-time tools

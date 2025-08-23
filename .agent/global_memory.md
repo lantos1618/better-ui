@@ -3,6 +3,9 @@
 ## Project Overview
 The AUI system is a sophisticated tool framework for enabling AI assistants to control both frontend and backend operations in Next.js/Vercel applications.
 
+## Branch: lantos-aui
+Current working branch for AUI enhancements and improvements.
+
 ## Key Design Principles
 1. **Conciseness**: Minimal API surface with maximum expressiveness
 2. **Type Safety**: Full TypeScript and Zod integration
