@@ -130,6 +130,37 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
     return this as any;
   }
 
+  // Chain input, execute, and render in one call
+  define<TNewInput, TNewOutput>(
+    inputSchema: z.ZodType<TNewInput>,
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput),
+    renderer?: ((data: TNewOutput) => ReactElement)
+  ): ToolDefinition<TNewInput, TNewOutput> {
+    this.input(inputSchema as any);
+    this.execute(handler as any);
+    if (renderer) {
+      this.render(renderer as any);
+    }
+    return this.build() as any;
+  }
+
+  // Shorthand aliases for common patterns
+  in<TSchema extends AnyZodSchema>(
+    schema: TSchema
+  ): ToolBuilder<z.infer<TSchema>, TOutput> {
+    return this.input(schema);
+  }
+
+  ex<TNewOutput>(
+    handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput)
+  ): ToolBuilder<TInput, TNewOutput> {
+    return this.execute(handler as any);
+  }
+
+  out(component: ((data: TOutput) => ReactElement)): ToolBuilder<TInput, TOutput> {
+    return this.render(component as any);
+  }
+
   // Enable quick mode for auto-building
   quick(): ToolBuilder<TInput, TOutput> {
     this._quickMode = true;
@@ -167,6 +198,11 @@ class ToolBuilderImpl<TInput = any, TOutput = any> implements ToolBuilder<TInput
     return this.config as ToolDefinition<TInput, TOutput>;
   }
 
+  // Alias for build
+  create(): ToolDefinition<TInput, TOutput> {
+    return this.build();
+  }
+
   done(): ToolDefinition<TInput, TOutput> {
     return this.build();
   }
@@ -178,3 +214,4 @@ export function createToolBuilder(name: string): ToolBuilder {
 
 // Export shortcuts for ultra-concise API
 export const tool = createToolBuilder;
+export const t = createToolBuilder;
