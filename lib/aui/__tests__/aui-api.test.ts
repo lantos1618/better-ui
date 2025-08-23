@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import React from 'react';
 import aui, { createRegistry } from '../index';
 import { z } from 'zod';
@@ -294,6 +294,117 @@ describe('AUI API Tests', () => {
 
       expect(tool.name).toBe('done-test');
       expect(tool.execute).toBeDefined();
+    });
+  });
+
+  describe('Enhanced AUI Methods', () => {
+    it('should support do() method for all-in-one tool creation', async () => {
+      const tool = aui.do('do-test', async (input: string) => input.toUpperCase());
+      
+      expect(tool.name).toBe('do-test');
+      const result = await tool.execute({
+        input: 'hello' as any,
+        ctx: { cache: new Map(), fetch: jest.fn() }
+      });
+      expect(result).toBe('HELLO');
+    });
+
+    it('should support ai() method with retry logic', async () => {
+      let attempts = 0;
+      const tool = aui.ai('ai-test', {
+        execute: async () => {
+          attempts++;
+          if (attempts < 2) throw new Error('Retry needed');
+          return { success: true };
+        },
+        retry: 3
+      });
+      
+      const result = await tool.execute({
+        input: {},
+        ctx: { cache: new Map(), fetch: jest.fn() }
+      });
+      expect(result).toEqual({ success: true });
+      expect(attempts).toBe(2);
+    });
+
+    it('should support single-character aliases', async () => {
+      const tool = aui.t('ultra')
+        .i(z.object({ n: z.number() }))
+        .e(async (input) => input.n * 2)
+        .r((data) => React.createElement('div', {}, data))
+        .b();
+      
+      expect(tool.name).toBe('ultra');
+      const result = await tool.execute({
+        input: { n: 5 },
+        ctx: { cache: new Map(), fetch: jest.fn() }
+      });
+      expect(result).toBe(10);
+    });
+
+    it('should support builder do() method', async () => {
+      const tool = aui.t('builder-do')
+        .do({
+          input: z.object({ x: z.number() }),
+          execute: async (input) => input.x * 3,
+          render: (data) => React.createElement('span', {}, data)
+        });
+      
+      const result = await tool.execute({
+        input: { x: 4 },
+        ctx: { cache: new Map(), fetch: jest.fn() }
+      });
+      expect(result).toBe(12);
+    });
+
+    it('should support builder ai() method', async () => {
+      const tool = aui.t('builder-ai')
+        .ai({
+          input: z.object({ val: z.number() }),
+          execute: async (input) => input.val * 2,
+          retry: 5,
+          timeout: 1000,
+          cache: true
+        });
+      
+      expect(tool.metadata?.aiOptimized).toBe(true);
+      expect(tool.metadata?.retry).toBe(5);
+      expect(tool.metadata?.timeout).toBe(1000);
+      expect(tool.metadata?.cache).toBe(true);
+    });
+
+    it('should support aiTools() batch creation', () => {
+      const tools = aui.aiTools({
+        tool1: {
+          execute: async () => 'result1',
+          retry: 3
+        },
+        tool2: {
+          input: z.object({ x: z.number() }),
+          execute: async (input) => input.x,
+          cache: true
+        }
+      });
+      
+      expect(Object.keys(tools)).toHaveLength(2);
+      expect(tools.tool1.metadata?.retry).toBe(3);
+      expect(tools.tool2.metadata?.cache).toBe(true);
+    });
+
+    it('should support global AI mode settings', () => {
+      aui.setAIMode(true, {
+        retry: 5,
+        timeout: 10000,
+        cache: true
+      });
+      
+      expect((aui as any).aiModeEnabled).toBe(true);
+      expect((aui as any).aiOptions).toEqual({
+        retry: 5,
+        timeout: 10000,
+        cache: true
+      });
     });
   });
 });

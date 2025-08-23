@@ -103,6 +103,37 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
   create(): ToolDefinition<TInput, TOutput>;
   
   done(): ToolDefinition<TInput, TOutput>;
+  
+  // Ultra-concise all-in-one methods
+  do<TNewInput = TInput, TNewOutput = TOutput>(
+    handler: ((input: TNewInput) => Promise<TNewOutput> | TNewOutput) |
+             { 
+               input?: z.ZodType<TNewInput>;
+               execute: (input: TNewInput) => Promise<TNewOutput> | TNewOutput;
+               render?: (data: TNewOutput) => ReactElement;
+               client?: (input: TNewInput, ctx: ToolContext) => Promise<TNewOutput> | TNewOutput;
+             }
+  ): ToolDefinition<TNewInput, TNewOutput>;
+  
+  // AI-optimized configuration
+  ai<TNewInput = TInput, TNewOutput = TOutput>(
+    config: {
+      input?: z.ZodType<TNewInput>;
+      execute: (input: TNewInput) => Promise<TNewOutput> | TNewOutput;
+      client?: (input: TNewInput, ctx: ToolContext) => Promise<TNewOutput> | TNewOutput;
+      render?: (data: TNewOutput) => ReactElement;
+      retry?: number;
+      timeout?: number;
+      cache?: boolean;
+    }
+  ): ToolDefinition<TNewInput, TNewOutput>;
+  
+  // Single-character aliases
+  i<TSchema extends AnyZodSchema>(schema: TSchema): ToolBuilder<z.infer<TSchema>, TOutput>;
+  e<TNewOutput>(handler: ((input: TInput) => Promise<TNewOutput> | TNewOutput)): ToolBuilder<TInput, TNewOutput>;
+  r(component: ((data: TOutput) => ReactElement)): ToolBuilder<TInput, TOutput>;
+  c(handler: ((input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput)): ToolBuilder<TInput, TOutput>;
+  b(): ToolDefinition<TInput, TOutput>;
 }
 
 export interface ToolRegistry {

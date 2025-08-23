@@ -1,430 +1,211 @@
 import React from 'react';
-import aui, { z, defineTool } from '../index';
+import aui, { z } from '../index';
 
-/**
- * AI Control Tools - Enable AI assistants to control frontend and backend
- * These tools demonstrate how AI can interact with both client and server
- */
+// AI Control Examples - Ultra-concise patterns for AI to control frontend/backend
 
-// Frontend Control Tool - AI can manipulate UI elements
-const uiControlTool = defineTool('ui-control', {
-  input: z.object({
-    action: z.enum(['show', 'hide', 'toggle', 'update']),
-    elementId: z.string(),
-    data: z.any().optional()
-  }),
+// 1. Simplest possible form - just a function
+const simplestTool = aui.do('simplest', async (input: string) => input.toUpperCase());
+
+// 2. With input validation - still one line
+const validatedTool = aui.do('validated', {
+  input: z.object({ text: z.string().min(1) }),
+  execute: async (input) => ({ result: input.text.length })
+});
+
+// 3. AI-optimized with retry logic
+const reliableTool = aui.ai('reliable', {
+  input: z.object({ url: z.string().url() }),
   execute: async (input) => {
-    // Server-side validation
-    console.log('UI Control request:', input);
-    return {
-      action: input.action,
-      elementId: input.elementId,
-      timestamp: Date.now(),
-      data: input.data
-    };
+    const response = await fetch(input.url);
+    return response.json();
   },
+  retry: 5,  // Will retry up to 5 times with exponential backoff
+  timeout: 10000,  // 10 second timeout
+  cache: true  // Enable caching
+});
+
+// 4. Frontend control tool
+const uiControlTool = aui.ai('ui-control', {
+  input: z.object({ 
+    action: z.enum(['show', 'hide', 'toggle']),
+    element: z.string() 
+  }),
   client: async (input, ctx) => {
-    // Client-side DOM manipulation
-    const element = document.getElementById(input.elementId);
-    if (!element) throw new Error(`Element ${input.elementId} not found`);
-    
-    switch (input.action) {
-      case 'show':
-        element.style.display = 'block';
-        break;
-      case 'hide':
-        element.style.display = 'none';
-        break;
-      case 'toggle':
-        element.style.display = element.style.display === 'none' ? 'block' : 'none';
-        break;
-      case 'update':
-        if (input.data?.innerHTML) element.innerHTML = input.data.innerHTML;
-        if (input.data?.className) element.className = input.data.className;
-        if (input.data?.style) Object.assign(element.style, input.data.style);
-        break;
+    // This runs on the client side
+    const element = document.getElementById(input.element);
+    if (element) {
+      switch (input.action) {
+        case 'show':
+          element.style.display = 'block';
+          break;
+        case 'hide':
+          element.style.display = 'none';
+          break;
+        case 'toggle':
+          element.style.display = element.style.display === 'none' ? 'block' : 'none';
+          break;
+      }
     }
-    
-    return {
-      action: input.action,
-      elementId: input.elementId,
-      success: true,
-      timestamp: Date.now()
-    };
+    return { success: true, action: input.action, element: input.element };
   },
-  render: (result) => (
+  execute: async (input) => {
+    // Server-side fallback
+    console.log('UI Control:', input);
+    return { success: true, action: input.action, element: input.element };
+  },
+  render: (data) => (
     <div className="ui-control-result">
-      ✓ {result.action} on #{result.elementId} completed
+      {data.success ? '✓' : '✗'} {data.action} on {data.element}
     </div>
   )
 });
 
-// Backend Control Tool - AI can execute server operations
-const backendControlTool = defineTool('backend-control', {
+// 5. Backend control tool
+const dbControlTool = aui.ai('db-control', {
   input: z.object({
-    service: z.enum(['database', 'cache', 'queue', 'storage']),
-    operation: z.string(),
-    params: z.record(z.any())
+    query: z.string(),
+    params: z.array(z.any()).optional()
   }),
   execute: async (input) => {
-    // This runs on the server, AI can control backend services
-    switch (input.service) {
-      case 'database':
-        // Mock database operations
-        console.log('DB Operation:', input.operation, input.params);
-        return { 
-          service: 'database',
-          result: `Executed ${input.operation} on database`,
-          rowsAffected: Math.floor(Math.random() * 100)
-        };
-      
-      case 'cache':
-        // Mock cache operations
-        console.log('Cache Operation:', input.operation, input.params);
-        return {
-          service: 'cache',
-          result: `Cache ${input.operation} completed`,
-          keys: Object.keys(input.params)
-        };
-      
-      case 'queue':
-        // Mock queue operations
-        console.log('Queue Operation:', input.operation, input.params);
-        return {
-          service: 'queue',
-          result: `Message queued for ${input.operation}`,
-          queueLength: Math.floor(Math.random() * 50)
-        };
-      
-      case 'storage':
-        // Mock storage operations
-        console.log('Storage Operation:', input.operation, input.params);
-        return {
-          service: 'storage',
-          result: `File ${input.operation} completed`,
-          size: Math.floor(Math.random() * 1000000)
-        };
-    }
-  },
-  render: (result) => (
-    <div className="backend-result">
-      <h4>{result.service} Operation</h4>
-      <p>{result.result}</p>
-      <pre>{JSON.stringify(result, null, 2)}</pre>
-    </div>
-  )
-});
-
-// Navigation Control - AI can navigate the app
-const navigationTool = defineTool('navigate', {
-  input: z.object({
-    path: z.string(),
-    params: z.record(z.string()).optional(),
-    method: z.enum(['push', 'replace', 'back', 'forward']).default('push')
-  }),
-  execute: async (input) => {
-    return {
-      navigated: true,
-      path: input.path,
-      method: input.method,
-      timestamp: Date.now()
+    // This only runs on the server for security
+    console.log('Executing query:', input.query);
+    // In real app, this would connect to database
+    return { 
+      rows: [], 
+      affected: 0,
+      query: input.query 
     };
   },
+  render: (data) => (
+    <div className="db-result">
+      Query executed: {data.query}
+      Rows affected: {data.affected}
+    </div>
+  )
+});
+
+// 6. State management tool
+const stateTool = aui.ai('state', {
+  input: z.object({
+    key: z.string(),
+    value: z.any(),
+    operation: z.enum(['set', 'get', 'delete', 'clear'])
+  }),
   client: async (input, ctx) => {
-    // Client-side navigation using Next.js router
-    if (typeof window !== 'undefined') {
-      const url = new URL(input.path, window.location.origin);
-      
-      if (input.params) {
-        Object.entries(input.params).forEach(([key, value]) => {
-          url.searchParams.set(key, value);
-        });
-      }
-      
-      switch (input.method) {
-        case 'push':
-          window.history.pushState({}, '', url.toString());
-          break;
-        case 'replace':
-          window.history.replaceState({}, '', url.toString());
-          break;
-        case 'back':
-          window.history.back();
-          break;
-        case 'forward':
-          window.history.forward();
-          break;
-      }
-    }
-    
-    return {
-      navigated: true,
-      path: input.path,
-      method: input.method,
-      timestamp: Date.now()
-    };
-  },
-  render: (result) => (
-    <div className="navigation-result">
-      📍 Navigated to {result.path} via {result.method}
-    </div>
-  )
-});
-
-// Form Control - AI can fill and submit forms
-const formControlTool = defineTool('form-control', {
-  input: z.object({
-    formId: z.string(),
-    action: z.enum(['fill', 'submit', 'reset', 'validate']),
-    fields: z.record(z.any()).optional()
-  }),
-  execute: async (input) => {
-    // Server-side form validation
-    if (input.action === 'validate' && input.fields) {
-      const errors: Record<string, string> = {};
-      
-      // Mock validation
-      Object.entries(input.fields).forEach(([key, value]) => {
-        if (typeof value === 'string' && value.length < 3) {
-          errors[key] = 'Too short';
-        }
-      });
-      
-      return {
-        valid: Object.keys(errors).length === 0,
-        errors,
-        formId: input.formId
-      };
-    }
-    
-    return {
-      action: input.action,
-      formId: input.formId,
-      success: true
-    };
-  },
-  client: async (input, ctx) => {
-    const form = document.getElementById(input.formId) as HTMLFormElement;
-    if (!form) throw new Error(`Form ${input.formId} not found`);
-    
-    switch (input.action) {
-      case 'fill':
-        if (input.fields) {
-          Object.entries(input.fields).forEach(([name, value]) => {
-            const field = form.elements.namedItem(name) as HTMLInputElement;
-            if (field) field.value = String(value);
-          });
-        }
-        break;
-      
-      case 'submit':
-        form.submit();
-        break;
-      
-      case 'reset':
-        form.reset();
-        break;
-    }
-    
-    return {
-      action: input.action,
-      formId: input.formId,
-      success: true
-    };
-  },
-  render: (result) => (
-    <div className="form-control-result">
-      {result.action === 'validate' ? (
-        result.valid ? (
-          <span className="valid">✓ Form is valid</span>
-        ) : (
-          <div className="errors">
-            {Object.entries(result.errors || {}).map(([field, error]) => (
-              <div key={field}>{field}: {error}</div>
-            ))}
-          </div>
-        )
-      ) : (
-        <span>Form {result.action} completed</span>
-      )}
-    </div>
-  )
-});
-
-// API Call Tool - AI can make API calls
-const apiCallTool = defineTool('api-call', {
-  input: z.object({
-    endpoint: z.string(),
-    method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH']),
-    headers: z.record(z.string()).optional(),
-    body: z.any().optional(),
-    auth: z.object({
-      type: z.enum(['bearer', 'basic', 'api-key']),
-      credentials: z.string()
-    }).optional()
-  }),
-  execute: async (input) => {
-    // Server-side API call with authentication
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...input.headers
-    };
-    
-    if (input.auth) {
-      switch (input.auth.type) {
-        case 'bearer':
-          headers['Authorization'] = `Bearer ${input.auth.credentials}`;
-          break;
-        case 'basic':
-          headers['Authorization'] = `Basic ${input.auth.credentials}`;
-          break;
-        case 'api-key':
-          headers['X-API-Key'] = input.auth.credentials;
-          break;
-      }
-    }
-    
-    try {
-      const response = await fetch(input.endpoint, {
-        method: input.method,
-        headers,
-        body: input.body ? JSON.stringify(input.body) : undefined
-      });
-      
-      const data = await response.json();
-      
-      return {
-        status: response.status,
-        statusText: response.statusText,
-        data,
-        success: response.ok
-      };
-    } catch (error) {
-      return {
-        status: 0,
-        statusText: 'Network Error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false
-      };
-    }
-  },
-  render: (result) => (
-    <div className={`api-result ${result.success ? 'success' : 'error'}`}>
-      <div className="status">
-        {result.status} {result.statusText}
-      </div>
-      <pre className="data">
-        {JSON.stringify(result.data || result.error, null, 2)}
-      </pre>
-    </div>
-  )
-});
-
-// State Management Tool - AI can manage application state
-const stateManagementTool = defineTool('state-manage', {
-  input: z.object({
-    action: z.enum(['set', 'get', 'update', 'delete', 'clear']),
-    key: z.string().optional(),
-    value: z.any().optional(),
-    namespace: z.string().default('global')
-  }),
-  execute: async (input) => {
-    // Server-side state tracking
-    return {
-      action: input.action,
-      namespace: input.namespace,
-      key: input.key,
-      timestamp: Date.now()
-    };
-  },
-  client: async (input, ctx) => {
-    // Client-side state management
-    const stateKey = `${input.namespace}:${input.key || ''}`;
-    
-    switch (input.action) {
+    switch (input.operation) {
       case 'set':
-        if (input.key && input.value !== undefined) {
-          localStorage.setItem(stateKey, JSON.stringify(input.value));
-          ctx.cache.set(stateKey, input.value);
-        }
-        break;
-      
+        localStorage.setItem(input.key, JSON.stringify(input.value));
+        return { success: true, key: input.key, value: input.value };
       case 'get':
-        if (input.key) {
-          const cached = ctx.cache.get(stateKey);
-          if (cached) return { value: cached };
-          
-          const stored = localStorage.getItem(stateKey);
-          if (stored) {
-            const value = JSON.parse(stored);
-            ctx.cache.set(stateKey, value);
-            return { value };
-          }
-        }
-        break;
-      
-      case 'update':
-        if (input.key && input.value !== undefined) {
-          const existing = ctx.cache.get(stateKey) || 
-                          JSON.parse(localStorage.getItem(stateKey) || '{}');
-          const updated = { ...existing, ...input.value };
-          localStorage.setItem(stateKey, JSON.stringify(updated));
-          ctx.cache.set(stateKey, updated);
-          return { value: updated };
-        }
-        break;
-      
+        const value = localStorage.getItem(input.key);
+        return { success: true, key: input.key, value: value ? JSON.parse(value) : null };
       case 'delete':
-        if (input.key) {
-          localStorage.removeItem(stateKey);
-          ctx.cache.delete(stateKey);
-        }
-        break;
-      
+        localStorage.removeItem(input.key);
+        return { success: true, key: input.key };
       case 'clear':
-        if (input.namespace === 'global') {
-          localStorage.clear();
-          ctx.cache.clear();
-        } else {
-          // Clear namespace
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const key = localStorage.key(i);
-            if (key?.startsWith(`${input.namespace}:`)) {
-              localStorage.removeItem(key);
-            }
-          }
-        }
-        break;
+        localStorage.clear();
+        return { success: true };
     }
-    
-    return {
-      action: input.action,
-      namespace: input.namespace,
-      key: input.key,
-      success: true
-    };
   },
-  render: (result) => (
-    <div className="state-result">
-      State {result.action} {result.key ? `for ${result.key}` : ''} completed
-      {result.value && (
-        <pre>{JSON.stringify(result.value, null, 2)}</pre>
-      )}
-    </div>
-  )
+  execute: async (input) => {
+    // Server-side state management
+    return { success: true, operation: input.operation };
+  }
 });
 
-// Export all AI control tools
-export const aiControlTools = {
-  uiControl: uiControlTool,
-  backendControl: backendControlTool,
-  navigation: navigationTool,
-  formControl: formControlTool,
-  apiCall: apiCallTool,
-  stateManagement: stateManagementTool
+// 7. Navigation control
+const navigationTool = aui.ai('navigate', {
+  input: z.object({
+    to: z.string(),
+    type: z.enum(['push', 'replace', 'back', 'forward']).optional()
+  }),
+  client: async (input, ctx) => {
+    switch (input.type || 'push') {
+      case 'push':
+        window.history.pushState({}, '', input.to);
+        break;
+      case 'replace':
+        window.history.replaceState({}, '', input.to);
+        break;
+      case 'back':
+        window.history.back();
+        break;
+      case 'forward':
+        window.history.forward();
+        break;
+    }
+    return { navigated: true, to: input.to };
+  },
+  execute: async (input) => ({ navigated: false, to: input.to })
+});
+
+// 8. Batch AI tools for complete app control
+const aiControlSuite = aui.aiTools({
+  click: {
+    input: z.object({ selector: z.string() }),
+    client: async (input) => {
+      const element = document.querySelector(input.selector) as HTMLElement;
+      element?.click();
+      return { clicked: true, selector: input.selector };
+    },
+    execute: async (input) => ({ clicked: false, selector: input.selector })
+  },
+  
+  type: {
+    input: z.object({ selector: z.string(), text: z.string() }),
+    client: async (input) => {
+      const element = document.querySelector(input.selector) as HTMLInputElement;
+      if (element) {
+        element.value = input.text;
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      return { typed: true, selector: input.selector, text: input.text };
+    },
+    execute: async (input) => ({ typed: false, selector: input.selector, text: input.text })
+  },
+  
+  scroll: {
+    input: z.object({ x: z.number().optional(), y: z.number().optional() }),
+    client: async (input) => {
+      window.scrollTo(input.x || 0, input.y || 0);
+      return { scrolled: true, x: input.x || 0, y: input.y || 0 };
+    },
+    execute: async (input) => ({ scrolled: false, x: input.x || 0, y: input.y || 0 })
+  },
+  
+  screenshot: {
+    input: z.object({ selector: z.string().optional() }),
+    client: async (input) => {
+      // In real app, would use html2canvas or similar
+      return { captured: true, selector: input.selector || 'body' };
+    },
+    execute: async (input) => ({ captured: false, selector: input.selector || 'body' })
+  }
+});
+
+// 9. Ultra-short single character syntax
+const ultraShort = aui.t('ultra')
+  .i(z.object({ n: z.number() }))
+  .e(async (i) => i.n * 2)
+  .r((d) => <div>{d}</div>)
+  .b();
+
+// 10. Enable AI mode globally for all tools
+aui.setAIMode(true, {
+  retry: 3,
+  timeout: 5000,
+  cache: true
+});
+
+// Export all tools
+export {
+  simplestTool,
+  validatedTool,
+  reliableTool,
+  uiControlTool,
+  dbControlTool,
+  stateTool,
+  navigationTool,
+  aiControlSuite,
+  ultraShort
 };
-
-// Register all tools
-Object.values(aiControlTools).forEach(tool => aui.register(tool));
-
-export default aiControlTools;
