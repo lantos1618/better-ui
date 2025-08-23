@@ -48,6 +48,11 @@ export interface ToolBuilder<TInput = any, TOutput = any> {
              ((input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput)
   ): ToolBuilder<TInput, TOutput>;
   
+  clientEx(
+    handler: ((params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput) |
+             ((input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput)
+  ): ToolBuilder<TInput, TOutput>;
+  
   render(
     component: ((props: { data: TOutput; input: TInput }) => ReactElement) |
                ((data: TOutput) => ReactElement)
