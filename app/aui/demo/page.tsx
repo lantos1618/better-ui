@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import aui, { z } from '@/lib/aui';
-import { useAUITool, useAUI } from '@/lib/aui/hooks';
+import aui, { z } from '@/lib/aui/aui';
+import { AUIProvider, useTool } from '@/lib/aui/client';
+import { tools } from '@/lib/aui/examples';
 
 // Simple tool - just 2 methods (no .build() required!)
 const weatherTool = aui
@@ -29,12 +30,13 @@ const searchTool = aui
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
     
-    const results = await ctx.fetch('/api/aui/execute', { 
+    const response = await ctx.fetch('/api/aui/execute', { 
       method: 'POST',
       body: JSON.stringify({ tool: 'search', input }) 
     });
-    ctx.cache.set(input.query, results.result);
-    return results.result;
+    const data = await response.json();
+    ctx.cache.set(input.query, data.result);
+    return data.result;
   })
   .render(({ data }) => (
     <div className="space-y-2">
@@ -99,12 +101,12 @@ aui.register(searchTool);
 aui.register(stockTool);
 aui.register(dbTool);
 
-export default function AUIDemoPage() {
+function AUIContent() {
   // Use the new hooks for cleaner state management
-  const weather = useAUITool(weatherTool);
-  const search = useAUITool(searchTool);
-  const stock = useAUITool(stockTool);
-  const database = useAUITool(dbTool);
+  const weather = useTool(weatherTool);
+  const search = useTool(searchTool);
+  const stock = useTool(stockTool);
+  const database = useTool(dbTool);
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
@@ -263,5 +265,13 @@ const complexTool = aui
         </pre>
       </section>
     </div>
+  );
+}
+
+export default function AUIDemoPage() {
+  return (
+    <AUIProvider>
+      <AUIContent />
+    </AUIProvider>
   );
 }
