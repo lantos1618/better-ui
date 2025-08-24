@@ -1,73 +1,40 @@
 # AUI Implementation Plan
 
 ## Goal
-Implement a concise and elegant AUI (Assistant-UI) system that enables AI to control both frontend and backend in Next.js/Vercel applications through tool calls.
+Implement ultra-concise AUI (Assistant-UI) API for AI control of frontend/backend in Next.js/Vercel
 
-## Architecture Overview
+## Implementation Strategy
 
-```
-┌─────────────────────────────────────────┐
-│            AI Assistant                  │
-│         (Tool Orchestrator)              │
-└────────────────┬────────────────────────┘
-                 │
-        ┌────────▼────────┐
-        │   AUI System    │
-        │  (Tool Registry) │
-        └────────┬────────┘
-                 │
-     ┌───────────┴───────────┐
-     │                       │
-┌────▼─────┐          ┌─────▼────┐
-│  Client  │          │  Server  │
-│ Executor │          │ Executor │
-└────┬─────┘          └─────┬────┘
-     │                       │
-┌────▼─────┐          ┌─────▼────┐
-│   UI     │          │ Backend  │
-│ Controls │          │ Services │
-└──────────┘          └──────────┘
-```
+### Phase 1: Core API Enhancement ✅
+- Enhance existing `/lib/aui/index.ts` with requested patterns
+- Focus on 2-method simplicity (execute + render)
+- Add builder pattern shortcuts
 
-## Implementation Phases
+### Phase 2: Example Tools
+- Simple weather tool (2 methods)
+- Complex search tool (with client optimization)
+- Database tool (server-only)
+- UI control tools
 
-### Phase 1: Core API ✅
-- Builder pattern implementation
-- Registry system
-- Type safety with TypeScript/Zod
+### Phase 3: API Routes
+- `/api/tools/[toolName]/route.ts` - Dynamic tool execution
+- `/api/tools/execute/route.ts` - Batch execution
+- Client-side caching middleware
 
-### Phase 2: Execution Layer ✅
-- Server-side executor
-- Client-side executor with caching
-- Batch execution support
+### Phase 4: Testing
+- Unit tests for builders
+- Integration tests for execution
+- E2E tests for AI flows
 
-### Phase 3: AI Optimizations ✅
-- Retry logic for reliability
-- Caching for performance
-- Timeout handling
-
-### Phase 4: Examples & Testing ✅
-- Weather tool (simple)
-- Search tool (complex)
-- UI control demonstrations
-- Backend control examples
-
-### Phase 5: Documentation 🔄
-- API documentation
+### Phase 5: Documentation
+- API reference
 - Usage examples
-- Best practices guide
+- AI integration guide
 
-## Key Design Decisions
-
-1. **Ultra-Concise API**: Single-letter aliases for common operations
-2. **Progressive Enhancement**: Simple tools can be enhanced with client execution
-3. **Type Safety**: Full TypeScript inference through the chain
-4. **AI-First**: Built-in reliability features for AI usage
-5. **Flexibility**: Support both simple functions and complex configurations
-
-## Success Metrics
-- [ ] AI can control UI elements
-- [ ] AI can execute backend operations
-- [ ] API is intuitive and concise
-- [ ] System is reliable with retry/cache
-- [ ] Full type safety maintained
+## Success Criteria
+1. ✅ Ultra-concise API (2 methods for simple tools)
+2. ✅ Type-safe with full inference
+3. ✅ Client/server execution support
+4. ✅ React component rendering
+5. ⏳ Comprehensive examples
+6. ⏳ Test coverage >80%

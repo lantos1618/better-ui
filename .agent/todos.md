@@ -1,31 +1,49 @@
-# AUI Development TODOs
+# AUI Implementation TODOs
 
 ## Current Sprint
-- [x] Analyze existing AUI implementation
-- [x] Create .agent meta information directory
-- [ ] Verify and test core functionality
-- [ ] Create comprehensive showcase examples
-- [ ] Add unit tests for critical paths
-- [ ] Run lint and type checks
-- [ ] Commit to lantos-aui branch
+1. ✅ Analyze existing codebase
+2. ✅ Create .agent directory structure
+3. ⏳ Enhance core AUI API with ultra-concise patterns
+4. ⏳ Create example tools (weather, search)
+5. ⏳ Implement test suite
+6. ⏳ Commit to lantos-aui branch
 
-## Priority Order (Time Estimates)
-1. **Core Verification** (10 min) - Ensure existing implementation works
-2. **Showcase Enhancement** (20 min) - Create compelling AI control examples
-3. **Testing** (15 min) - Focus on critical paths
-4. **Quality Checks** (5 min) - Lint, typecheck
-5. **Documentation** (10 min) - Update if needed
+## Detailed Tasks
 
-## Implementation Notes
+### Core API (Priority 1)
+- [x] Review existing implementation
+- [ ] Add shorthand methods (t, i, e, r, c, b)
+- [ ] Implement `aui.simple()` for 2-method pattern
+- [ ] Add `aui.do()` for one-liners
+- [ ] Enhance builder with `.run()` and `.handle()`
+
+### Example Tools (Priority 2)
+- [ ] Weather tool (simple, 2 methods)
+- [ ] Search tool (complex, with caching)
+- [ ] Database tool (server-only)
+- [ ] Theme switcher (UI control)
+- [ ] Modal controller (UI control)
+
+### Testing (Priority 3)
+- [ ] Builder unit tests
+- [ ] Executor integration tests
+- [ ] Tool creation tests
+- [ ] AI control E2E tests
+
+### Documentation (Priority 4)
+- [ ] API reference
+- [ ] Quick start guide
+- [ ] AI integration examples
+
+## Time Estimates
+- Core API: 30 min
+- Example tools: 45 min
+- Testing: 30 min
+- Documentation: 15 min
+Total: ~2 hours
+
+## Notes
 - Focus on simplicity and elegance
-- Ensure AI can easily control both frontend and backend
-- Keep API ultra-concise
-- Test real AI control scenarios
-
-## Quality Checklist
-- [ ] Code follows existing patterns
-- [ ] TypeScript types are correct
-- [ ] No console.logs or debug code
-- [ ] Tests pass
-- [ ] Lint passes
-- [ ] Type check passes
+- Prioritize 2-method pattern
+- Ensure type safety throughout
+- Keep bundle size minimal
