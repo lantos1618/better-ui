@@ -169,10 +169,10 @@ function formatTodoList(todos: any[]): string {
     low: colors.dim,
   };
 
-  todos.forEach((todo, index) => {
-    const statusColor = statusColors[todo.status] || colors.reset;
-    const statusIcon = statusIcons[todo.status] || '❓';
-    const priorityColor = priorityColors[todo.priority] || colors.reset;
+  todos.forEach((todo: any, index) => {
+    const statusColor = statusColors[todo.status as keyof typeof statusColors] || colors.reset;
+    const statusIcon = statusIcons[todo.status as keyof typeof statusIcons] || '❓';
+    const priorityColor = priorityColors[todo.priority as keyof typeof priorityColors] || colors.reset;
     const checkbox = todo.status === 'completed' ? '☑️' : '☐';
 
     output += `  ${checkbox} ${statusIcon} ${statusColor}${todo.content}${colors.reset}`;
@@ -299,7 +299,7 @@ function formatConcise(json: any): string {
 
   // Show assistant message content if it exists
   if (type === 'assistant' && json.message?.content) {
-    const textContent = json.message.content.find((c) => c.type === 'text');
+    const textContent = json.message.content.find((c: any) => c.type === 'text');
     if (textContent?.text) {
       const lines = textContent.text.split('\n').slice(0, 3); // Show first 3 lines
       output += `\n  ⎿  ${colors.reset}${lines[0]}${colors.reset}`;
@@ -344,7 +344,7 @@ async function processStream() {
   const debugMode = process.argv.includes('--debug');
   const toolCalls = new Map(); // Store tool calls by their ID
   const pendingResults = new Map(); // Store results waiting for their tool calls
-  let lastLine = null; // Track the last line to detect final message
+  let lastLine: string | null = null; // Track the last line to detect final message
   let isLastAssistantMessage = false;
 
   rl.on('line', (line) => {
@@ -438,9 +438,16 @@ async function processStream() {
 
   rl.on('close', () => {
     // If the last message was an assistant message (not a tool call), display the full content
-    if (isLastAssistantMessage && lastLine?.message?.content?.[0]?.text) {
-      process.stdout.write(`\n${colors.bright}${colors.green}=== Final Assistant Message ===${colors.reset}\n\n`);
-      process.stdout.write(`${lastLine.message.content[0].text}\n`);
+    if (isLastAssistantMessage && lastLine) {
+      try {
+        const lastLineJson = JSON.parse(lastLine);
+        if (lastLineJson?.message?.content?.[0]?.text) {
+          process.stdout.write(`\n${colors.bright}${colors.green}=== Final Assistant Message ===${colors.reset}\n\n`);
+          process.stdout.write(`${lastLineJson.message.content[0].text}\n`);
+        }
+      } catch (e) {
+        // Not valid JSON, skip
+      }
     }
   });
 }
@@ -498,6 +505,7 @@ function displayToolCallWithResult(
   process.stdout.write('\n\n');
 }
 
+// @ts-ignore
 if (import.meta.main) {
   processStream().catch(console.error);
 }

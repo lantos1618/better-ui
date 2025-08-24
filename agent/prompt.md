@@ -2,7 +2,7 @@ please implement a concise and nice way to have aui (assistant-ui I want to call
 
 
 
-```ts
+```tsx
 // Simple tool - just 2 methods
 const simpleTool = aui
   .tool('weather')
@@ -30,11 +30,12 @@ const complexTool = aui
 
 
 notes from Lyndon
-- use .agent directory to store important meta infomation (global_memory.md, todos.md, plan.md)
-- use github issues to help manage state (longterm todos, bugs and issues)
+- use .agent directory to store important meta infomation as files (global_memory.md, todos.md, plan.md, scratchpad.md)
+- order your todos as an estimate
+- you can open and view github issues (gh-cli)
+- cleanup after yourself (clean up files after you are done, you can self terminate if you think you are done done)
 - use testing
-- cleanup after yourself (clean up files after yourself, you can self terminate if you think you are done done)
 - A good heuristic is to spend 80% of your time on the actual porting, and 20% on the testing.
 - simplicity, elegance, praticality and intelegence
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
-- you can open and view github issues
+- use frequent git commits and pushes 

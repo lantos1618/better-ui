@@ -1,0 +1,107 @@
+# AUI Development Scratchpad
+
+## Quick Notes
+- The AUI system is already well-implemented with comprehensive features
+- Ultra-concise API methods are working (t, in, ex, out)
+- AI control tools provide full frontend/backend control capabilities
+- Test coverage appears comprehensive
+
+## API Variations Discovered
+
+### Pattern 1: Standard Builder
+```tsx
+aui.tool('name')
+  .input(schema)
+  .execute(handler)
+  .render(component)
+  .build()
+```
+
+### Pattern 2: Ultra-Concise
+```tsx
+t('name')
+  .in(schema)
+  .ex(handler)
+  .out(renderer)
+  .build()
+```
+
+### Pattern 3: One-Liner
+```tsx
+defineTool('name', { input, execute, render, client })
+```
+
+### Pattern 4: Quick Mode
+```tsx
+aui.quick('name')
+  .in(schema)
+  .ex(handler)
+  .out(renderer)
+// Auto-builds!
+```
+
+### Pattern 5: Simple Helper
+```tsx
+aui.simple('name', schema, handler, renderer)
+```
+
+### Pattern 6: Batch Definition
+```tsx
+aui.defineTools({
+  tool1: { input, execute, render },
+  tool2: { input, execute, render }
+})
+```
+
+## Technical Insights
+
+### Smart Parameter Detection
+The builder intelligently detects function signatures:
+- `(input) => result` - Simple form
+- `({ input }) => result` - Destructured form
+- `({ input, ctx }) => result` - With context
+
+### Dual Execution Model
+- Server execution is default and always available
+- Client execution is optional for optimization
+- Context provides cache, fetch, and session
+
+### Type Safety
+- Full TypeScript inference throughout
+- Zod schemas for runtime validation
+- Generic type parameters flow through builder chain
+
+## AI Control Capabilities
+
+### Frontend Control
+- DOM manipulation
+- Form filling and submission
+- Navigation and routing
+- State management
+
+### Backend Control
+- Database operations
+- Cache management
+- Queue operations
+- Storage handling
+- API calls with authentication
+
+## Testing Strategy
+- Unit tests for each component
+- Integration tests for full flow
+- API pattern tests for all variations
+- Example validation tests
+
+## Performance Considerations
+- Client-side caching reduces server calls
+- Batch execution for multiple tools
+- Lazy loading of client components
+- Minimal bundle size with tree-shaking
+
+## Future Ideas
+- WebSocket support for real-time updates
+- GraphQL integration
+- Tool composition and pipelines
+- Visual builder UI
+- Analytics and monitoring
+- Marketplace for sharing tools
