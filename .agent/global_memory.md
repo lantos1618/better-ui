@@ -28,9 +28,9 @@ aui.tool('name')
 ```
 
 ## Implementation Progress
-- Core Builder: ✅ (lib/aui/lantos/index.ts)
+- Core Builder: ✅ (lib/aui/lantos/index.ts) - No .build() required!
 - Server Execution: ✅ (app/api/aui/lantos/execute/route.ts)
 - Client Optimization: ✅ (lib/aui/lantos/hooks.tsx)
-- Tool Registry: ✅ (Built into AUI class)
-- Example Tools: ✅ (examples/lantos-aui-demo.tsx)
-- Testing: ⏳
+- Tool Registry: ✅ (Built into AUI class with auto-registration)
+- Example Tools: ✅ (lib/aui/examples/lantos-aui.tsx)
+- Testing: ✅ (All 11 tests passing)

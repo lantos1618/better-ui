@@ -9,58 +9,129 @@ export interface ToolContext {
   session?: any;
 }
 
-export interface ToolDefinition<TInput = any, TOutput = any> {
+// Fluent builder interface
+export interface Tool<TInput = any, TOutput = any> {
+  // Properties
   name: string;
   inputSchema: z.ZodType<TInput>;
-  execute: (params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput>;
-  clientExecute?: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>;
-  render: (props: { data: TOutput; input?: TInput }) => ReactElement;
+  execute: ((params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput>) & 
+           (<O>(handler: (params: { input: TInput }) => Promise<O> | O) => Tool<TInput, O>);
+  clientExecute?: ((params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>) & 
+                  ((handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput) => Tool<TInput, TOutput>);
+  render: ((props: { data: TOutput; input?: TInput }) => ReactElement) & 
+          ((component: (props: { data: TOutput }) => ReactElement) => Tool<TInput, TOutput>);
   metadata?: Record<string, any>;
-}
-
-// The magic: Tool definition that is ALSO a builder
-export interface Tool<TInput = any, TOutput = any> extends ToolDefinition<TInput, TOutput> {
-  // Builder methods that return the same tool
+  
+  // Additional chainable methods
   input<T>(schema: z.ZodType<T>): Tool<T, TOutput>;
-  execute<O>(handler: (params: { input: TInput }) => Promise<O> | O): Tool<TInput, O>;
-  clientExecute(handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput): Tool<TInput, TOutput>;
-  render(component: (props: { data: TOutput }) => ReactElement): Tool<TInput, TOutput>;
 }
 
 class ToolImpl<TInput = any, TOutput = any> implements Tool<TInput, TOutput> {
   name: string;
   inputSchema: z.ZodType<TInput> = z.any() as any;
-  execute: (params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput> = async () => null as any;
-  clientExecute?: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>;
-  render: (props: { data: TOutput; input?: TInput }) => ReactElement = ({ data }) => data as any;
   metadata?: Record<string, any> = {};
+  
+  private registry?: Map<string, Tool>;
+  private _execute: (params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput> = async () => null as any;
+  private _clientExecute?: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput>;
+  private _render: (props: { data: TOutput; input?: TInput }) => ReactElement = ({ data }) => data as any;
 
-  constructor(name: string) {
+  constructor(name: string, registry?: Map<string, Tool>) {
     this.name = name;
+    this.registry = registry;
+    // Auto-register when created
+    if (registry) {
+      registry.set(name, this);
+    }
+    
+    // Setup hybrid execute function
+    const executeHybrid = Object.assign(
+      (params: { input: TInput; ctx?: ToolContext }) => this._execute(params),
+      {
+        bind: (handler: (params: { input: TInput }) => Promise<TOutput> | TOutput) => {
+          this._execute = (async (params: { input: TInput }) => {
+            return await Promise.resolve(handler(params));
+          }) as any;
+          return this;
+        }
+      }
+    );
+    
+    // Override execute property
+    Object.defineProperty(this, 'execute', {
+      get: () => {
+        const fn = (arg: any) => {
+          // If called with a function, it's a builder call
+          if (typeof arg === 'function') {
+            this._execute = (async (params: { input: TInput }) => {
+              return await Promise.resolve(arg(params));
+            }) as any;
+            return this;
+          }
+          // Otherwise it's an execution call
+          // Validate input first and return a promise
+          return (async () => {
+            const validatedInput = this.inputSchema.parse(arg.input);
+            return this._execute({ ...arg, input: validatedInput });
+          })();
+        };
+        return fn;
+      },
+      enumerable: true
+    });
+    
+    // Override render property
+    Object.defineProperty(this, 'render', {
+      get: () => {
+        const fn = (arg: any) => {
+          // If called with a function, it's a builder call
+          if (typeof arg === 'function') {
+            this._render = arg;
+            return this;
+          }
+          // Otherwise it's a render call
+          return this._render(arg);
+        };
+        return fn;
+      },
+      enumerable: true
+    });
+    
+    // Override clientExecute property
+    Object.defineProperty(this, 'clientExecute', {
+      get: () => {
+        if (!this._clientExecute) {
+          return (handler: any) => {
+            if (typeof handler === 'function') {
+              this._clientExecute = async (params: any) => {
+                return await Promise.resolve(handler(params));
+              };
+              return this;
+            }
+            return undefined;
+          };
+        }
+        const fn = (arg: any) => {
+          // If called with a function, it's a builder call
+          if (typeof arg === 'function') {
+            this._clientExecute = async (params: any) => {
+              return await Promise.resolve(arg(params));
+            };
+            return this;
+          }
+          // Otherwise it's an execution call
+          return this._clientExecute!(arg);
+        };
+        return fn;
+      },
+      enumerable: true
+    });
   }
 
+  // Chainable methods
   input<T>(schema: z.ZodType<T>): Tool<T, TOutput> {
-    (this as any).inputSchema = schema;
+    this.inputSchema = schema as any;
     return this as any;
-  }
-
-  execute<O>(handler: (params: { input: TInput }) => Promise<O> | O): Tool<TInput, O> {
-    (this as any).execute = async (params: { input: TInput }) => {
-      return await Promise.resolve(handler(params));
-    };
-    return this as any;
-  }
-
-  clientExecute(handler: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput): Tool<TInput, TOutput> {
-    this.clientExecute = async (params) => {
-      return await Promise.resolve(handler(params));
-    };
-    return this;
-  }
-
-  render(component: (props: { data: TOutput }) => ReactElement): Tool<TInput, TOutput> {
-    this.render = component as any;
-    return this;
   }
 }
 
@@ -68,11 +139,10 @@ class ToolImpl<TInput = any, TOutput = any> implements Tool<TInput, TOutput> {
 class AUI {
   private tools = new Map<string, Tool>();
 
-  // Create a tool - returns a Tool that is BOTH a builder AND a definition
+  // Create a tool - returns a chainable builder
   tool(name: string): Tool {
-    const tool = new ToolImpl(name);
-    this.tools.set(name, tool);
-    return tool;
+    const tool = new ToolImpl(name, this.tools);
+    return tool as any;
   }
 
   // Get a registered tool
