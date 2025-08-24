@@ -5,9 +5,7 @@ import React from 'react';
 describe('AUI Concise API', () => {
   beforeEach(() => {
     // Clear any existing tools
-    aui.list().forEach(tool => {
-      // Reset registry for each test
-    });
+    aui.clear();
   });
 
   describe('Tool Creation', () => {
@@ -18,9 +16,7 @@ describe('AUI Concise API', () => {
         .execute(async ({ input }) => ({ message: `Hello ${input.name}` }));
 
       expect(tool.name).toBe('test');
-      expect(tool.inputSchema).toBeDefined();
-      expect(tool.execute).toBeDefined();
-      expect(typeof tool.execute).toBe('function');
+      expect(aui.get('test')).toBe(tool);
     });
 
     it('should chain methods fluently', () => {
@@ -31,7 +27,7 @@ describe('AUI Concise API', () => {
         .render(({ data }) => React.createElement('div', null, `${data.city}: ${data.temp}°`));
 
       expect(tool.name).toBe('weather');
-      expect(tool.render).toBeDefined();
+      expect(aui.get('weather')).toBe(tool);
     });
 
     it('should support client execution', () => {
@@ -44,8 +40,8 @@ describe('AUI Concise API', () => {
           return cached || { results: [] };
         });
 
-      expect(tool.clientExecute).toBeDefined();
-      expect(typeof tool.clientExecute).toBe('function');
+      expect(tool.name).toBe('search');
+      expect(aui.get('search')).toBe(tool);
     });
   });
 
@@ -56,7 +52,7 @@ describe('AUI Concise API', () => {
         .input(z.object({ a: z.number(), b: z.number() }))
         .execute(async ({ input }) => ({ result: input.a + input.b }));
 
-      const result = await tool.execute!({ input: { a: 5, b: 3 } });
+      const result = await tool.run({ a: 5, b: 3 });
       expect(result).toEqual({ result: 8 });
     });
 
@@ -71,12 +67,9 @@ describe('AUI Concise API', () => {
           return ctx.cache.get(input.key) || { cached: false };
         });
 
-      const result = await tool.clientExecute!({
-        input: { key: 'test' },
-        ctx: {
-          cache,
-          fetch: async () => ({ ok: true })
-        }
+      const result = await tool.run({ key: 'test' }, {
+        cache,
+        fetch: async () => ({ ok: true }) as any
       });
 
       expect(result).toEqual({ cached: true });
@@ -92,15 +85,13 @@ describe('AUI Concise API', () => {
         .execute(async ({ input }) => ({ valid: true }));
 
       // Valid input
-      const validResult = await tool.execute!({ 
-        input: { email: 'test@example.com', age: 25 }
-      });
+      const validResult = await tool.run({ email: 'test@example.com', age: 25 });
       expect(validResult).toEqual({ valid: true });
 
-      // Test schema validation separately
-      const schema = tool.inputSchema!;
-      const invalidParse = schema.safeParse({ email: 'invalid', age: -1 });
-      expect(invalidParse.success).toBe(false);
+      // Invalid input should throw
+      await expect(async () => {
+        await tool.run({ email: 'invalid', age: -1 });
+      }).rejects.toThrow();
     });
   });
 
@@ -111,7 +102,6 @@ describe('AUI Concise API', () => {
         .input(z.object({ id: z.string() }))
         .execute(async ({ input }) => ({ id: input.id }));
 
-      aui.register(tool);
       const retrieved = aui.get('registered');
       
       expect(retrieved).toBeDefined();
@@ -119,14 +109,10 @@ describe('AUI Concise API', () => {
     });
 
     it('should list all registered tools', () => {
-      const tool1 = aui.tool('tool1').execute(async () => ({}));
-      const tool2 = aui.tool('tool2').execute(async () => ({}));
+      aui.tool('tool1').execute(async () => ({}));
+      aui.tool('tool2').execute(async () => ({}));
       
-      aui.register(tool1);
-      aui.register(tool2);
-      
-      const tools = aui.list();
-      const names = tools.map(t => t.name);
+      const names = aui.getToolNames();
       
       expect(names).toContain('tool1');
       expect(names).toContain('tool2');
@@ -141,15 +127,11 @@ describe('AUI Concise API', () => {
         .execute(async ({ input }) => ({ message: input.text }))
         .render(({ data }) => React.createElement('div', null, data.message));
 
-      expect(tool.render).toBeDefined();
+      const rendered = tool.renderResult({ message: 'Hello' }, { text: 'Hello' });
       
-      const rendered = tool.render!({ 
-        data: { message: 'Hello' },
-        input: { text: 'Hello' }
-      });
-      
-      expect(rendered.type).toBe('div');
-      expect(rendered.props.children).toBe('Hello');
+      expect(rendered).toBeDefined();
+      expect(rendered?.type).toBe('div');
+      expect(rendered?.props.children).toBe('Hello');
     });
   });
 
@@ -166,12 +148,8 @@ describe('AUI Concise API', () => {
         }))
         .render(({ data }) => React.createElement('span', null, data.greeting));
 
-      // TypeScript should infer these types correctly
-      type InputType = z.infer<typeof tool.inputSchema>;
-      type ExpectedInput = { name: string; age: number };
-      
-      // This is a compile-time check, runtime check for test
-      expect(tool.inputSchema).toBeDefined();
+      // Tool should be properly registered
+      expect(aui.get('typed')).toBe(tool);
     });
   });
 

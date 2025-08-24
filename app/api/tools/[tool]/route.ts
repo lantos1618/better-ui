@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/server';
+import aui, { z } from '@/lib/aui/server';
 
 export async function POST(
   request: NextRequest,
@@ -13,29 +13,32 @@ export async function POST(
     const tool = aui.get(toolName);
     if (!tool) {
       return NextResponse.json(
-        { success: false, error: `Tool ${toolName} not found` },
+        { error: `Tool ${toolName} not found` },
         { status: 404 }
       );
     }
     
-    if (!tool.execute) {
+    // Execute the tool with context
+    const ctx = aui.createContext();
+    const result = await tool.run(input, ctx);
+    
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('Tool execution error:', error);
+    
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { success: false, error: `Tool ${toolName} has no execute handler` },
+        { 
+          error: 'Validation error',
+          details: error.errors
+        },
         { status: 400 }
       );
     }
     
-    const result = await tool.execute({ input });
-    
-    return NextResponse.json({ 
-      success: true, 
-      data: result 
-    });
-  } catch (error) {
-    console.error('Tool execution error:', error);
     return NextResponse.json(
       { 
-        success: false, 
         error: error instanceof Error ? error.message : 'Unknown error' 
       },
       { status: 500 }
@@ -48,6 +51,14 @@ export async function GET(
   { params }: { params: { tool: string } }
 ) {
   const toolName = params.tool;
+  
+  if (toolName === 'list') {
+    // Return all available tools
+    return NextResponse.json({
+      tools: aui.getToolNames()
+    });
+  }
+  
   const tool = aui.get(toolName);
   
   if (!tool) {
@@ -60,7 +71,6 @@ export async function GET(
   // Return tool metadata
   return NextResponse.json({
     name: tool.name,
-    hasClientExecute: !!tool.clientExecute,
-    hasRender: !!tool.render
+    available: true
   });
 }
