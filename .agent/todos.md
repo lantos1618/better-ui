@@ -15,6 +15,7 @@
 10. 🔄 Commit and push changes
 
 ## Future Tasks 📋
+- [ ] mark and sweep things to clean up, DRY KISS principles. Rename lantos to baui or better-ui use consistancy!
 - [ ] Add WebSocket support for real-time tool updates
 - [ ] Create server actions for Next.js App Router
 - [ ] Build plugin system for extending functionality
