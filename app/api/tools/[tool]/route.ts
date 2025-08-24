@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { aui } from '@/lib/aui/lantos-refined';
-import { allTools } from '@/lib/aui/examples/lantos-clean';
-
-// Initialize tools on server startup
-allTools.forEach(tool => aui.register(tool));
+import aui from '@/lib/aui/server';
 
 export async function POST(
   request: NextRequest,
@@ -13,8 +9,23 @@ export async function POST(
     const toolName = params.tool;
     const input = await request.json();
     
-    // Execute tool on server
-    const result = await aui.execute(toolName, input);
+    // Get and execute tool on server
+    const tool = aui.get(toolName);
+    if (!tool) {
+      return NextResponse.json(
+        { success: false, error: `Tool ${toolName} not found` },
+        { status: 404 }
+      );
+    }
+    
+    if (!tool.execute) {
+      return NextResponse.json(
+        { success: false, error: `Tool ${toolName} has no execute handler` },
+        { status: 400 }
+      );
+    }
+    
+    const result = await tool.execute({ input });
     
     return NextResponse.json({ 
       success: true, 
@@ -37,7 +48,7 @@ export async function GET(
   { params }: { params: { tool: string } }
 ) {
   const toolName = params.tool;
-  const tool = aui.getTool(toolName);
+  const tool = aui.get(toolName);
   
   if (!tool) {
     return NextResponse.json(
