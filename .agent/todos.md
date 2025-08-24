@@ -21,7 +21,7 @@
 - `.description(text)` - Optional tool description
 - Build the object directly without `.build()` method
 
-
+- remove lantos the project is called better-ui lantos is the human prompting you
 ## Time Estimates
 - Core implementation: 45 min
 - Examples & testing: 30 min

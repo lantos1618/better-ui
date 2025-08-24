@@ -38,3 +38,4 @@ notes from Lyndon
 - simplicity, elegance, praticality and intelegence
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
 - use frequent git commits and pushes 
+- code principles DRY & KISS
