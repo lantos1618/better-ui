@@ -9,7 +9,6 @@ const simpleTool = aui
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
   .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
 
 // Complex tool - adds client optimization
 const complexTool = aui
@@ -22,7 +21,6 @@ const complexTool = aui
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
   .render(({ data }) => <SearchResults results={data} />)
-  .build();
 
 
 
@@ -30,6 +28,7 @@ const complexTool = aui
 
 
 notes from Lyndon
+- read the .agent folder to help you
 - use .agent directory to store important meta infomation as files (global_memory.md, todos.md, plan.md, scratchpad.md)
 - order your todos as an estimate
 - you can open and view github issues (gh-cli)

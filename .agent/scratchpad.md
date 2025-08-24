@@ -10,7 +10,6 @@ aui.tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
   .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build()
 
 // Complex tool - adds client optimization
 aui.tool('search')
@@ -21,7 +20,6 @@ aui.tool('search')
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
   .render(({ data }) => <SearchResults results={data} />)
-  .build()
 ```
 
 ### Implementation Checklist

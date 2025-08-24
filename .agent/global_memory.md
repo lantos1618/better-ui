@@ -18,7 +18,6 @@ aui.tool('name')
   .input(schema)
   .execute(handler)
   .render(component)
-  .build()
 
 // Complex - adds client optimization
 aui.tool('name')
@@ -26,7 +25,6 @@ aui.tool('name')
   .execute(serverHandler)
   .clientExecute(clientHandler)
   .render(component)
-  .build()
 ```
 
 ## Implementation Progress
