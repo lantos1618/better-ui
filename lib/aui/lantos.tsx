@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { aui, z } from './index';
+import aui, { z } from './lantos/index';
 
 // -----------------------------------------------------------------------------
 // SIMPLE TOOLS - Just 2 required methods (input + execute)
@@ -19,8 +19,7 @@ import { aui, z } from './index';
 export const weather = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .build();
+  .execute(async ({ input }) => ({ temp: 72, city: input.city }));
 
 // Calculator - pure function
 export const calc = aui
@@ -38,8 +37,7 @@ export const calc = aui
       '/': (a: number, b: number) => a / b,
     };
     return { result: ops[input.op](input.a, input.b) };
-  })
-  .build();
+  });
 
 // -----------------------------------------------------------------------------
 // COMPLEX TOOLS - Add client optimization when needed
@@ -58,45 +56,17 @@ export const search = aui
     const cached = ctx.cache?.get(input.query);
     return cached || ctx.fetch('/api/aui/search', { body: input });
   })
-  .render(({ data }) => <div>{data.results.join(', ')}</div>)
-  .build();
+  .render(({ data }) => <div>{data.results.join(', ')}</div>);
 
 // -----------------------------------------------------------------------------
 // ULTRA-CONCISE PATTERNS
 // -----------------------------------------------------------------------------
 
-// Pattern 1: One-liner with aui.do()
-aui.do('echo', (input: { msg: string }) => ({ echo: input.msg }));
-
-// Pattern 2: Quick mode (auto-build after last method)
-aui.quick('time')
-  .execute(() => ({ time: new Date().toISOString() }));
-
-// Pattern 3: Simple tool helper
-aui.simple('random', 
-  z.object({ min: z.number(), max: z.number() }),
-  ({ min, max }) => ({ value: Math.random() * (max - min) + min })
-);
-
-// Pattern 4: AI-optimized with retries and caching
-aui.ai('smartSearch', {
-  input: z.object({ q: z.string() }),
-  execute: async ({ q }) => ({ results: [`AI result for ${q}`] }),
-  retry: 3,
-  cache: true
-});
-
-// Pattern 5: Batch definition
-const tools = aui.defineTools({
-  add: {
-    input: z.object({ a: z.number(), b: z.number() }),
-    execute: ({ a, b }) => ({ sum: a + b })
-  },
-  multiply: {
-    input: z.object({ a: z.number(), b: z.number() }),
-    execute: ({ a, b }) => ({ product: a * b })
-  }
-});
+// Pattern 1: Random number generator tool
+const random = aui
+  .tool('random')
+  .input(z.object({ min: z.number(), max: z.number() }))
+  .execute(({ input }) => ({ value: Math.random() * (input.max - input.min) + input.min }));
 
 // -----------------------------------------------------------------------------
 // AI CONTROL PATTERNS
@@ -120,8 +90,7 @@ export const uiControl = aui
       case 'update': el.textContent = String(input.value); break;
     }
     return { success: true };
-  })
-  .build();
+  });
 
 // Backend control
 export const processControl = aui
@@ -137,8 +106,7 @@ export const processControl = aui
       status: `${input.action}ed`,
       pid: Math.floor(Math.random() * 10000)
     };
-  })
-  .build();
+  });
 
 // Database operations
 export const db = aui
@@ -157,20 +125,19 @@ export const db = aui
       case 'update': return { modified: 1 };
       case 'delete': return { deleted: 1 };
     }
-  })
-  .build();
+  });
 
 // -----------------------------------------------------------------------------
 // EXPORT ALL TOOLS FOR AI
 // -----------------------------------------------------------------------------
 
-export const allTools = aui.getTools();
+export const allTools = aui.list();
 
 // Helper to execute any tool by name
 export async function executeAITool(name: string, input: any) {
-  const tool = aui.getTool(name);
+  const tool = aui.get(name);
   if (!tool) throw new Error(`Tool ${name} not found`);
-  return tool.execute({ input, ctx: {} });
+  return tool.run(input);
 }
 
 // Export types for TypeScript

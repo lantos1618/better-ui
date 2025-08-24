@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { Tool, ToolContext } from './index';
+import { Tool, type ToolContext } from './index';
 
 // Hook for executing tools from React components
 export function useAUITool<TInput, TOutput>(tool: Tool<TInput, TOutput>) {
@@ -82,7 +82,7 @@ export function useAUITool<TInput, TOutput>(tool: Tool<TInput, TOutput>) {
     error,
     data,
     reset,
-    render: data ? () => tool.render({ data }) : null
+    render: data ? () => tool.renderResult(data) : null
   };
 }
 
