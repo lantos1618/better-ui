@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/lantos-aui';
+import { aui } from '@/lib/aui/lantos-aui';
 
 export async function POST(request: NextRequest) {
   try {

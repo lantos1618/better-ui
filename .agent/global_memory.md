@@ -1,4 +1,4 @@
-# AUI (Assistant-UI) Global Memory
+# Lantos AUI Global Memory
 
 ## Project Context
 - **Branch**: lantos-aui
@@ -10,6 +10,7 @@
 2. **Type Safety** - Full TypeScript inference
 3. **Dual Execution** - Server + optional client
 4. **React Native** - Component rendering built-in
+5. **DRY & KISS** - Don't repeat, keep it simple
 
 ## Core API Pattern
 ```tsx
@@ -27,10 +28,17 @@ aui.tool('name')
   .render(component)
 ```
 
+## Shorthand Methods
+- `aui.t()` - Short for tool()
+- `aui.do()` - One-liner simple tools
+- `aui.simple()` - Quick setup with all basics
+- `aui.ai()` - AI-optimized with retry/cache
+
 ## Implementation Progress
-- Core Builder: ✅ (lib/aui/lantos/index.ts) - No .build() required!
+- Core Builder: ✅ (lib/aui/lantos-aui.ts)
+- Enhanced API: 🔄 Adding shortcuts
 - Server Execution: ✅ (app/api/aui/lantos/execute/route.ts)
 - Client Optimization: ✅ (lib/aui/lantos/hooks.tsx)
-- Tool Registry: ✅ (Built into AUI class with auto-registration)
-- Example Tools: ✅ (lib/aui/examples/lantos-aui.tsx)
-- Testing: ✅ (All 11 tests passing)
+- Tool Registry: ✅ (Built into AUI class)
+- Example Tools: ✅ (examples/lantos-aui-demo.tsx)
+- Testing: 🔄 Expanding test coverage

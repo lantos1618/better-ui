@@ -83,6 +83,10 @@ export class Tool<TInput = any, TOutput = any> {
 // Main AUI class
 class AUI {
   private tools = new Map<string, Tool>();
+  private defaultContext: ToolContext = {
+    cache: new Map(),
+    fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
+  };
 
   // Create a tool - returns the tool directly (no .build() required!)
   tool(name: string): Tool {
@@ -96,10 +100,21 @@ class AUI {
     return this.tool(name);
   }
 
-  // One-liner for simple tools
-  do<TOutput>(name: string, handler: () => TOutput): Tool<void, TOutput> {
+  // One-liner for simple tools without input
+  do<TOutput>(name: string, handler: () => TOutput | Promise<TOutput>): Tool<void, TOutput> {
     return this.tool(name)
       .execute(async () => await Promise.resolve(handler()));
+  }
+
+  // One-liner with input
+  doWith<TInput, TOutput>(
+    name: string, 
+    inputSchema: z.ZodType<TInput>,
+    handler: (input: TInput) => TOutput | Promise<TOutput>
+  ): Tool<TInput, TOutput> {
+    return this.tool(name)
+      .input(inputSchema)
+      .execute(async ({ input }) => await Promise.resolve(handler(input)));
   }
 
   // Simple tool with all basics
@@ -107,12 +122,17 @@ class AUI {
     name: string,
     inputSchema: z.ZodType<TInput>,
     execute: (input: TInput) => Promise<TOutput> | TOutput,
-    render: (data: TOutput) => ReactElement
+    render?: (data: TOutput) => ReactElement
   ): Tool<TInput, TOutput> {
-    return this.tool(name)
+    const tool = this.tool(name)
       .input(inputSchema)
-      .execute(async ({ input }) => await Promise.resolve(execute(input)))
-      .render(({ data }) => render(data));
+      .execute(async ({ input }) => await Promise.resolve(execute(input)));
+    
+    if (render) {
+      tool.render(({ data }) => render(data));
+    }
+    
+    return tool;
   }
 
   // AI-optimized tool with retry and caching
@@ -172,25 +192,41 @@ class AUI {
     return tool;
   }
 
-  // Define multiple tools at once
-  defineTools(definitions: Record<string, {
+  // Define multiple tools at once with better type safety
+  defineTools<T extends Record<string, {
     input?: z.ZodType<any>;
     execute: (params: any) => any;
+    clientExecute?: (params: any) => any;
     render?: (props: any) => ReactElement;
-  }>): Record<string, Tool> {
-    const tools: Record<string, Tool> = {};
+  }>>(definitions: T): { [K in keyof T]: Tool } {
+    const tools = {} as { [K in keyof T]: Tool };
     
     for (const [name, def] of Object.entries(definitions)) {
       const tool = this.tool(name);
       
       if (def.input) tool.input(def.input);
       tool.execute(def.execute);
+      if (def.clientExecute) tool.clientExecute(def.clientExecute);
       if (def.render) tool.render(def.render);
       
-      tools[name] = tool;
+      tools[name as keyof T] = tool;
     }
     
     return tools;
+  }
+
+  // Batch create simple tools
+  batch<T extends Record<string, (input: any) => any>>(
+    tools: T
+  ): { [K in keyof T]: Tool } {
+    const result = {} as { [K in keyof T]: Tool };
+    
+    for (const [name, handler] of Object.entries(tools)) {
+      result[name as keyof T] = this.tool(name)
+        .execute(async ({ input }) => await Promise.resolve(handler(input)));
+    }
+    
+    return result;
   }
 
   // Get a registered tool
@@ -199,8 +235,17 @@ class AUI {
   }
 
   // Register an external tool
-  register(tool: Tool): void {
+  register(tool: Tool): this {
     this.tools.set(tool.name, tool);
+    return this;
+  }
+
+  // Register multiple tools
+  registerAll(...tools: Tool[]): this {
+    for (const tool of tools) {
+      this.register(tool);
+    }
+    return this;
   }
 
   // List all tools
@@ -208,16 +253,68 @@ class AUI {
     return Array.from(this.tools.values());
   }
 
+  // Get tool names
+  getToolNames(): string[] {
+    return Array.from(this.tools.keys());
+  }
+
+  // Check if tool exists
+  has(name: string): boolean {
+    return this.tools.has(name);
+  }
+
+  // Execute a tool by name
+  async execute<TInput = any, TOutput = any>(
+    name: string, 
+    input: TInput,
+    ctx?: ToolContext
+  ): Promise<TOutput> {
+    const tool = this.get(name);
+    if (!tool) {
+      throw new Error(`Tool "${name}" not found`);
+    }
+    return await tool.run(input, ctx || this.defaultContext);
+  }
+
   // Clear all tools
   clear(): void {
     this.tools.clear();
+  }
+
+  // Remove a specific tool
+  remove(name: string): boolean {
+    return this.tools.delete(name);
+  }
+
+  // Get context with custom additions
+  createContext(additions?: Partial<ToolContext>): ToolContext {
+    return {
+      ...this.defaultContext,
+      ...additions,
+      cache: additions?.cache || new Map(),
+    };
   }
 }
 
 // Create and export the global instance
 const aui = new AUI();
 
+// Type utilities for better DX
+export type InferToolInput<T> = T extends Tool<infer I, any> ? I : never;
+export type InferToolOutput<T> = T extends Tool<any, infer O> ? O : never;
+export type ToolDef<TInput = any, TOutput = any> = {
+  input?: z.ZodType<TInput>;
+  execute: (params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput> | TOutput;
+  clientExecute?: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput;
+  render?: (props: { data: TOutput; input?: TInput }) => ReactElement;
+};
+
+// Helper to create a tool outside of aui
+export function createTool<TInput = any, TOutput = any>(name: string): Tool<TInput, TOutput> {
+  return new Tool(name);
+}
+
 // Re-export z from zod for convenience
 export { z } from 'zod';
-export { aui };
+export { aui, Tool, type ToolContext, type ToolDefinition };
 export default aui;

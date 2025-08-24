@@ -1,27 +1,50 @@
-# AUI (Assistant-UI) Implementation Plan
+# Lantos AUI Implementation Plan
 
-## Overview
-Building a concise API for AI-controlled frontend/backend operations in Next.js/Vercel
+## Goal
+Implement a concise and elegant AUI (Assistant UI) system for AI-controlled frontend/backend operations in Next.js/Vercel.
 
-## Architecture
-1. **Builder Pattern**: Fluent API for tool definition
-2. **Dual Execution**: Server and optional client execution
-3. **Type Safety**: Zod schemas for input validation
-4. **React Integration**: Component rendering for results
-5. **Tool Registry**: Centralized tool management
+## Architecture Overview
 
-## Key Components
-- `lib/aui/builder.ts`: Core builder pattern
-- `lib/aui/types.ts`: TypeScript definitions
-- `lib/aui/registry.ts`: Tool registration
-- `lib/aui/client.ts`: Client-side utilities
-- `app/api/aui/[tool]/route.ts`: Dynamic API routes
+### Core Components
+1. **Tool Builder Pattern**: Fluent interface without `.build()` requirement
+2. **Dual Execution**: Server-side and client-side execution paths
+3. **React Integration**: Hooks and rendering components
+4. **Type Safety**: Full TypeScript support with Zod validation
 
-## Implementation Order
-1. Core types and interfaces
-2. Builder pattern implementation
-3. Server execution handler
-4. Client optimization layer
-5. Tool registry
-6. Example tools (weather, search)
-7. Testing suite
+### Key Features
+- Ultra-concise API (2 methods minimum: input, execute)
+- Optional client-side optimization (caching, offline support)
+- React hooks for easy integration
+- Server/client execution flexibility
+- Built-in rendering support
+
+## Implementation Steps
+
+### Phase 1: Core API ✓
+- Already have basic lantos-aui.ts implementation
+- Tool class with chainable methods
+- AUI global instance
+
+### Phase 2: Enhanced Features (Current Focus)
+- Improve the builder pattern for even more concise usage
+- Add shorthand methods (t(), do(), simple(), ai())
+- Implement retry logic and caching
+- Create batch tool definitions
+
+### Phase 3: React Integration
+- Enhance hooks (useAUITool, useAUI)
+- Create provider components
+- Add SSR support
+- Implement streaming responses
+
+### Phase 4: Testing & Documentation
+- Unit tests for all components
+- Integration tests
+- Example implementations
+- Performance benchmarks
+
+## Design Principles
+- **DRY**: Don't repeat yourself
+- **KISS**: Keep it simple, stupid
+- **Practical**: Focus on real-world usage
+- **Elegant**: Clean, readable API

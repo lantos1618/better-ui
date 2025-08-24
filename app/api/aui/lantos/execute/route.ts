@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/lantos';
+import { aui } from '@/lib/aui/lantos';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,11 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Validate input
-    const validatedInput = tool.inputSchema.parse(input);
-    
-    // Execute the tool (server-side only)
-    const result = await tool.execute({ input: validatedInput });
+    // Execute the tool (validation happens inside run)
+    const result = await tool.run(input);
     
     return NextResponse.json({ 
       success: true,
@@ -46,7 +43,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   // Return list of available tools
-  const tools = aui.list().map(tool => ({
+  const tools = aui.getTools().map((tool: any) => ({
     name: tool.name,
     hasClientExecute: !!tool.clientExecute,
     metadata: tool.metadata
