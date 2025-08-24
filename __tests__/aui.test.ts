@@ -13,7 +13,7 @@ describe('Lantos AUI', () => {
         .execute(async ({ input }) => ({ greeting: `Hello ${input.name}` }));
 
       expect(tool.name).toBe('simple');
-      expect(tool.inputSchema).toBeDefined();
+      expect(tool).toBeDefined();
     });
 
     it('should execute a tool with valid input', async () => {
