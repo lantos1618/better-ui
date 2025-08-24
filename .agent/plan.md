@@ -1,40 +1,27 @@
-# AUI Implementation Plan
+# AUI (Assistant-UI) Implementation Plan
 
-## Goal
-Implement ultra-concise AUI (Assistant-UI) API for AI control of frontend/backend in Next.js/Vercel
+## Overview
+Building a concise API for AI-controlled frontend/backend operations in Next.js/Vercel
 
-## Implementation Strategy
+## Architecture
+1. **Builder Pattern**: Fluent API for tool definition
+2. **Dual Execution**: Server and optional client execution
+3. **Type Safety**: Zod schemas for input validation
+4. **React Integration**: Component rendering for results
+5. **Tool Registry**: Centralized tool management
 
-### Phase 1: Core API Enhancement ✅
-- Enhance existing `/lib/aui/index.ts` with requested patterns
-- Focus on 2-method simplicity (execute + render)
-- Add builder pattern shortcuts
+## Key Components
+- `lib/aui/builder.ts`: Core builder pattern
+- `lib/aui/types.ts`: TypeScript definitions
+- `lib/aui/registry.ts`: Tool registration
+- `lib/aui/client.ts`: Client-side utilities
+- `app/api/aui/[tool]/route.ts`: Dynamic API routes
 
-### Phase 2: Example Tools
-- Simple weather tool (2 methods)
-- Complex search tool (with client optimization)
-- Database tool (server-only)
-- UI control tools
-
-### Phase 3: API Routes
-- `/api/tools/[toolName]/route.ts` - Dynamic tool execution
-- `/api/tools/execute/route.ts` - Batch execution
-- Client-side caching middleware
-
-### Phase 4: Testing
-- Unit tests for builders
-- Integration tests for execution
-- E2E tests for AI flows
-
-### Phase 5: Documentation
-- API reference
-- Usage examples
-- AI integration guide
-
-## Success Criteria
-1. ✅ Ultra-concise API (2 methods for simple tools)
-2. ✅ Type-safe with full inference
-3. ✅ Client/server execution support
-4. ✅ React component rendering
-5. ⏳ Comprehensive examples
-6. ⏳ Test coverage >80%
+## Implementation Order
+1. Core types and interfaces
+2. Builder pattern implementation
+3. Server execution handler
+4. Client optimization layer
+5. Tool registry
+6. Example tools (weather, search)
+7. Testing suite
