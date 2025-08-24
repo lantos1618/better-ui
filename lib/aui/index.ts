@@ -1,237 +1,214 @@
-import { createToolBuilder, tool as toolBuilder } from './core/builder';
-import { globalRegistry } from './core/registry';
-import type { ToolDefinition, ToolRegistry, ToolBuilder, ToolContext } from './types/index';
-import { z } from 'zod';
 import { ReactElement } from 'react';
+import { z } from 'zod';
 
-export * from './types/index';
-export { createRegistry } from './core/registry';
-export { ClientToolExecutor } from './client/executor';
+export interface ToolContext {
+  cache: Map<string, any>;
+  fetch: (url: string, options?: any) => Promise<any>;
+  user?: any;
+  session?: any;
+}
+
+export class Tool<TInput = any, TOutput = any> {
+  private config: {
+    name: string;
+    inputSchema?: z.ZodType<TInput>;
+    executeHandler?: (params: { input: TInput; ctx?: ToolContext }) => Promise<TOutput> | TOutput;
+    clientHandler?: (params: { input: TInput; ctx: ToolContext }) => Promise<TOutput> | TOutput;
+    renderHandler?: (props: { data: TOutput; input?: TInput }) => ReactElement;
+  };
+
+  constructor(name: string) {
+    this.config = { name };
+  }
+
+  input<T>(schema: z.ZodType<T>): Tool<T, TOutput> {
+    this.config.inputSchema = schema as any;
+    return this as any;
+  }
+
+  execute<O>(handler: (params: { input: TInput; ctx?: ToolContext }) => O | Promise<O>): Tool<TInput, O> {
+    this.config.executeHandler = handler as any;
+    return this as any;
+  }
+
+  clientExecute(handler: (params: { input: TInput; ctx: ToolContext }) => TOutput | Promise<TOutput>): this {
+    this.config.clientHandler = handler;
+    return this;
+  }
+
+  render(component: (props: { data: TOutput; input?: TInput }) => ReactElement): this {
+    this.config.renderHandler = component;
+    return this;
+  }
+
+  async run(input: TInput, ctx?: ToolContext): Promise<TOutput> {
+    const validated = this.config.inputSchema ? this.config.inputSchema.parse(input) : input;
+    
+    if (ctx && this.config.clientHandler) {
+      return await Promise.resolve(this.config.clientHandler({ input: validated, ctx }));
+    }
+    
+    if (!this.config.executeHandler) {
+      throw new Error(`Tool ${this.config.name} has no execute handler`);
+    }
+    
+    return await Promise.resolve(this.config.executeHandler({ input: validated, ctx }));
+  }
+
+  renderResult(data: TOutput, input?: TInput): ReactElement | null {
+    return this.config.renderHandler?.({ data, input }) || null;
+  }
+
+  get name() { return this.config.name; }
+}
 
 class AUI {
-  private registry: ToolRegistry;
-  
-  z = z;
+  private tools = new Map<string, Tool>();
 
-  constructor(registry?: ToolRegistry) {
-    this.registry = registry || globalRegistry;
+  tool(name: string): Tool {
+    const t = new Tool(name);
+    this.tools.set(name, t);
+    return t;
   }
 
-  // Ultra-concise chainable API
-  t(name: string) {
-    return createToolBuilder(name);
-  }
-
-  tool(name: string) {
-    return createToolBuilder(name);
-  }
-
-  // Ultra-concise: create and auto-register a simple tool
   simple<TInput, TOutput>(
     name: string,
     inputSchema: z.ZodType<TInput>,
-    handler: (input: TInput) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
+    execute: (input: TInput) => TOutput | Promise<TOutput>,
+    render?: (data: TOutput) => ReactElement
+  ): Tool<TInput, TOutput> {
+    const t = this.tool(name)
       .input(inputSchema)
-      .execute(handler as any);
+      .execute(({ input }) => execute(input));
     
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
+    if (render) t.render(({ data }) => render(data));
+    return t;
   }
 
-  // One-liner tool creation with automatic registration
-  create<TInput, TOutput>(
-    name: string,
-    config: {
-      input: z.ZodType<TInput>;
-      execute: (input: TInput) => Promise<TOutput> | TOutput;
-      render?: (data: TOutput) => ReactElement;
-      client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-    }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(config.input)
-      .execute(config.execute as any);
+  defineTools<T extends Record<string, {
+    input?: z.ZodType<any>;
+    execute: (input: any) => any;
+    client?: (input: any, ctx: ToolContext) => any;
+    render?: (data: any) => ReactElement;
+  }>>(defs: T): { [K in keyof T]: Tool } {
+    const result = {} as { [K in keyof T]: Tool };
     
-    if (config.client) {
-      tool.clientExecute(config.client as any);
-    }
-    
-    if (config.render) {
-      tool.render(config.render as any);
+    for (const [name, def] of Object.entries(defs)) {
+      const t = this.tool(name);
+      if (def.input) t.input(def.input);
+      t.execute(({ input }) => def.execute(input));
+      if (def.client) t.clientExecute(({ input, ctx }) => def.client(input, ctx));
+      if (def.render) t.render(({ data }) => def.render(data));
+      result[name as keyof T] = t;
     }
     
-    const built = tool.build();
-    this.register(built);
-    return built;
+    return result;
   }
 
-  // Quick mode: auto-build after execute and render
-  quick(name: string) {
-    return createToolBuilder(name).quick();
+  aiTools<T extends Record<string, {
+    input: z.ZodType<any>;
+    execute: (input: any) => any;
+    retry?: number;
+    cache?: boolean;
+    timeout?: number;
+    render?: (data: any) => ReactElement;
+  }>>(defs: T): { [K in keyof T]: Tool } {
+    const result = {} as { [K in keyof T]: Tool };
+    
+    for (const [name, def] of Object.entries(defs)) {
+      const t = this.tool(name).input(def.input);
+      
+      const executeWithRetry = async ({ input, ctx }: any) => {
+        const retries = def.retry || 1;
+        let lastError: any;
+        
+        for (let i = 0; i < retries; i++) {
+          try {
+            const promise = Promise.resolve(def.execute(input));
+            if (def.timeout) {
+              return await Promise.race([
+                promise,
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Timeout')), def.timeout)
+                )
+              ]);
+            }
+            return await promise;
+          } catch (error) {
+            lastError = error;
+            if (i < retries - 1) {
+              await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+            }
+          }
+        }
+        throw lastError;
+      };
+      
+      t.execute(executeWithRetry);
+      
+      if (def.cache) {
+        t.clientExecute(async ({ input, ctx }) => {
+          const key = `${name}:${JSON.stringify(input)}`;
+          if (ctx.cache.has(key)) return ctx.cache.get(key);
+          const result = await executeWithRetry({ input, ctx });
+          ctx.cache.set(key, result);
+          return result;
+        });
+      }
+      
+      if (def.render) t.render(({ data }) => def.render(data));
+      result[name as keyof T] = t;
+    }
+    
+    return result;
   }
 
-  // Create a tool with full context support
   contextual<TInput, TOutput>(
     name: string,
     inputSchema: z.ZodType<TInput>,
-    handler: (params: { input: TInput; ctx: any }) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
+    execute: (params: { input: TInput; ctx: ToolContext }) => TOutput | Promise<TOutput>,
+    render?: (data: TOutput) => ReactElement
+  ): Tool<TInput, TOutput> {
+    const t = this.tool(name)
       .input(inputSchema)
-      .execute(handler as any);
+      .execute(({ input, ctx }) => execute({ input, ctx: ctx || this.createContext() }));
     
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
+    if (render) t.render(({ data }) => render(data));
+    return t;
   }
 
-  // Create a server-only tool (no client execution)
-  server<TInput, TOutput>(
+  get(name: string): Tool | undefined { return this.tools.get(name); }
+
+  async execute<TInput = any, TOutput = any>(
     name: string,
-    inputSchema: z.ZodType<TInput>,
-    handler: (input: TInput) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(inputSchema)
-      .serverOnly()
-      .execute(handler as any);
-    
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
+    input: TInput,
+    ctx?: ToolContext
+  ): Promise<TOutput> {
+    const tool = this.get(name);
+    if (!tool) throw new Error(`Tool "${name}" not found`);
+    return await tool.run(input, ctx || this.createContext());
   }
 
-  // Define multiple tools at once
-  defineTools(tools: Record<string, {
-    input: z.ZodType<any>;
-    execute: (input: any) => Promise<any> | any;
-    render?: (data: any) => ReactElement;
-    client?: (input: any, ctx: ToolContext) => Promise<any> | any;
-  }>): Record<string, ToolDefinition> {
-    const definitions: Record<string, ToolDefinition> = {};
-    
-    for (const [name, config] of Object.entries(tools)) {
-      definitions[name] = this.create(name, config);
-    }
-    
-    return definitions;
+  createContext(additions?: Partial<ToolContext>): ToolContext {
+    return {
+      cache: new Map(),
+      fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
+      ...additions,
+    };
   }
 
-  register(tool: ToolDefinition) {
-    this.registry.register(tool);
-    return this;
-  }
-
-  getTools() {
-    return this.registry.list();
-  }
-
-  getTool(name: string) {
-    return this.registry.get(name);
-  }
-
-  // Ultra-concise: create tool with just a function
-  do<TInput = any, TOutput = any>(
-    name: string,
-    handler: ((input: TInput) => Promise<TOutput> | TOutput) |
-             {
-               input?: z.ZodType<TInput>;
-               execute: (input: TInput) => Promise<TOutput> | TOutput;
-               render?: (data: TOutput) => ReactElement;
-               client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-             }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name).do(handler);
-    this.register(tool);
-    return tool;
-  }
-
-  // AI-optimized tool creation with built-in reliability
-  ai<TInput = any, TOutput = any>(
-    name: string,
-    config: {
-      input?: z.ZodType<TInput>;
-      execute: (input: TInput) => Promise<TOutput> | TOutput;
-      client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-      render?: (data: TOutput) => ReactElement;
-      retry?: number;
-      timeout?: number;
-      cache?: boolean;
-    }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name).ai(config);
-    this.register(tool);
-    return tool;
-  }
-
-  // Batch AI tool creation
-  aiTools(tools: Record<string, {
-    input?: z.ZodType<any>;
-    execute: (input: any) => Promise<any> | any;
-    client?: (input: any, ctx: ToolContext) => Promise<any> | any;
-    render?: (data: any) => ReactElement;
-    retry?: number;
-    timeout?: number;
-    cache?: boolean;
-  }>): Record<string, ToolDefinition> {
-    const definitions: Record<string, ToolDefinition> = {};
-    
-    for (const [name, config] of Object.entries(tools)) {
-      definitions[name] = this.ai(name, config);
-    }
-    
-    return definitions;
-  }
-
-  // Enable/disable AI optimizations globally
-  setAIMode(enabled: boolean, options?: { retry?: number; timeout?: number; cache?: boolean }) {
-    this.aiModeEnabled = enabled;
-    this.aiOptions = options || {};
-    return this;
-  }
-
-  private aiModeEnabled = false;
-  private aiOptions: { retry?: number; timeout?: number; cache?: boolean } = {};
+  getTools(): Tool[] { return Array.from(this.tools.values()); }
+  getToolNames(): string[] { return Array.from(this.tools.keys()); }
+  has(name: string): boolean { return this.tools.has(name); }
+  clear(): void { this.tools.clear(); }
+  remove(name: string): boolean { return this.tools.delete(name); }
 }
 
-// Create the global AUI instance
 const aui = new AUI();
 
-// Export everything
-export { aui, z, toolBuilder };
+export type InferToolInput<T> = T extends Tool<infer I, any> ? I : never;
+export type InferToolOutput<T> = T extends Tool<any, infer O> ? O : never;
+
+export { z } from 'zod';
+export { aui, Tool, type ToolContext };
 export default aui;
-
-// Export convenience functions for ultra-concise usage
-export const defineTool = <TInput, TOutput>(
-  name: string,
-  config: {
-    input: z.ZodType<TInput>;
-    execute: (input: TInput) => Promise<TOutput> | TOutput;
-    render?: (data: TOutput) => ReactElement;
-    client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-  }
-) => aui.create(name, config);
-
-export const t = (name: string) => aui.t(name);
-
-// Export type helpers for better DX
-export type Input<T> = T extends ToolDefinition<infer I, any> ? I : never;
-export type Output<T> = T extends ToolDefinition<any, infer O> ? O : never;

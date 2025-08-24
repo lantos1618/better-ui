@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/server';
+import aui from '@/lib/aui';
 
 export async function POST(request: NextRequest) {
   try {
     const { tool: toolName, input } = await request.json();
-
-    // Get the tool from the registry
+    
+    if (!toolName) {
+      return NextResponse.json(
+        { error: 'Tool name is required' },
+        { status: 400 }
+      );
+    }
+    
     const tool = aui.get(toolName);
     
     if (!tool) {
@@ -14,40 +20,27 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    if (!tool.execute) {
-      return NextResponse.json(
-        { error: `Tool "${toolName}" has no execute handler` },
-        { status: 400 }
-      );
-    }
-
-    // Validate input if schema is provided
-    if (tool.inputSchema) {
-      const validation = tool.inputSchema.safeParse(input);
-      if (!validation.success) {
-        return NextResponse.json(
-          { error: 'Invalid input', details: validation.error.errors },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Execute the tool
-    const result = await tool.execute({ input });
-
+    
+    // Execute the tool on the server
+    const result = await aui.execute(toolName, input);
+    
     return NextResponse.json({ 
-      success: true, 
+      success: true,
       result,
-      tool: toolName 
+      tool: toolName
     });
   } catch (error) {
     console.error('Tool execution error:', error);
+    
+    if (error instanceof Error) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
-      { 
-        error: 'Tool execution failed', 
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      },
+      { error: 'An unexpected error occurred' },
       { status: 500 }
     );
   }
