@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/lantos';
+import aui from '@/lib/aui/lantos-aui';
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   // Return list of available tools
-  const tools = aui.list().map((tool: any) => ({
+  const tools = aui.getTools().map((tool: any) => ({
     name: tool.name,
     metadata: tool.metadata
   }));
