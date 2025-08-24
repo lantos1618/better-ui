@@ -25,9 +25,11 @@ interface ToolDef<TInput = any, TOutput = any> {
 // Enhanced Tool class with better server/client separation
 class AUITool<TInput = any, TOutput = any> {
   private def: ToolDef<TInput, TOutput>;
+  private aui?: EnhancedAUI;
   
-  constructor(name: string) {
+  constructor(name: string, aui?: EnhancedAUI) {
     this.def = { name, execute: async () => null as any };
+    this.aui = aui;
   }
 
   input<T>(schema: z.ZodType<T>): AUITool<T, TOutput> {
@@ -74,15 +76,21 @@ class AUITool<TInput = any, TOutput = any> {
   async run(input: TInput, ctx?: AUIContext): Promise<TOutput> {
     const validated = this.def.input ? this.def.input.parse(input) : input;
     
+    // Merge global context with provided context
+    const mergedContext = this.aui ? {
+      ...this.aui.getContext(),
+      ...(ctx || {})
+    } : ctx;
+    
     // Check cache if enabled
-    if (this.def.cache && ctx?.cache) {
+    if (this.def.cache && mergedContext?.cache) {
       const cacheKey = `${this.def.name}:${JSON.stringify(validated)}`;
-      const cached = ctx.cache.get(cacheKey);
+      const cached = mergedContext.cache.get(cacheKey);
       if (cached) return cached;
     }
 
     // Determine which executor to use
-    const isClient = typeof window !== 'undefined' || ctx?.isClient;
+    const isClient = typeof window !== 'undefined' || mergedContext?.isClient;
     const executor = isClient && this.def.clientExecute ? this.def.clientExecute : this.def.execute;
     
     let attempts = 0;
@@ -90,7 +98,7 @@ class AUITool<TInput = any, TOutput = any> {
     
     while (attempts < maxAttempts) {
       try {
-        const promise = executor({ input: validated, ctx });
+        const promise = executor({ input: validated, ctx: mergedContext });
         
         // Apply timeout if specified
         const result = this.def.timeout
@@ -103,13 +111,13 @@ class AUITool<TInput = any, TOutput = any> {
           : await promise;
         
         // Cache result if enabled
-        if (this.def.cache && ctx?.cache) {
+        if (this.def.cache && mergedContext?.cache) {
           const cacheKey = `${this.def.name}:${JSON.stringify(validated)}`;
-          ctx.cache.set(cacheKey, result);
+          mergedContext.cache.set(cacheKey, result);
           
           // Set TTL if specified as number
           if (typeof this.def.cache === 'number') {
-            setTimeout(() => ctx.cache.delete(cacheKey), this.def.cache);
+            setTimeout(() => mergedContext.cache.delete(cacheKey), this.def.cache);
           }
         }
         
@@ -145,9 +153,14 @@ class EnhancedAUI {
 
   // Core method - creates tool
   tool(name: string): AUITool {
-    const t = new AUITool(name);
+    const t = new AUITool(name, this);
     this.tools.set(name, t);
     return t;
+  }
+
+  // Get global context
+  getContext(): AUIContext {
+    return this.globalContext;
   }
 
   // Shorthand alias

@@ -21,12 +21,14 @@ export interface ToolDefinition<TInput = any, TOutput = any> {
 // Fluent builder interface that doesn't require .build()
 class Tool<TInput = any, TOutput = any> {
   private definition: ToolDefinition<TInput, TOutput>;
+  private aui?: AUI;
   
-  constructor(name: string) {
+  constructor(name: string, aui?: AUI) {
     this.definition = {
       name,
       execute: async () => null as any,
     };
+    this.aui = aui;
   }
 
   // Chainable methods that return the tool itself (not a builder)
@@ -60,12 +62,18 @@ class Tool<TInput = any, TOutput = any> {
     const validatedInput = this.definition.inputSchema ? 
       this.definition.inputSchema.parse(input) : input;
     
+    // Always use global context as base, merge with provided context
+    const mergedContext = this.aui ? {
+      ...this.aui.getContext(),
+      ...(ctx || {})
+    } : ctx;
+    
     // Use client execution if available and context is provided
-    if (this.definition.clientExecute && ctx) {
-      return await Promise.resolve(this.definition.clientExecute({ input: validatedInput, ctx }));
+    if (this.definition.clientExecute && mergedContext) {
+      return await Promise.resolve(this.definition.clientExecute({ input: validatedInput, ctx: mergedContext }));
     }
     
-    return await Promise.resolve(this.definition.execute({ input: validatedInput, ctx }));
+    return await Promise.resolve(this.definition.execute({ input: validatedInput, ctx: mergedContext }));
   }
 
   // Render the result
@@ -88,9 +96,23 @@ class AUI {
     fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
   };
 
+  // Set global context
+  setContext(context: Partial<ToolContext>): this {
+    this.defaultContext = {
+      ...this.defaultContext,
+      ...context,
+    };
+    return this;
+  }
+
+  // Get current context
+  getContext(): ToolContext {
+    return this.defaultContext;
+  }
+
   // Create a tool - returns the tool directly (no .build() required!)
   tool(name: string): Tool {
-    const tool = new Tool(name);
+    const tool = new Tool(name, this);
     this.tools.set(name, tool);
     return tool;
   }
