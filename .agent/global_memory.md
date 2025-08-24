@@ -1,60 +1,78 @@
-# Lantos AUI Global Memory
+# Global Memory - Lantos AUI Implementation
 
 ## Project Context
 - **Branch**: lantos-aui
-- **Goal**: Ultra-concise API for AI control of Next.js/Vercel apps
-- **Stack**: Next.js 14.2, React 18.3, TypeScript 5, Zod 3.22
+- **Purpose**: Implement a concise and elegant AUI (Assistant UI) system for AI-controlled frontend and backend operations in Next.js Vercel applications
 
-## Key Design Principles
-1. **Simplicity** - 2-method minimum for simple tools
-2. **Type Safety** - Full TypeScript inference
-3. **Dual Execution** - Server + optional client
-4. **React Native** - Component rendering built-in
-5. **DRY & KISS** - Don't repeat, keep it simple
+## Key Components Created
 
-## Core API Pattern
-```tsx
-// Simple - just 2 methods
-aui.tool('name')
+### 1. Enhanced AUI Library (`/lib/aui-enhanced.ts`)
+- Fluent API design with method chaining
+- Server/client execution separation for Next.js
+- Built-in caching with TTL support
+- Retry logic with exponential backoff
+- Timeout handling
+- Error boundaries and handlers
+- Batch execution support
+- Global context management
+
+### 2. Example Tools (`/examples/aui-tools.tsx`)
+- Weather tool (server-side execution)
+- Search tool (client-side with caching)
+- User tool (with error handling)
+- Calculator tool (pure client-side)
+- Data fetcher (smart caching for GET requests)
+
+### 3. Showcase Page (`/app/lantos-aui-enhanced/page.tsx`)
+- Interactive demo of all tools
+- Live examples with real-time results
+- Code patterns documentation
+- Feature highlights
+
+### 4. Comprehensive Tests (`/__tests__/aui-enhanced.test.ts`)
+- Tool creation and validation
+- Client/server execution logic
+- Caching with TTL
+- Retry mechanism
+- Timeout handling
+- Error management
+- Batch execution
+- Context management
+- Tool registry operations
+
+## Design Principles
+- **Simplicity**: Tools defined in 2-4 method calls
+- **Type Safety**: Zod schema validation throughout
+- **Performance**: Smart caching, retries, and timeouts
+- **Developer Experience**: Fluent API, clear patterns
+- **AI Integration**: Clear server/client boundaries for AI control
+
+## API Patterns
+
+### Simple Tool
+```typescript
+const tool = aui
+  .tool('name')
   .input(schema)
   .execute(handler)
   .render(component)
+```
 
-// Complex - adds client optimization
-aui.tool('name')
+### Complex Tool with Optimizations
+```typescript
+const tool = aui
+  .tool('name')
   .input(schema)
   .execute(serverHandler)
   .clientExecute(clientHandler)
   .render(component)
+  .cache(60000)    // 1 minute
+  .retry(3)        // 3 attempts
+  .timeout(5000)   // 5 seconds
 ```
 
-## Shorthand Methods
-- `aui.t()` - Short for tool()
-- `aui.do()` - One-liner simple tools
-- `aui.simple()` - Quick setup with all basics
-- `aui.ai()` - AI-optimized with retry/cache
-
-## Implementation Progress
-- Core Builder: ✅ (lib/aui/lantos-aui.ts)
-- Enhanced API: ✅ All shortcuts implemented
-- Server Execution: ✅ (app/api/aui/lantos/execute/route.ts)
-- Client Optimization: ✅ (lib/aui/client/hooks.tsx & provider.tsx)
-- Tool Registry: ✅ (Built into AUI class)
-- Example Tools: ✅ (lib/aui/tools/examples.tsx - weather, search, database, calculator, assistant)
-- Demo Page: ✅ (app/aui-demo/page.tsx - comprehensive interactive demo)
-- Pattern Examples: ✅ (examples/aui-patterns.tsx)
-- Testing: ✅ (27/27 tests passing in __tests__/aui-complete.test.ts)
-- Documentation: ✅ (docs/AUI_README.md)
-- TypeScript: ✅ Consolidated exports in lib/aui/index.ts
-
-## Achievements
-- Implemented ultra-concise API with 2-method minimum
-- Added 5 shorthand methods for common patterns (t, do, doWith, simple, ai)
-- Created AI-optimized tools with retry and caching
-- Built comprehensive React integration with hooks and provider
-- Full TypeScript support with type inference
-- Complete test coverage (27 comprehensive tests)
-- Created 5 example tools (weather, search, database, calculator, assistant)
-- Built interactive demo page at /aui-demo
-- Consolidated all exports in lib/aui/index.ts
-- Successfully deployed on lantos-aui branch
+## Next Steps
+- Integration with AI agents
+- Server actions for Next.js App Router
+- WebSocket support for real-time updates
+- Plugin system for extending functionality
