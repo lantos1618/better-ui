@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { ToolCall, ToolResult } from '../types';
+import type { ToolCall, ToolResult } from '../types/index';
 
 interface AUIVisualizerProps {
   showTools?: boolean;

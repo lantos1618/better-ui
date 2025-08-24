@@ -6,26 +6,26 @@ import { z } from 'zod';
 const minimalTool = aui
   .tool('minimal')
   .input(z.object({ name: z.string() }))
-  .execute(async ({ input }) => `Hello, ${input.name}!`)
+  .execute(async ({ input }: { input: any }) => `Hello, ${input.name}!`)
   .build();
 
 // Pattern 2: Simple with render - just 3 methods
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+  .execute(async ({ input }: { input: any }) => ({ temp: 72, city: input.city }))
+  .render(({ data }: { data: any }) => <div>{data.city}: {data.temp}°</div>)
   .build();
 
 // Pattern 3: Complex with client execution
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // Server-side database search
     return { results: [`Result for ${input.query}`] };
   })
-  .clientExecute(async ({ input, ctx }) => {
+  .clientExecute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Client-side caching/offline support
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
@@ -34,7 +34,7 @@ const complexTool = aui
       body: JSON.stringify(input) 
     });
   })
-  .render(({ data }) => (
+  .render(({ data }: { data: any }) => (
     <div>
       {data.results.map((r: string, i: number) => (
         <div key={i}>{r}</div>
@@ -56,11 +56,11 @@ const serverOnlyTool = aui
   .tool('database-write')
   .input(z.object({ data: z.string() }))
   .serverOnly()
-  .execute(async ({ input }) => {
+  .execute(async ({ input }: { input: any }) => {
     // This only runs on server
     return { saved: true, id: Date.now() };
   })
-  .render(({ data }) => <div>Saved with ID: {data.id}</div>)
+  .render(({ data }: { data: any }) => <div>Saved with ID: {data.id}</div>)
   .build();
 
 // Pattern 6: Using handle() for input+execute combo
@@ -70,14 +70,14 @@ const handleTool = aui
     z.object({ a: z.number(), b: z.number() }),
     async (input) => input.a + input.b
   )
-  .render(({ data }) => <span>Result: {data}</span>)
+  .render(({ data }: { data: any }) => <span>Result: {data}</span>)
   .build();
 
 // Pattern 7: Context-aware execution
 const contextTool = aui
   .tool('user-profile')
   .input(z.object({ userId: z.string() }))
-  .execute(async ({ input, ctx }) => {
+  .execute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Access context in server execution
     const sessionUser = ctx?.userId;
     return { 
@@ -85,12 +85,12 @@ const contextTool = aui
       isSelf: sessionUser === input.userId 
     };
   })
-  .clientExecute(async ({ input, ctx }) => {
+  .clientExecute(async ({ input, ctx }: { input: any; ctx: any }) => {
     // Client can also use context
     const cached = ctx.cache.get(`user:${input.userId}`);
     return cached || ctx.fetch(`/api/users/${input.userId}`);
   })
-  .render(({ data }) => <div>User {data.userId}</div>)
+  .render(({ data }: { data: any }) => <div>User {data.userId}</div>)
   .build();
 
 // Pattern 8: Using run() for execute+render combo
@@ -109,16 +109,16 @@ const describedTool = aui
   .description('Track user analytics events')
   .metadata({ category: 'tracking', version: '1.0' })
   .input(z.object({ event: z.string(), data: z.any() }))
-  .execute(async ({ input }) => ({ tracked: true, event: input.event }))
-  .render(({ data }) => <div>Tracked: {data.event}</div>)
+  .execute(async ({ input }: { input: any }) => ({ tracked: true, event: input.event }))
+  .render(({ data }: { data: any }) => <div>Tracked: {data.event}</div>)
   .build();
 
 // Pattern 10: Quick mode for auto-building
 const quickModeTool = aui
   .quick('auto-build')
   .input(z.object({ msg: z.string() }))
-  .execute(async ({ input }) => input.msg.toUpperCase())
-  .render(({ data }) => <strong>{data}</strong>);
+  .execute(async ({ input }: { input: any }) => input.msg.toUpperCase())
+  .render(({ data }: { data: any }) => <strong>{data}</strong>);
 // No .build() needed in quick mode!
 
 export {

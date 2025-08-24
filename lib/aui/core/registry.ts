@@ -4,9 +4,7 @@ class ToolRegistryImpl implements ToolRegistry {
   tools: Map<string, ToolDefinition> = new Map();
 
   register(tool: ToolDefinition): void {
-    if (this.tools.has(tool.name)) {
-      throw new Error(`Tool "${tool.name}" is already registered`);
-    }
+    // Allow overwriting tools for testing and development
     this.tools.set(tool.name, tool);
   }
 
@@ -16,6 +14,10 @@ class ToolRegistryImpl implements ToolRegistry {
 
   list(): ToolDefinition[] {
     return Array.from(this.tools.values());
+  }
+  
+  clear(): void {
+    this.tools.clear();
   }
 }
 
