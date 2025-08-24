@@ -15,8 +15,8 @@ const pingTool = aui
 const weatherTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }: { input: { city: string } }) => ({ temp: 72, city: input.city }))
-  .render(({ data }: { data: { temp: number; city: string } }) => <div>{data.city}: {data.temp}°</div>)
+  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
   .build();
 
 // 3. Using shorthand methods for ultra-concise syntax
@@ -34,12 +34,12 @@ const calcTool = aui
 const searchTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
-  .execute(async ({ input }: { input: { query: string } }) => {
+  .execute(async ({ input }) => {
     // Server-side database search
     await new Promise(r => setTimeout(r, 500));
     return { results: [`Result for "${input.query}"`] };
   })
-  .clientExecute(async ({ input, ctx }: { input: { query: string }; ctx: any }) => {
+  .clientExecute(async ({ input, ctx }) => {
     // Client-side caching
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
@@ -48,7 +48,7 @@ const searchTool = aui
     ctx.cache.set(input.query, result);
     return result;
   })
-  .render(({ data }: { data: { results: string[] } }) => (
+  .render(({ data }) => (
     <ul>{data.results.map((r: string, i: number) => <li key={i}>{r}</li>)}</ul>
   ))
   .build();
@@ -67,12 +67,12 @@ const greetTool = aui.simple(
 // 7. AI-optimized tool with retry and caching
 const apiTool = aui.ai('apiCall', {
   input: z.object({ endpoint: z.string() }),
-  execute: async ({ endpoint }: { endpoint: string }) => {
+  execute: async ({ endpoint }) => {
     // Simulated flaky API
     if (Math.random() > 0.7) throw new Error('API Error');
     return { data: `Response from ${endpoint}` };
   },
-  render: ({ data }: any) => <code>{data.data}</code>,
+  render: ({ data }) => <code>{data.data}</code>,
   retry: 3,
   cache: true
 });
@@ -81,13 +81,13 @@ const apiTool = aui.ai('apiCall', {
 const dbTools = aui.defineTools({
   query: {
     input: z.object({ sql: z.string() }),
-    execute: async ({ sql }: { sql: string }) => ({ rows: [`Query: ${sql}`] }),
-    render: ({ rows }: any) => <pre>{rows.rows.join('\n')}</pre>
+    execute: async ({ sql }) => ({ rows: [`Query: ${sql}`] }),
+    render: ({ rows }) => <pre>{rows.rows.join('\n')}</pre>
   },
   insert: {
     input: z.object({ table: z.string(), data: z.record(z.any()) }),
-    execute: async ({ table, data }: { table: string; data: any }) => ({ id: Date.now(), table, data }),
-    render: ({ id }: any) => <span>Inserted #{id.id}</span>
+    execute: async ({ table, data }) => ({ id: Date.now(), table, data }),
+    render: ({ id }) => <span>Inserted #{id.id}</span>
   }
 });
 
@@ -98,7 +98,7 @@ const uiControlTool = aui
     action: z.enum(['theme', 'layout', 'modal']),
     value: z.any()
   }))
-  .clientExecute(async ({ input, ctx }: { input: { action: string; value: any }; ctx: any }) => {
+  .clientExecute(async ({ input, ctx }) => {
     // AI can control UI directly
     switch (input.action) {
       case 'theme':
@@ -112,7 +112,7 @@ const uiControlTool = aui
         return { changed: 'modal', to: input.value };
     }
   })
-  .render(({ data }: { data: { changed: string; to: any } }) => <div>UI: {data.changed} → {data.to}</div>)
+  .render(({ data }) => <div>UI: {data.changed} → {data.to}</div>)
   .build();
 
 // 10. Backend control tool - execute server operations
@@ -124,7 +124,7 @@ const backendTool = aui
     params: z.any()
   }))
   .serverOnly()
-  .execute(async ({ input }: { input: { service: string; operation: string; params: any } }) => {
+  .execute(async ({ input }) => {
     // AI can control backend services
     console.log(`Backend: ${input.service}.${input.operation}`, input.params);
     return { 
@@ -133,7 +133,7 @@ const backendTool = aui
       result: 'success'
     };
   })
-  .render(({ data }: { data: { service: string; operation: string; result: string } }) => (
+  .render(({ data }) => (
     <div className="font-mono text-sm">
       {data.service}.{data.operation}() → {data.result}
     </div>
