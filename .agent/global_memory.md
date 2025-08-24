@@ -1,72 +1,104 @@
-# AUI (Assistant-UI) Implementation Memory
+# AUI (Assistant-UI) Global Memory
 
 ## Project Overview
-Building a concise and elegant API for AI to control both frontend and backend in Next.js/Vercel applications.
+AUI is an ultra-concise API for enabling AI to control both frontend and backend in Next.js/Vercel applications through tool calls.
 
-## Key Architecture Decisions
-1. **Fluent Builder Pattern**: Tool creation using method chaining
-2. **Ultra-Concise API**: Multiple levels of conciseness from verbose to single-character methods
-3. **Dual Execution**: Support for both server and client-side execution
-4. **AI Optimization**: Built-in retry, timeout, and caching mechanisms
+## Key Design Principles
+1. **Simplicity** - Minimal API surface, maximum capability
+2. **Elegance** - Clean, chainable syntax
+3. **Practicality** - Real-world use cases for AI control
+4. **Intelligence** - Built-in optimizations for AI reliability
 
-## Implementation Status
-- ✅ Core AUI builder pattern implemented
-- ✅ Server and client executors
-- ✅ Multiple conciseness levels (tool(), t(), do(), ai())
-- ✅ Rendering system for React components
-- ✅ Type-safe with Zod schemas
-- ✅ Global registry for tool management
-- ✅ AI control examples (UI, DB, State, Navigation)
+## Core API Patterns
 
-## API Patterns Implemented
+### Ultra-Concise Progression
+```tsx
+// 1. Simplest - one line
+aui.do('ping', () => 'pong')
 
-### 1. Standard Pattern
-```typescript
-aui.tool('name')
+// 2. Simple with input - 2 methods
+aui.tool('weather')
+  .input(z.object({ city: z.string() }))
+  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+  .build()
+
+// 3. Complex with client optimization
+aui.tool('search')
   .input(schema)
-  .execute(handler)
+  .execute(serverHandler)
+  .clientExecute(clientHandler)
   .render(component)
   .build()
 ```
 
-### 2. Ultra-Concise Pattern
-```typescript
-aui.t('name')
-  .i(schema)
-  .e(handler)
-  .r(component)
-  .b()
-```
+### Shorthand Methods
+- `t()` = `tool()`
+- `i()` = `input()`
+- `e()` = `execute()`
+- `r()` = `render()`
+- `c()` = `clientExecute()`
+- `b()` = `build()`
 
-### 3. One-Liner Pattern
-```typescript
-aui.do('name', handler)
-```
+### Helper Methods
+- `aui.simple()` - Quick tool with input/execute/render
+- `aui.ai()` - AI-optimized with retry/cache
+- `aui.defineTools()` - Batch definition
+- `aui.do()` - One-liner tool
 
-### 4. AI-Optimized Pattern
-```typescript
-aui.ai('name', {
-  execute: handler,
-  retry: 3,
-  timeout: 5000,
-  cache: true
-})
-```
+## Architecture
 
-## Tool Categories
-1. **Simple Tools**: Basic server execution
-2. **Complex Tools**: Client + server with caching
-3. **AI Control Tools**: Frontend/backend control
-4. **Server-Only Tools**: Secure backend operations
+### Core Components
+1. **Builder** (`/lib/aui/core/builder.ts`) - Chainable API
+2. **Registry** (`/lib/aui/core/registry.ts`) - Tool management
+3. **Executor** (`/lib/aui/server/executor.ts`) - Server execution
+4. **Client Executor** (`/lib/aui/client/executor.ts`) - Client-side with caching
 
-## Testing Coverage
-- Unit tests for builder pattern
-- Tests for executor (server/client)
-- Integration tests for tool registration
-- AI control capability tests
+### Type System
+- Full TypeScript support with inference
+- Zod schemas for runtime validation
+- Generic types flow through chain
+
+## AI Control Capabilities
+
+### Frontend Control
+- Theme switching
+- Layout manipulation  
+- Modal/dialog control
+- State management
+- UI component updates
+
+### Backend Control
+- Database operations
+- Cache management
+- Queue processing
+- API calls
+- Service orchestration
+
+## Testing Strategy
+- Unit tests for builders
+- Integration tests for executors
+- E2E tests for AI control flows
+- 80% implementation, 20% testing
+
+## Performance Optimizations
+- Client-side caching
+- Retry logic for reliability
+- Timeout handling
+- Batch execution support
+
+## Current Implementation Status
+- ✅ Core builder API
+- ✅ Registry system
+- ✅ Server execution
+- ✅ Client execution
+- ✅ Showcase pages
+- ✅ Example tools
+- ⏳ Comprehensive tests
+- ⏳ Documentation
 
 ## Next Steps
-- Performance optimization for large-scale tool registries
-- Enhanced error handling with AI-friendly messages
-- Real-time tool execution monitoring
-- Tool composition and chaining capabilities
+1. Complete test coverage
+2. Add more AI control examples
+3. Optimize bundle size
+4. Add telemetry/monitoring
