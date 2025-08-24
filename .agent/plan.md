@@ -1,66 +1,27 @@
-# AUI Implementation Plan
+# AUI (Assistant-UI) Implementation Plan
 
-## Goal
-Create an ultra-concise and elegant API for AI to control frontend and backend in Next.js/Vercel applications.
+## Overview
+Building a concise API for AI-controlled frontend/backend operations in Next.js/Vercel
 
-## Current Status
-The AUI system is already well-implemented with:
-- Fluent builder pattern
-- Multiple concise API patterns
-- Client/server execution modes
-- Comprehensive test coverage
+## Architecture
+1. **Builder Pattern**: Fluent API for tool definition
+2. **Dual Execution**: Server and optional client execution
+3. **Type Safety**: Zod schemas for input validation
+4. **React Integration**: Component rendering for results
+5. **Tool Registry**: Centralized tool management
 
-## Enhancement Strategy
+## Key Components
+- `lib/aui/builder.ts`: Core builder pattern
+- `lib/aui/types.ts`: TypeScript definitions
+- `lib/aui/registry.ts`: Tool registration
+- `lib/aui/client.ts`: Client-side utilities
+- `app/api/aui/[tool]/route.ts`: Dynamic API routes
 
-### Phase 1: API Refinement ✅
-- Review existing implementation
-- Identify improvement opportunities
-- Document current capabilities
-
-### Phase 2: Ultra-Concise Enhancements (Current)
-- Add even shorter method aliases
-- Implement intelligent defaults
-- Create one-liner patterns for common use cases
-
-### Phase 3: AI Control Optimization
-- Enhance client execution with better caching
-- Add request batching capabilities
-- Implement offline-first patterns
-- Add WebSocket support for real-time control
-
-### Phase 4: Advanced Examples
-- Create AI agent control demos
-- Build complex multi-tool workflows
-- Show frontend/backend coordination
-- Demonstrate state management patterns
-
-### Phase 5: Testing & Documentation
-- Ensure 100% test coverage
-- Add performance benchmarks
-- Create comprehensive docs
-- Build interactive playground
-
-## Key Innovations to Add
-
-1. **Ultra-Short Syntax**
-   - `aui('tool').do(handler)` - Simplest possible form
-   - Auto-inference of input/output types
-   - Smart defaults for common patterns
-
-2. **AI-First Design**
-   - Built-in retry logic
-   - Automatic error recovery
-   - Request queuing and batching
-   - Progressive enhancement
-
-3. **Developer Experience**
-   - IntelliSense-friendly API
-   - Runtime type validation
-   - Debug mode with visualization
-   - Performance profiling
-
-## Success Metrics
-- API conciseness: < 50 chars for simple tools
-- Type safety: 100% coverage
-- Performance: < 10ms overhead
-- Developer satisfaction: Intuitive and delightful to use
+## Implementation Order
+1. Core types and interfaces
+2. Builder pattern implementation
+3. Server execution handler
+4. Client optimization layer
+5. Tool registry
+6. Example tools (weather, search)
+7. Testing suite

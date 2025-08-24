@@ -141,6 +141,7 @@ export interface ToolRegistry {
   register(tool: ToolDefinition): void;
   get(name: string): ToolDefinition | undefined;
   list(): ToolDefinition[];
+  clear?(): void;
 }
 
 export interface ToolCall {
