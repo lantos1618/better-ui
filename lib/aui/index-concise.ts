@@ -37,10 +37,10 @@ class ToolBuilder<TInput = any, TOutput = any> {
   execute<T>(
     handler: (params: { input: TInput; ctx?: ToolContext }) => Promise<T> | T
   ): ToolBuilder<TInput, T> {
-    this._execute = async (params) => {
+    this._execute = (async (params) => {
       const result = await handler(params);
       return result;
-    } as any;
+    }) as any;
     return this as any;
   }
 

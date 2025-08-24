@@ -38,7 +38,7 @@ describe('AUI Comprehensive Tests', () => {
       const tool = aui
         .t('calc')
         .i(z.object({ a: z.number(), b: z.number() }))
-        .e(({ a, b }) => a + b)
+        .e(({ input }) => input.a + input.b)
         .b();
 
       expect(tool.name).toBe('calc');
@@ -53,7 +53,7 @@ describe('AUI Comprehensive Tests', () => {
       const tool = aui
         .tool('math')
         .i(z.object({ x: z.number() }))
-        .e(({ x }) => x * 2)
+        .e(({ input }) => input.x * 2)
         .r(result => `Result: ${result}`)
         .b();
 
@@ -149,7 +149,7 @@ describe('AUI Comprehensive Tests', () => {
       const tool = aui.simple(
         'greet',
         z.object({ name: z.string() }),
-        ({ name }) => `Hello, ${name}!`
+        (input) => `Hello, ${input.name}!`
       );
 
       const result = await tool.execute({ 
@@ -302,7 +302,7 @@ describe('AUI Comprehensive Tests', () => {
         .tool('handle')
         .handle(
           z.object({ x: z.number() }),
-          ({ x }) => x * x
+          (input) => input.x * input.x
         )
         .build();
 
@@ -318,7 +318,7 @@ describe('AUI Comprehensive Tests', () => {
         .tool('define')
         .define(
           z.object({ text: z.string() }),
-          ({ text }) => text.toUpperCase(),
+          (input) => input.text.toUpperCase(),
           result => `OUTPUT: ${result}`
         );
 
@@ -386,7 +386,7 @@ describe('AUI Comprehensive Tests', () => {
       const simple = aui
         .tool('simple-sig')
         .input(z.object({ x: z.number() }))
-        .execute((x) => x * 2)
+        .execute((input) => input.x * 2)
         .build();
 
       // Destructured form: ({ input }) => output
@@ -407,7 +407,7 @@ describe('AUI Comprehensive Tests', () => {
         input: { x: 5 }, 
         ctx: {} 
       });
-      expect(simpleResult).toBe({ x: 5 });
+      expect(simpleResult).toBe(10);
 
       const destructuredResult = await destructured.execute({ 
         input: { x: 5 }, 

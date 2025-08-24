@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import aui, { z } from '@/lib/aui/index-concise';
+import aui, { z } from '@/lib/aui';
 
 // Simple tool - just 2 methods
 const weatherTool = aui
@@ -120,7 +120,7 @@ export default function AUIDemoPage() {
   const executeTool = async (toolName: string, input: any) => {
     setLoading(prev => ({ ...prev, [toolName]: true }));
     
-    const tool = aui.get(toolName);
+    const tool = aui.getTool(toolName);
     if (!tool) return;
 
     try {
