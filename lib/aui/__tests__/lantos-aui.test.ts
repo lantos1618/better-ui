@@ -1,5 +1,4 @@
-import aui from '../lantos/index';
-import { z } from 'zod';
+import aui, { z } from '../lantos-aui';
 import React from 'react';
 
 describe('Lantos AUI API', () => {

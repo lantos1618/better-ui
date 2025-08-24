@@ -1,46 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui';
+import { aui } from '@/lib/aui/lantos-aui';
 
 export async function POST(request: NextRequest) {
   try {
-    const { tool: toolName, input } = await request.json();
+    const { tool, input } = await request.json();
     
-    if (!toolName) {
+    if (!tool || typeof tool !== 'string') {
       return NextResponse.json(
         { error: 'Tool name is required' },
         { status: 400 }
       );
     }
     
-    const tool = aui.get(toolName);
-    
-    if (!tool) {
+    const toolInstance = aui.get(tool);
+    if (!toolInstance) {
       return NextResponse.json(
-        { error: `Tool "${toolName}" not found` },
+        { error: `Tool "${tool}" not found` },
         { status: 404 }
       );
     }
     
-    // Execute the tool on the server
-    const result = await aui.execute(toolName, input);
+    // Create server context
+    const ctx = aui.createContext({
+      user: request.headers.get('x-user-id') || undefined,
+      session: request.headers.get('x-session-id') || undefined,
+    });
+    
+    const result = await toolInstance.run(input, ctx);
     
     return NextResponse.json({ 
-      success: true,
-      result,
-      tool: toolName
+      success: true, 
+      data: result 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Tool execution error:', error);
     
-    if (error instanceof Error) {
+    if (error.name === 'ZodError') {
       return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
       );
     }
     
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }
