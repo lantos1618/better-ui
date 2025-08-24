@@ -19,7 +19,7 @@ export interface ToolDefinition<TInput = any, TOutput = any> {
 }
 
 // Fluent builder interface that doesn't require .build()
-export class Tool<TInput = any, TOutput = any> {
+class Tool<TInput = any, TOutput = any> {
   private definition: ToolDefinition<TInput, TOutput>;
   
   constructor(name: string) {

@@ -8,7 +8,7 @@ export interface AUIContext {
   session?: any;
 }
 
-export class Tool<TInput = any, TOutput = any> {
+class Tool<TInput = any, TOutput = any> {
   private config: {
     name: string;
     inputSchema?: z.ZodType<TInput>;

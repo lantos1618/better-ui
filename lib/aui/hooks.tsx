@@ -1,110 +1,129 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import type { Tool, ToolContext } from './index';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode, useEffect, useRef } from 'react';
+import { Tool, AUIContext, aui } from './lantos-ultra';
 
-export interface UseToolOptions {
-  context?: ToolContext;
-  onSuccess?: (data: any) => void;
-  onError?: (error: Error) => void;
-  autoExecute?: boolean;
+interface AUIProviderProps {
+  children: ReactNode;
+  initialContext?: Partial<AUIContext>;
+  serverUrl?: string;
 }
 
-export function useTool<TInput = any, TOutput = any>(
-  tool: Tool<TInput, TOutput>,
-  options: UseToolOptions = {}
-) {
-  const [data, setData] = useState<TOutput | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
-
-
-  const execute = useCallback(async (input: TInput) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const result = await tool.run(input, options.context);
-      setData(result);
-      options.onSuccess?.(result);
-      return result;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      options.onError?.(error);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  }, [tool, options.context, options.onSuccess, options.onError]);
-
-  const render = useCallback((input?: TInput) => {
-    if (!data) return null;
-    return tool.renderResult(data, input);
-  }, [tool, data]);
-
-  return {
-    execute,
-    render,
-    data,
-    loading,
-    error,
-    reset: () => {
-      setData(null);
-      setError(null);
-      setLoading(false);
-    }
-  };
+interface AUIContextValue {
+  context: AUIContext;
+  executeTool: <TInput = any, TOutput = any>(
+    toolOrName: Tool<TInput, TOutput> | string,
+    input: TInput
+  ) => Promise<TOutput>;
+  loading: Record<string, boolean>;
+  errors: Record<string, Error | null>;
+  results: Record<string, any>;
+  clearError: (toolName: string) => void;
+  clearResult: (toolName: string) => void;
 }
 
-export function useTools(tools: Tool[], options: UseToolOptions = {}) {
-  const [toolStates, setToolStates] = useState(() => 
-    tools.map(() => ({ data: null, loading: false, error: null }))
-  );
+const AUIReactContext = createContext<AUIContextValue | undefined>(undefined);
 
-  const execute = useCallback(async (toolIndex: number, input: any) => {
-    setToolStates(prev => {
-      const next = [...prev];
-      next[toolIndex] = { ...next[toolIndex], loading: true, error: null };
-      return next;
+export function AUIProvider({ children, initialContext, serverUrl = '/api/aui/execute' }: AUIProviderProps) {
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, Error | null>>({});
+  const [results, setResults] = useState<Record<string, any>>({});
+
+  const context = useMemo(() => {
+    return aui.createContext({
+      ...initialContext,
+      fetch: async (url: string, options?: RequestInit) => {
+        const finalUrl = url.startsWith('/') ? `${serverUrl}${url}` : url;
+        return fetch(finalUrl, options);
+      }
     });
+  }, [initialContext, serverUrl]);
+
+  const executeTool = useCallback(async <TInput = any, TOutput = any>(
+    toolOrName: Tool<TInput, TOutput> | string,
+    input: TInput
+  ): Promise<TOutput> => {
+    const toolName = typeof toolOrName === 'string' ? toolOrName : toolOrName.name;
+    const tool = typeof toolOrName === 'string' ? aui.get(toolOrName) : toolOrName;
+
+    if (!tool) {
+      throw new Error(`Tool "${toolName}" not found`);
+    }
+
+    setLoading(prev => ({ ...prev, [toolName]: true }));
+    setErrors(prev => ({ ...prev, [toolName]: null }));
 
     try {
-      const result = await tools[toolIndex].run(input, options.context);
-      setToolStates(prev => {
-        const next = [...prev];
-        next[toolIndex] = { data: result, loading: false, error: null };
-        return next;
-      });
-      options.onSuccess?.(result);
+      const result = await tool.run(input, context);
+      setResults(prev => ({ ...prev, [toolName]: result }));
       return result;
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setToolStates(prev => {
-        const next = [...prev];
-        next[toolIndex] = { ...next[toolIndex], loading: false, error };
-        return next;
-      });
-      options.onError?.(error);
-      throw error;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error('Unknown error');
+      setErrors(prev => ({ ...prev, [toolName]: err }));
+      throw err;
+    } finally {
+      setLoading(prev => ({ ...prev, [toolName]: false }));
     }
-  }, [tools, options]);
+  }, [context]);
+
+  const clearError = useCallback((toolName: string) => {
+    setErrors(prev => ({ ...prev, [toolName]: null }));
+  }, []);
+
+  const clearResult = useCallback((toolName: string) => {
+    setResults(prev => ({ ...prev, [toolName]: undefined }));
+  }, []);
+
+  const value = useMemo(() => ({
+    context,
+    executeTool,
+    loading,
+    errors,
+    results,
+    clearError,
+    clearResult
+  }), [context, executeTool, loading, errors, results, clearError, clearResult]);
+
+  return (
+    <AUIReactContext.Provider value={value}>
+      {children}
+    </AUIReactContext.Provider>
+  );
+}
+
+export function useAUI() {
+  const context = useContext(AUIReactContext);
+  if (!context) {
+    throw new Error('useAUI must be used within an AUIProvider');
+  }
+  return context;
+}
+
+export function useToolExecution<TInput = any, TOutput = any>(
+  toolOrName: Tool<TInput, TOutput> | string
+) {
+  const { executeTool, loading, errors, results, clearError, clearResult } = useAUI();
+  const toolName = typeof toolOrName === 'string' ? toolOrName : toolOrName.name;
+
+  const execute = useCallback((input: TInput) => {
+    return executeTool(toolOrName, input);
+  }, [executeTool, toolOrName]);
+
+  const reset = useCallback(() => {
+    clearError(toolName);
+    clearResult(toolName);
+  }, [clearError, clearResult, toolName]);
 
   return {
-    tools: toolStates,
     execute,
-    executeAll: async (inputs: any[]) => {
-      return await Promise.all(
-        tools.map((_, i) => execute(i, inputs[i]))
-      );
-    },
-    loading: toolStates.some(s => s.loading),
-    errors: toolStates.map(s => s.error).filter(Boolean) as Error[],
-    data: toolStates.map(s => s.data),
+    loading: loading[toolName] || false,
+    error: errors[toolName] || null,
+    data: results[toolName] as TOutput | undefined,
+    reset
   };
 }
 
-export function useToolContext(initial?: Partial<ToolContext>): ToolContext {
+export function useToolContext(initial?: Partial<AUIContext>): AUIContext {
   const cacheRef = useRef(new Map<string, any>());
   
   return {
@@ -114,32 +133,4 @@ export function useToolContext(initial?: Partial<ToolContext>): ToolContext {
   };
 }
 
-export function ToolRenderer<TInput = any, TOutput = any>({ 
-  tool, 
-  input,
-  context,
-  fallback,
-  errorFallback,
-  loadingFallback 
-}: {
-  tool: Tool<TInput, TOutput>;
-  input?: TInput;
-  context?: ToolContext;
-  fallback?: React.ReactNode;
-  errorFallback?: (error: Error) => React.ReactNode;
-  loadingFallback?: React.ReactNode;
-}) {
-  const { execute, render, loading, error, data } = useTool(tool, { context });
-  
-  useEffect(() => {
-    if (input !== undefined) {
-      execute(input);
-    }
-  }, [input, execute]);
-
-  if (loading) return <>{loadingFallback || <div>Loading...</div>}</>;
-  if (error) return <>{errorFallback?.(error) || <div>Error: {error.message}</div>}</>;
-  if (!data) return <>{fallback || null}</>;
-  
-  return <>{render(input)}</>;
-}
+export type { AUIProviderProps };

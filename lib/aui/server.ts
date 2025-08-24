@@ -1,68 +1,94 @@
-// Server-side AUI for API routes
+import { Tool, aui, AUIContext } from './lantos-ultra';
 import { z } from 'zod';
-import { Tool, ToolContext } from './index';
 
-class ServerAUI {
-  private tools = new Map<string, Tool>();
-
-  tool(name: string): Tool {
-    const t = new Tool(name);
-    this.tools.set(name, t);
-    return t;
-  }
-
-  get(name: string): Tool | undefined {
-    return this.tools.get(name);
-  }
-
-  register(tool: Tool): this {
-    this.tools.set(tool.name, tool);
-    return this;
-  }
-
-  async execute<TInput = any, TOutput = any>(
-    name: string,
-    input: TInput,
-    ctx?: ToolContext
-  ): Promise<TOutput> {
-    const tool = this.get(name);
-    if (!tool) throw new Error(`Tool "${name}" not found`);
-    return await tool.run(input, ctx || this.createContext());
-  }
-
-  createContext(additions?: Partial<ToolContext>): ToolContext {
-    return {
-      cache: new Map(),
-      fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
-      ...additions,
-    };
-  }
-
-  getTools(): Tool[] { return Array.from(this.tools.values()); }
-  getToolNames(): string[] { return Array.from(this.tools.keys()); }
-  has(name: string): boolean { return this.tools.has(name); }
-  clear(): void { this.tools.clear(); }
-  remove(name: string): boolean { return this.tools.delete(name); }
+export interface ServerToolOptions {
+  requireAuth?: boolean;
+  rateLimit?: {
+    requests: number;
+    window: number; // in milliseconds
+  };
+  middleware?: (ctx: AUIContext) => Promise<void> | void;
 }
 
-const aui = new ServerAUI();
+export function createServerTool<TInput = any, TOutput = any>(
+  name: string,
+  schema: z.ZodType<TInput>,
+  handler: (params: { input: TInput; ctx: AUIContext }) => Promise<TOutput> | TOutput,
+  options?: ServerToolOptions
+): Tool<TInput, TOutput> {
+  const tool = aui
+    .tool(name)
+    .input(schema)
+    .execute(async ({ input, ctx }) => {
+      // Apply middleware
+      if (options?.middleware) {
+        await options.middleware(ctx!);
+      }
 
-// Register server-side tools
-const searchTool = aui
-  .tool('search')
-  .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => {
-    // Simulate database search
-    await new Promise(r => setTimeout(r, 200));
-    return {
-      results: [
-        { id: 1, title: `Server result for "${input.query}" #1`, score: 0.95 },
-        { id: 2, title: `Server result for "${input.query}" #2`, score: 0.87 },
-        { id: 3, title: `Server result for "${input.query}" #3`, score: 0.76 }
-      ]
-    };
+      // Check auth if required
+      if (options?.requireAuth && !ctx?.user) {
+        throw new Error('Authentication required');
+      }
+
+      // Execute handler
+      return await handler({ input, ctx: ctx! });
+    });
+
+  return tool;
+}
+
+export async function executeServerTool<TInput = any, TOutput = any>(
+  toolName: string,
+  input: TInput,
+  ctx?: Partial<AUIContext>
+): Promise<TOutput> {
+  const context = aui.createContext(ctx);
+  return await aui.execute(toolName, input, context);
+}
+
+export function registerServerTools(tools: Tool[]) {
+  tools.forEach(tool => {
+    if (!aui.has(tool.name)) {
+      aui.get(tool.name); // This will register the tool
+    }
   });
+}
 
-export { z } from 'zod';
-export { aui, Tool, type ToolContext };
-export default aui;
+export async function handleToolRequest(
+  request: Request
+): Promise<Response> {
+  try {
+    const { tool: toolName, input, context } = await request.json();
+    
+    const tool = aui.get(toolName);
+    if (!tool) {
+      return new Response(
+        JSON.stringify({ error: `Tool "${toolName}" not found` }),
+        { 
+          status: 404,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const ctx = aui.createContext(context);
+    const result = await tool.run(input, ctx);
+
+    return new Response(
+      JSON.stringify({ success: true, result }),
+      { 
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ error: message }),
+      { 
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}
