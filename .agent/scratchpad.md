@@ -1,88 +1,41 @@
 # AUI Implementation Scratchpad
 
-## Implementation Complete ✅
+## Working Notes
 
-### What was implemented:
-1. **Ultra-concise API patterns** in existing builder
-   - 2-method pattern: `.execute()` + `.render()`
-   - Single-letter shortcuts: `t()`, `i()`, `e()`, `r()`, `b()`
-   - Helper methods: `.run()`, `.handle()`, `.define()`
-
-2. **Convenience methods** in main AUI class:
-   - `aui.simple()` - Quick tool creation
-   - `aui.do()` - One-liner tools
-   - `aui.server()` - Server-only tools
-   - `aui.contextual()` - Context-aware tools
-   - `aui.ai()` - AI-optimized with retry/cache
-   - `aui.defineTools()` - Batch definition
-
-3. **Examples** (`/lib/aui/examples/lantos-concise.tsx`):
-   - Simple weather tool (2 methods)
-   - Complex search with caching
-   - UI control tools (theme, modal, layout)
-   - Calculator with shortcuts
-   - One-liner tools
-
-4. **Demo page** (`/app/aui/lantos-demo/page.tsx`):
-   - Interactive showcase of all patterns
-   - Live code examples
-   - Working demonstrations
-
-5. **Tests** (`/lib/aui/__tests__/lantos-concise.test.ts`):
-   - Comprehensive test coverage
-   - All patterns validated
-   - Type inference tests
-   - Error handling tests
-
-### Key Achievements:
-- ✅ Ultra-concise 2-method pattern
-- ✅ Full type safety with inference
-- ✅ Client/server execution
-- ✅ React component rendering
-- ✅ AI-optimized patterns
-- ✅ One-liner support
-- ✅ Batch definitions
-- ✅ Comprehensive tests
-
-### Design Philosophy:
-- **Simplicity first**: Start with 2 methods, add complexity only when needed
-- **Progressive enhancement**: Simple → Complex → AI-optimized
-- **Type safety**: Full TypeScript support throughout
-- **AI-ready**: Built for LLM tool calling
-- **Developer experience**: Shortcuts and helpers for rapid development
-
-### Code Patterns:
-
+### Current Focus
+Implementing the core AUI builder pattern with the requested API:
 ```tsx
-// Progression of conciseness:
-
-// 1. Simplest - one line
-aui.do('ping', () => 'pong')
-
-// 2. Simple - 2 methods  
-aui.simple('weather', schema, handler, renderer)
-
-// 3. Standard - chainable
-aui.tool('x').input(s).execute(h).render(r).build()
-
-// 4. Shortcuts - ultra-concise
-aui.t('x').i(s).e(h).r(r).b()
-
-// 5. Complex - with optimization
-aui.tool('x')
-  .input(schema)
-  .execute(serverHandler)
-  .clientExecute(clientHandler)
-  .render(component)
+// Simple tool - just 2 methods
+aui.tool('weather')
+  .input(z.object({ city: z.string() }))
+  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
   .build()
 
-// 6. AI-optimized
-aui.ai('x', { execute, retry: 3, cache: true })
+// Complex tool - adds client optimization
+aui.tool('search')
+  .input(z.object({ query: z.string() }))
+  .execute(async ({ input }) => db.search(input.query))
+  .clientExecute(async ({ input, ctx }) => {
+    const cached = ctx.cache.get(input.query);
+    return cached || ctx.fetch('/api/tools/search', { body: input });
+  })
+  .render(({ data }) => <SearchResults results={data} />)
+  .build()
 ```
 
-### Next Steps (Future):
-- Add telemetry/monitoring
-- Optimize bundle size
-- Add more AI control examples
-- Create documentation site
-- Add middleware support
+### Implementation Checklist
+- [ ] Create core types in lib/aui/types.ts
+- [ ] Build fluent builder in lib/aui/builder.ts
+- [ ] Add tool registry in lib/aui/registry.ts
+- [ ] Create server executor
+- [ ] Add client utilities
+- [ ] Build example tools
+- [ ] Add tests
+
+### Key Design Decisions
+1. Use Zod for runtime validation
+2. Fluent/chainable API
+3. Type inference throughout
+4. Optional client execution
+5. Built-in React rendering
