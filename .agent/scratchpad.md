@@ -1,107 +1,56 @@
 # AUI Development Scratchpad
 
 ## Quick Notes
-- The AUI system is already well-implemented with comprehensive features
-- Ultra-concise API methods are working (t, in, ex, out)
-- AI control tools provide full frontend/backend control capabilities
-- Test coverage appears comprehensive
+- Branch: lantos-aui
+- Main focus: Ultra-concise API for AI control
+- Key principle: Simplicity > Features
 
-## API Variations Discovered
+## Code Patterns Discovered
 
-### Pattern 1: Standard Builder
+### Current Implementation
 ```tsx
+// Simple pattern works well
 aui.tool('name')
   .input(schema)
   .execute(handler)
   .render(component)
   .build()
-```
 
-### Pattern 2: Ultra-Concise
-```tsx
-t('name')
-  .in(schema)
-  .ex(handler)
-  .out(renderer)
-  .build()
-```
-
-### Pattern 3: One-Liner
-```tsx
-defineTool('name', { input, execute, render, client })
-```
-
-### Pattern 4: Quick Mode
-```tsx
-aui.quick('name')
-  .in(schema)
-  .ex(handler)
-  .out(renderer)
-// Auto-builds!
-```
-
-### Pattern 5: Simple Helper
-```tsx
-aui.simple('name', schema, handler, renderer)
-```
-
-### Pattern 6: Batch Definition
-```tsx
-aui.defineTools({
-  tool1: { input, execute, render },
-  tool2: { input, execute, render }
+// AI-optimized pattern is good
+aui.ai('name', {
+  input: schema,
+  execute: handler,
+  retry: 3,
+  cache: true
 })
 ```
 
-## Technical Insights
+### Areas to Verify
+1. Client execution with context
+2. Registry persistence
+3. Type inference through chain
+4. Error handling in executors
 
-### Smart Parameter Detection
-The builder intelligently detects function signatures:
-- `(input) => result` - Simple form
-- `({ input }) => result` - Destructured form
-- `({ input, ctx }) => result` - With context
-
-### Dual Execution Model
-- Server execution is default and always available
-- Client execution is optional for optimization
-- Context provides cache, fetch, and session
-
-### Type Safety
-- Full TypeScript inference throughout
-- Zod schemas for runtime validation
-- Generic type parameters flow through builder chain
-
-## AI Control Capabilities
-
-### Frontend Control
-- DOM manipulation
-- Form filling and submission
-- Navigation and routing
-- State management
-
-### Backend Control
-- Database operations
-- Cache management
-- Queue operations
-- Storage handling
-- API calls with authentication
-
-## Testing Strategy
-- Unit tests for each component
-- Integration tests for full flow
-- API pattern tests for all variations
-- Example validation tests
+## Testing Ideas
+- Mock AI calling tools
+- Verify client/server split
+- Test error recovery
+- Validate type safety
 
 ## Performance Considerations
-- Client-side caching reduces server calls
-- Batch execution for multiple tools
-- Lazy loading of client components
-- Minimal bundle size with tree-shaking
+- Lazy load client executors
+- Cache tool definitions
+- Minimize bundle size
+- Tree-shake unused tools
 
-## Future Ideas
-- WebSocket support for real-time updates
-- GraphQL integration
-- Tool composition and pipelines
-- Visual builder UI
-- Analytics and monitoring
-- Marketplace for sharing tools
+## Questions to Address
+- How does AI discover available tools?
+- Should tools self-document?
+- Can tools compose/chain?
+- How to handle auth in tools?
+
+## Cleanup Tasks
+- Remove debug console.logs
+- Optimize imports
+- Tree-shake unused code
+- Minify production bundle
