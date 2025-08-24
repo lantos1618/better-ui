@@ -7,47 +7,52 @@ AUI is a powerful, ultra-concise API that enables AI assistants to control both 
 ```tsx
 import aui, { z } from '@/lib/aui';
 
-// Simplest tool - just 2 methods
+// Simple tool - just 2 methods (NO .build() needed!)
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
 
-// Register and use
-aui.register(simpleTool);
+// Tool is immediately ready to use!
+const result = await simpleTool.run({ city: 'NYC' });
 ```
 
 ## API Patterns
 
-### 1. Ultra-Concise One-Liner
+### 1. Simple Tool (2 methods minimum)
 ```tsx
-// Simplest possible tool
-aui.do('ping', () => 'pong');
-```
-
-### 2. Simple Tool with Input
-```tsx
-aui.tool('weather')
+const simpleTool = aui
+  .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
 ```
 
-### 3. Using Shorthand Methods
+### 2. Minimal Pattern (no input schema)
 ```tsx
-aui.t('calc')  // t = tool
-  .i(z.object({ a: z.number(), b: z.number() }))  // i = input
-  .e(({ a, b }) => a + b)  // e = execute
-  .r(result => <span>{result}</span>)  // r = render
-  .b();  // b = build
+const greetTool = aui
+  .tool('greet')
+  .execute(async ({ input }: { input: { name: string } }) => 
+    `Hello, ${input.name}!`
+  )
+  .render(({ data }) => <p>{data}</p>);
+```
+
+### 3. Using Shorthand
+```tsx
+// Use aui.t() instead of aui.tool()
+const calcTool = aui
+  .t('calc')
+  .input(z.object({ a: z.number(), b: z.number() }))
+  .execute(({ input }) => input.a + input.b)
+  .render(({ data }) => <span>Result: {data}</span>);
 ```
 
 ### 4. Complex Tool with Client Optimization
 ```tsx
-aui.tool('search')
+const searchTool = aui
+  .tool('search')
   .input(z.object({ query: z.string() }))
   .execute(async ({ input }) => {
     // Server-side database search
@@ -58,51 +63,18 @@ aui.tool('search')
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();
+  .render(({ data }) => <SearchResults results={data} />);
 ```
 
-### 5. AI-Optimized Tool
+### 5. Data-Only Pattern (no render)
 ```tsx
-// Built-in retry and caching for reliability
-aui.ai('apiCall', {
-  input: z.object({ endpoint: z.string() }),
-  execute: async ({ endpoint }) => {
-    // May fail - AI optimization handles retries
-    return await fetch(endpoint);
-  },
-  render: ({ data }) => <code>{data}</code>,
-  retry: 3,
-  cache: true
-});
-```
-
-## Helper Methods
-
-### `aui.simple()` - Quick tool creation
-```tsx
-aui.simple(
-  'greet',
-  z.object({ name: z.string() }),
-  ({ name }) => `Hello, ${name}!`,
-  msg => <h2>{msg}</h2>
-);
-```
-
-### `aui.defineTools()` - Batch definition
-```tsx
-const tools = aui.defineTools({
-  query: {
-    input: z.object({ sql: z.string() }),
-    execute: async ({ sql }) => db.query(sql),
-    render: ({ rows }) => <Table data={rows} />
-  },
-  insert: {
-    input: z.object({ table: z.string(), data: z.any() }),
-    execute: async ({ table, data }) => db.insert(table, data),
-    render: ({ id }) => <span>Inserted #{id}</span>
-  }
-});
+const apiTool = aui
+  .tool('api')
+  .input(z.object({ endpoint: z.string() }))
+  .execute(async ({ input }) => {
+    const response = await fetch(input.endpoint);
+    return response.json();
+  });
 ```
 
 ## AI Control Examples
@@ -115,59 +87,57 @@ const uiControlTool = aui
     action: z.enum(['theme', 'layout', 'modal']),
     value: z.any()
   }))
-  .clientExecute(async ({ input }) => {
+  .clientExecute(async ({ input, ctx }) => {
     // AI can control UI directly
     switch (input.action) {
       case 'theme':
         document.body.className = input.value;
         break;
       case 'modal':
-        showModal(input.value);
+        // Show modal logic
         break;
     }
     return { success: true };
   })
-  .build();
+  .render(({ data }) => <div>UI Updated: {data.success ? '✓' : '✗'}</div>);
 ```
 
 ### Backend Control
 ```tsx
-const backendTool = aui
-  .tool('backend')
+const dbTool = aui
+  .tool('database')
   .input(z.object({
-    service: z.enum(['database', 'cache', 'queue']),
-    operation: z.string(),
-    params: z.any()
+    query: z.string(),
+    params: z.array(z.any()).optional()
   }))
-  .serverOnly()  // Only runs on server
   .execute(async ({ input }) => {
-    // AI can control backend services
-    return await services[input.service][input.operation](input.params);
+    // AI can query database
+    return await db.query(input.query, input.params);
   })
-  .build();
+  .render(({ data }) => <DataTable rows={data} />);
 ```
 
 ## Method Reference
 
 ### Core Methods
-- `tool(name)` / `t(name)` - Create a new tool
-- `input(schema)` / `i(schema)` - Define input schema with Zod
-- `execute(handler)` / `e(handler)` - Define server execution
-- `render(component)` / `r(component)` - Define React rendering
-- `build()` / `b()` - Build the tool
+- `aui.tool(name)` - Create a new tool
+- `aui.t(name)` - Shorthand for tool()
+- `tool.input(schema)` - Define input schema with Zod
+- `tool.execute(handler)` - Define server execution
+- `tool.clientExecute(handler)` - Optional client-side execution
+- `tool.render(component)` - Define React rendering
 
-### Advanced Methods
-- `clientExecute(handler)` / `c(handler)` - Client-side execution
-- `serverOnly()` - Restrict to server execution
-- `do(name, handler)` - One-liner tool creation
-- `ai(name, config)` - AI-optimized tool with retry/cache
+### Runtime Methods
+- `tool.run(input, context?)` - Execute the tool
+- `aui.get(name)` - Get a registered tool
+- `aui.execute(name, input, context?)` - Execute by name
+- `aui.list()` - List all tool names
 
-### Helper Methods
-- `simple()` - Quick tool with input/execute/render
-- `defineTools()` - Define multiple tools at once
-- `register(tool)` - Register a tool
-- `getTool(name)` - Get a registered tool
-- `getTools()` - List all registered tools
+### Key Features
+- **No .build() needed** - Tools auto-finalize via Proxy
+- **Type inference** - Full TypeScript support
+- **Dual execution** - Server + optional client
+- **Context support** - Cache, fetch, user, session
 
 ## Architecture
 
@@ -189,11 +159,11 @@ const backendTool = aui
 
 ## Best Practices
 
-1. **Start Simple**: Use `do()` for simple tools, add complexity as needed
-2. **Use Shorthand**: `t()`, `i()`, `e()`, `r()`, `b()` for conciseness
+1. **Start Simple**: Just 2 methods (execute + render)
+2. **No .build()**: Tools auto-finalize, no build step needed
 3. **Add Client Execution**: Only when you need caching or offline support
-4. **AI Optimization**: Use `ai()` for unreliable operations
-5. **Type Safety**: Always use Zod schemas for inputs
+4. **Type Safety**: Use Zod schemas for validation
+5. **Keep Tools Focused**: Each tool should do one thing well
 
 ## Installation
 
@@ -204,7 +174,7 @@ import aui from '@/lib/aui';
 
 ## Examples
 
-See `/app/aui/page.tsx` for a complete showcase of all patterns.
+See `/app/aui-demo/page.tsx` for a complete working demo with interactive examples.
 
 ## License
 

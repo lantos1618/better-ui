@@ -1,59 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ToolExecutor } from '@/lib/aui/server/executor';
-import { globalRegistry } from '@/lib/aui/core/registry';
-import { registerDefaultTools } from '@/lib/aui/tools';
-import type { ToolCall } from '@/lib/aui';
-
-// Register default tools on startup
-registerDefaultTools();
-
-const executor = new ToolExecutor({
-  context: {
-    cache: new Map(),
-    fetch: globalThis.fetch,
-  },
-  registry: globalRegistry,
-});
+import aui from '@/lib/aui';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { tool: toolName, input } = await request.json();
     
-    if (body.toolCalls) {
-      const toolCalls: ToolCall[] = body.toolCalls;
-      const results = await executor.executeBatch(toolCalls);
-      return NextResponse.json({ results });
-    }
-    
-    if (!body.toolCall) {
+    if (!toolName) {
       return NextResponse.json(
-        { error: 'Missing toolCall or toolCalls in request body' },
+        { error: 'Tool name is required' },
         { status: 400 }
       );
     }
 
-    const toolCall: ToolCall = body.toolCall;
-    const result = await executor.execute(toolCall);
+    const tool = aui.get(toolName);
+    if (!tool) {
+      return NextResponse.json(
+        { error: `Tool "${toolName}" not found` },
+        { status: 404 }
+      );
+    }
 
-    return NextResponse.json(result);
+    const result = await tool.run(input);
+    
+    return NextResponse.json({ 
+      success: true,
+      tool: toolName,
+      result 
+    });
   } catch (error) {
-    console.error('Tool execution error:', error);
+    console.error('AUI execution error:', error);
     return NextResponse.json(
-      { error: 'Failed to execute tool', details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: error instanceof Error ? error.message : 'Execution failed',
+        details: error
+      },
       { status: 500 }
     );
   }
 }
 
 export async function GET() {
-  const tools = globalRegistry.list().map(tool => ({
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema._def,
-    outputSchema: tool.outputSchema?._def,
-    isServerOnly: tool.isServerOnly,
-    metadata: tool.metadata,
-  }));
-
-  return NextResponse.json({ tools, count: tools.length });
+  const tools = aui.list();
+  return NextResponse.json({ 
+    tools,
+    count: tools.length 
+  });
 }
