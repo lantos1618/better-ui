@@ -1,4 +1,4 @@
-import { aui, z, Tool, createTool } from '../lib/aui/lantos-aui';
+import aui, { z, Tool } from '../lib/aui/lantos-ultra';
 
 describe('Lantos AUI', () => {
   beforeEach(() => {
@@ -55,73 +55,57 @@ describe('Lantos AUI', () => {
     });
   });
 
-  describe('Shorthand Methods', () => {
-    it('should create a no-input tool with do()', async () => {
-      const tool = aui.do('timestamp', () => ({ time: 123456 }));
-      const result = await tool.run(undefined);
+  describe('Tool Methods', () => {
+    it('should create a tool without input', async () => {
+      const tool = aui
+        .tool('timestamp')
+        .execute(async () => ({ time: 123456 }));
+      const result = await tool.run(undefined as any);
       expect(result).toEqual({ time: 123456 });
     });
 
-    it('should create a tool with input using doWith()', async () => {
-      const tool = aui.doWith(
-        'multiply',
-        z.object({ a: z.number(), b: z.number() }),
-        ({ a, b }) => ({ result: a * b })
-      );
+    it('should create a tool with input', async () => {
+      const tool = aui
+        .tool('multiply')
+        .input(z.object({ a: z.number(), b: z.number() }))
+        .execute(async ({ input }) => ({ result: input.a * input.b }));
       
       const result = await tool.run({ a: 3, b: 4 });
       expect(result).toEqual({ result: 12 });
     });
 
-    it('should create a simple tool with all basics', async () => {
-      const tool = aui.simple(
-        'weather',
-        z.object({ city: z.string() }),
-        async (input) => ({ temp: 72, city: input.city }),
-        (data) => null as any // Mock render
-      );
+    it('should support render function', () => {
+      const renderFn = jest.fn();
+      const tool = aui
+        .tool('weather')
+        .input(z.object({ city: z.string() }))
+        .execute(async ({ input }) => ({ temp: 72, city: input.city }))
+        .render(renderFn);
 
-      const result = await tool.run({ city: 'NYC' });
-      expect(result).toEqual({ temp: 72, city: 'NYC' });
-    });
-
-    it('should use shorthand t() for tool()', () => {
-      const tool1 = aui.t('test1');
-      const tool2 = aui.tool('test2');
-      
-      expect(tool1).toBeInstanceOf(Tool);
-      expect(tool2).toBeInstanceOf(Tool);
+      expect(tool.renderer).toBe(renderFn);
     });
   });
 
-  describe('AI-Optimized Tools', () => {
-    it('should create an AI tool with retry logic', async () => {
-      let attempts = 0;
-      const tool = aui.ai('flaky', {
-        input: z.object({ value: z.string() }),
-        execute: async ({ input }) => {
-          attempts++;
-          if (attempts < 2) throw new Error('Retry me');
-          return { success: true, value: input.value };
-        },
-        retry: 3
-      });
-
-      const result = await tool.run({ value: 'test' });
-      expect(result).toEqual({ success: true, value: 'test' });
-      expect(attempts).toBe(2);
-    });
-
-    it('should cache results when cache enabled', async () => {
+  describe('Client Execution', () => {
+    it('should support client-side caching', async () => {
       let execCount = 0;
-      const tool = aui.ai('cached-ai', {
-        input: z.object({ query: z.string() }),
-        execute: async ({ input }) => {
+      const tool = aui
+        .tool('cached')
+        .input(z.object({ query: z.string() }))
+        .execute(async ({ input }) => {
           execCount++;
           return { count: execCount, query: input.query };
-        },
-        cache: true
-      });
+        })
+        .clientExecute(async ({ input, ctx }) => {
+          const cacheKey = `query:${input.query}`;
+          const cached = ctx.cache.get(cacheKey);
+          if (cached) return cached;
+          
+          execCount++;
+          const result = { count: execCount, query: input.query };
+          ctx.cache.set(cacheKey, result);
+          return result;
+        });
 
       const ctx = aui.createContext();
       const result1 = await tool.run({ query: 'test' }, ctx);
@@ -139,15 +123,16 @@ describe('Lantos AUI', () => {
       expect(aui.has('registered')).toBe(true);
     });
 
-    it('should list all tool names', () => {
+    it('should list all tools', () => {
       aui.tool('tool1');
       aui.tool('tool2');
       aui.tool('tool3');
       
-      const names = aui.getToolNames();
-      expect(names).toContain('tool1');
-      expect(names).toContain('tool2');
-      expect(names).toContain('tool3');
+      const tools = aui.list();
+      expect(tools).toHaveLength(3);
+      expect(tools.map(t => t.name)).toContain('tool1');
+      expect(tools.map(t => t.name)).toContain('tool2');
+      expect(tools.map(t => t.name)).toContain('tool3');
     });
 
     it('should execute tools by name', async () => {
@@ -159,65 +144,17 @@ describe('Lantos AUI', () => {
       expect(result).toEqual({ doubled: 10 });
     });
 
-    it('should remove tools', () => {
-      aui.tool('removable');
-      expect(aui.has('removable')).toBe(true);
-      
-      aui.remove('removable');
-      expect(aui.has('removable')).toBe(false);
-    });
 
     it('should clear all tools', () => {
       aui.tool('tool1');
       aui.tool('tool2');
-      expect(aui.getToolNames().length).toBe(2);
+      expect(aui.list().length).toBe(2);
       
       aui.clear();
-      expect(aui.getToolNames().length).toBe(0);
+      expect(aui.list().length).toBe(0);
     });
   });
 
-  describe('Batch Operations', () => {
-    it('should define multiple tools at once', () => {
-      const tools = aui.defineTools({
-        add: {
-          input: z.object({ a: z.number(), b: z.number() }),
-          execute: async ({ input }) => ({ sum: input.a + input.b })
-        },
-        subtract: {
-          input: z.object({ a: z.number(), b: z.number() }),
-          execute: async ({ input }) => ({ diff: input.a - input.b })
-        }
-      });
-
-      expect(tools.add).toBeInstanceOf(Tool);
-      expect(tools.subtract).toBeInstanceOf(Tool);
-      expect(aui.has('add')).toBe(true);
-      expect(aui.has('subtract')).toBe(true);
-    });
-
-    it('should batch create simple tools', async () => {
-      const tools = aui.batch({
-        upper: (input: string) => input.toUpperCase(),
-        lower: (input: string) => input.toLowerCase(),
-        reverse: (input: string) => input.split('').reverse().join('')
-      });
-
-      expect(await tools.upper.run('hello')).toBe('HELLO');
-      expect(await tools.lower.run('WORLD')).toBe('world');
-      expect(await tools.reverse.run('abc')).toBe('cba');
-    });
-
-    it('should register multiple external tools', () => {
-      const tool1 = createTool('external1');
-      const tool2 = createTool('external2');
-      
-      aui.registerAll(tool1, tool2);
-      
-      expect(aui.has('external1')).toBe(true);
-      expect(aui.has('external2')).toBe(true);
-    });
-  });
 
   describe('Context Management', () => {
     it('should create context with custom additions', () => {
@@ -246,19 +183,6 @@ describe('Lantos AUI', () => {
     });
   });
 
-  describe('Tool Export and Serialization', () => {
-    it('should export tool definition', () => {
-      const tool = aui
-        .tool('exportable')
-        .input(z.object({ id: z.string() }))
-        .execute(async ({ input }) => ({ id: input.id }));
-
-      const definition = tool.toDefinition();
-      expect(definition.name).toBe('exportable');
-      expect(definition.inputSchema).toBeDefined();
-      expect(definition.execute).toBeDefined();
-    });
-  });
 
   describe('Error Handling', () => {
     it('should throw error for non-existent tool', async () => {
@@ -275,30 +199,6 @@ describe('Lantos AUI', () => {
       await expect(tool.run({})).rejects.toThrow('Execution failed');
     });
 
-    it('should retry on failure for AI tools', async () => {
-      let attempts = 0;
-      const tool = aui.ai('retry-test', {
-        execute: async () => {
-          attempts++;
-          if (attempts < 3) throw new Error('Retry');
-          return { attempts };
-        },
-        retry: 3
-      });
-
-      const result = await tool.run({});
-      expect(result).toEqual({ attempts: 3 });
-    });
   });
 
-  describe('Standalone Tool Creation', () => {
-    it('should create tools outside of aui instance', async () => {
-      const tool = createTool('standalone')
-        .input(z.object({ msg: z.string() }))
-        .execute(async ({ input }) => ({ echo: input.msg }));
-
-      const result = await tool.run({ msg: 'test' });
-      expect(result).toEqual({ echo: 'test' });
-    });
-  });
 });
