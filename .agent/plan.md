@@ -1,38 +1,19 @@
-# AUI Implementation Plan
-
-## Objective
-Implement a concise and elegant AUI (Assistant-UI) system that enables AI to control both frontend and backend in Next.js with Vercel AI SDK.
-
-## Core Requirements ✅
-1. **Concise API** - Simple chainable methods without .build()
-2. **Tool Pattern** - aui.tool().input().execute().render()
-3. **Client Optimization** - Optional clientExecute for caching
-4. **AI Control** - Enable AI to manipulate UI and backend
-
-## Implementation Strategy
-
-### Phase 1: Core System ✅
-- AUITool class with fluent API
-- Input validation with Zod
-- Execute handlers for server-side
-- Render components for UI
-
-### Phase 2: Client Optimization ✅
-- ClientExecute for client-side caching
-- Context with cache, fetch, session
-- Middleware support for cross-cutting concerns
-
-### Phase 3: AI Integration ✅
-- Vercel AI SDK compatibility
-- Tool discovery and registry
-- AI assistant system
-- Permission controls
-
-### Phase 4: Examples & Testing
-- Weather tool (simple example)
-- Search tool (complex with caching)
-- Comprehensive test suite
-- Demo pages
+# Merge and Maintenance Plan
 
 ## Current Status
-System is complete and working. Creating fresh examples as requested.
+- On main branch (clean)
+- lantos-aui branch exists locally and remotely
+- Recent commits show AUI system implementation completed
+
+## Plan
+1. Pull latest changes from remote
+2. Check if lantos-aui has any changes not in main
+3. Merge if needed
+4. Run tests and build
+5. Push to remote
+6. Clean up branches if appropriate
+
+## Notes
+- Following DRY & KISS principles
+- Maintaining simplicity and elegance
+- Using git best practices
