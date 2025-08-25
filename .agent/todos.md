@@ -1,10 +1,11 @@
 # Todos
 
 ## High Priority
-1. [ ] Push 7 local commits to remote (requires GitHub auth - run `gh auth login`)
+1. [ ] Push 8 local commits to remote (requires GitHub auth - run `gh auth login`)
 
 ## Low Priority
 2. [ ] Consider refactoring test suite to properly clean up async operations
+3. [ ] Migrate from deprecated `next lint` to ESLint CLI (Next.js 16 preparation)
 
 ## Completed (2025-08-25)
 - [x] Pull latest changes from remote (already up to date)
