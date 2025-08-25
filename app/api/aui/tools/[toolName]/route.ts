@@ -4,10 +4,10 @@ import aui from '@/lib/aui';
 // Server-side tool execution handler
 export async function POST(
   request: NextRequest,
-  { params }: { params: { tool: string } }
+  { params }: { params: { toolName: string } }
 ) {
   try {
-    const { tool: toolName } = params;
+    const { toolName } = params;
     const input = await request.json();
     
     // Get the tool from the registry
@@ -40,7 +40,7 @@ export async function POST(
     });
     
   } catch (error: any) {
-    console.error(`Tool execution error for ${params.tool}:`, error);
+    console.error(`Tool execution error for ${params.toolName}:`, error);
     
     // Handle validation errors
     if (error.name === 'ZodError') {
@@ -67,9 +67,9 @@ export async function POST(
 // Get tool metadata
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tool: string } }
+  { params }: { params: { toolName: string } }
 ) {
-  const { tool: toolName } = params;
+  const { toolName } = params;
   
   const tool = aui.get(toolName);
   
