@@ -123,7 +123,7 @@ export class AUITool<TInput = any, TOutput = any> {
     return {
       name: this.config.name,
       description: this.config.description,
-      tags: this.config.tags,
+      tags: this.config.tags || [],
       hasInput: !!this.config.inputSchema,
       hasExecute: !!this.config.executeHandler,
       hasClientExecute: !!this.config.clientHandler,

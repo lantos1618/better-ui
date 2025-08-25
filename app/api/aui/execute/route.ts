@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import aui from '@/lib/aui';
+import '@/lib/aui/examples/simple-tools'; // Register tools
 
 export async function POST(request: NextRequest) {
   try {
     const { tool: toolName, input } = await request.json();
     
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Tool execution endpoint - server implementation',
-      tool: toolName,
-      receivedInput: input
-    });
+    const tool = aui.get(toolName);
+    if (!tool) {
+      return NextResponse.json(
+        { error: `Tool "${toolName}" not found` },
+        { status: 404 }
+      );
+    }
+    
+    const result = await tool.run(input, aui.createContext({ isServer: true }));
+    
+    return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
