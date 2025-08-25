@@ -105,7 +105,8 @@ describe('AUI Complete System Tests', () => {
       const rateLimitedTool = createAITool('rate-limited', {
         rateLimit: {
           requestsPerMinute: 2
-        }
+        },
+        audit: true  // Enable audit to track execution for rate limiting
       })
         .input(z.object({ id: z.number() }))
         .execute(async ({ input }) => ({ id: input.id }));
