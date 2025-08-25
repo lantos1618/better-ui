@@ -1,9 +1,9 @@
-# Todos - Lantos AUI Implementation
+# Todos - Better-ui Implementation
 
 ## Completed ✅
 1. ✅ Explore codebase structure and existing implementations
-2. ✅ Review and enhance existing AUI implementation  
-3. ✅ Create enhanced AUI with server/client separation
+2. ✅ Review and enhance existing ui implementation  
+3. ✅ Create enhanced ui with server/client separation
 4. ✅ Add server/client execution separation for Next.js
 5. ✅ Implement caching and optimization features
 6. ✅ Create example tools (weather and search)
@@ -15,7 +15,7 @@
 10. 🔄 Commit and push changes
 
 ## Future Tasks 📋
-- [ ] mark and sweep things to clean up, DRY KISS principles. Rename lantos to baui or better-ui use consistancy!
+- [ ] mark and sweep things to clean up, DRY KISS principles. Rename lantos to bui or better-ui use consistancy!
 - [ ] Add WebSocket support for real-time tool updates
 - [ ] Create server actions for Next.js App Router
 - [ ] Build plugin system for extending functionality
