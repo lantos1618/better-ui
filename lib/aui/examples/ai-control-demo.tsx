@@ -154,7 +154,7 @@ const submitFormTool = aui
   })
   .render(({ data }) => (
     <div className="p-2 bg-purple-50 rounded">
-      <p className="text-sm">📝 Form submitted: {data.formId}</impede>
+      <p className="text-sm">📝 Form submitted: {data.formId}</p>
     </div>
   ));
 
