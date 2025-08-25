@@ -2,7 +2,7 @@
 
 ## High Priority
 1. [ ] Fix critical security vulnerability in next.js - update to 14.2.32+
-2. [ ] Push 3 local commits to remote (requires GitHub auth)
+2. [ ] Push 4 local commits to remote (requires GitHub auth - run `gh auth login`)
 
 ## Medium Priority  
 3. [ ] Fix React Hook warnings in useAUIToolEnhanced.ts (4 warnings)
