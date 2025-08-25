@@ -1,16 +1,6 @@
 # AUI (Assistant-UI) System
 
-A concise and elegant tool system for AI-controlled frontend and backend operations in Next.js/Vercel applications.
-
-## Features
-
-- ✅ **Clean API** - No `.build()` methods, just chainable calls
-- ✅ **Type-safe** - Full TypeScript support with Zod validation
-- ✅ **Client/Server** - Optimized execution for both environments
-- ✅ **AI Control** - Enable AI assistants to control UI and backend
-- ✅ **Caching** - Built-in context and caching support
-- ✅ **Middleware** - Composable middleware for auth, logging, etc.
-- ✅ **React Integration** - Hooks and providers for React apps
+A concise, type-safe tool system for AI assistants to control frontend and backend operations in Next.js/Vercel applications.
 
 ## Quick Start
 
@@ -38,14 +28,14 @@ const complexTool = aui
   .render(({ data }) => <SearchResults results={data} />);
 ```
 
-## Features
+## Core Features
 
-- **Clean API**: No `.build()` methods, tools return directly
+- **Concise API**: Define tools in 2-4 method calls
 - **Type Safety**: Full TypeScript support with Zod validation
-- **Client Optimization**: Optional client-side execution with caching
-- **Server Integration**: Works seamlessly with Next.js server actions
-- **Middleware Support**: Add authentication, logging, rate limiting
-- **React Integration**: Built-in hooks and providers for React components
+- **Dual Execution**: Run on server (default) or client (optimized)
+- **React Integration**: Built-in rendering and hooks
+- **Context Management**: Caching, sessions, and state
+- **AI-Ready**: Designed for AI assistant control
 
 ## API Methods
 
@@ -125,10 +115,22 @@ const databaseTool = aui
   });
 ```
 
+## AI Control Examples
+
+The system includes comprehensive examples for AI control in `/lib/aui/examples/ai-control-full.tsx`:
+
+- **Database Operations**: Query and manipulate data
+- **UI Control**: Manage modals, navigation, themes
+- **File System**: Read/write files (server-side)
+- **API Integration**: Call external APIs with CORS proxy
+- **Real-time Streams**: WebSocket/SSE connections
+- **Form Generation**: Dynamic form creation
+- **Analytics**: Event tracking and analysis
+
 ## Testing
 
 ```bash
-npm test lib/aui/__tests__/aui-tools.test.ts
+npm test -- --testPathPattern=aui
 ```
 
-All 22 tests passing ✓ with comprehensive coverage
+All 63 tests passing ✅
