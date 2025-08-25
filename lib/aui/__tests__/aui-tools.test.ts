@@ -212,7 +212,7 @@ describe('AUI Tool System', () => {
         .tag('test', 'demo')
         .input(z.object({ data: z.string() }))
         .execute(async ({ input }) => ({ echo: input.data }))
-        .clientExecute(async ({ input }) => ({ client: input.data }))
+        .clientExecute(async ({ input }) => ({ echo: input.data }))
         .middleware(async ({ next }) => next());
 
       const json = tool.toJSON();

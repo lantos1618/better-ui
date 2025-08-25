@@ -282,9 +282,9 @@ describe('AI Control Tools', () => {
       );
       
       expect(result.action).toBe('list');
-      expect(result.processes).toHaveLength(2);
-      expect(result.processes[0]).toHaveProperty('pid');
-      expect(result.processes[0]).toHaveProperty('status');
+      expect(result.processes!).toHaveLength(2);
+      expect(result.processes![0]).toHaveProperty('pid');
+      expect(result.processes![0]).toHaveProperty('status');
     });
   });
 

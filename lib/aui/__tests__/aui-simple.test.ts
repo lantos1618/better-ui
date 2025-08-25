@@ -72,10 +72,18 @@ describe('AUI Simple API', () => {
       .execute(async () => 'server result')
       .clientExecute(async () => 'client result');
     
-    const serverResult = await tool.run({}, { isServer: true });
+    const serverResult = await tool.run({}, { 
+      isServer: true,
+      cache: new Map(),
+      fetch: globalThis.fetch
+    });
     expect(serverResult).toBe('server result');
     
-    const clientResult = await tool.run({}, { isServer: false });
+    const clientResult = await tool.run({}, { 
+      isServer: false,
+      cache: new Map(),
+      fetch: globalThis.fetch
+    });
     expect(clientResult).toBe('client result');
   });
 
