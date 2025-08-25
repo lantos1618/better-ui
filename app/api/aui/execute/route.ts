@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleToolRequest } from '@/lib/aui/server';
 import aui from '@/lib/aui';
 
 // Import and register example tools
-import '@/lib/aui/examples';
+import '@/lib/aui/tools/examples';
 
 export async function POST(request: NextRequest) {
   try {
