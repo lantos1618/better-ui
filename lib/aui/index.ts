@@ -138,6 +138,15 @@ export {
   type AIConversationMessage
 } from './ai-assistant';
 
+// Vercel AI SDK integration
+export {
+  convertToVercelTool,
+  createVercelTools,
+  createAUIToolFromVercel,
+  executeToolWithStreaming,
+  vercelAIIntegration
+} from './vercel-ai';
+
 // Example tools - exported separately to avoid circular dependencies
 
 export default aui;
