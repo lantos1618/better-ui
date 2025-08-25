@@ -1,4 +1,4 @@
-import aui, { z } from '@/lib/aui/lantos-aui';
+import aui, { z } from '@/lib/aui';
 
 // ============================================
 // MINIMAL API - Just what you asked for

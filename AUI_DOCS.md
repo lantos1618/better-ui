@@ -1,11 +1,11 @@
-# Lantos AUI - Assistant UI System
+# AUI - Assistant UI System
 
 Ultra-concise tool system for AI control of Next.js/Vercel applications.
 
 ## Quick Start
 
 ```tsx
-import aui from '@/lib/aui/lantos-aui';
+import aui from '@/lib/aui';
 
 // Simple tool - 2 methods minimum
 const weather = aui
@@ -83,7 +83,7 @@ aui.batch({
 
 ### Provider Setup
 ```tsx
-import { AUIProvider } from '@/lib/aui/lantos/client';
+import { AUIProvider } from '@/lib/aui/client';
 
 export default function RootLayout({ children }) {
   return (
@@ -96,7 +96,7 @@ export default function RootLayout({ children }) {
 
 ### Using Tools in Components
 ```tsx
-import { useTool } from '@/lib/aui/lantos/client';
+import { useTool } from '@/lib/aui/client';
 
 function MyComponent() {
   const { execute, loading, data, error } = useTool(weatherTool);
@@ -116,7 +116,7 @@ function MyComponent() {
 
 ### Tool Renderer Component
 ```tsx
-import { ToolRenderer } from '@/lib/aui/lantos/client';
+import { ToolRenderer } from '@/lib/aui/client';
 
 <ToolRenderer 
   tool={searchTool}
@@ -129,8 +129,8 @@ import { ToolRenderer } from '@/lib/aui/lantos/client';
 
 ### API Route Handler
 ```tsx
-// app/api/aui/lantos/execute/route.ts
-import aui from '@/lib/aui/lantos-aui';
+// app/api/aui/execute/route.ts
+import aui from '@/lib/aui';
 
 export async function POST(request) {
   const { tool, input } = await request.json();
@@ -210,7 +210,7 @@ const dbControl = aui.ai('database', {
 ## Testing
 
 ```tsx
-import aui from '@/lib/aui/lantos-aui';
+import aui from '@/lib/aui';
 
 describe('AUI Tools', () => {
   it('should execute simple tool', async () => {
@@ -229,7 +229,7 @@ describe('AUI Tools', () => {
 
 ### TypeScript Types
 ```tsx
-import type { InferToolInput, InferToolOutput } from '@/lib/aui/lantos-aui';
+import type { InferToolInput, InferToolOutput } from '@/lib/aui';
 
 const myTool = aui.tool('example')...;
 

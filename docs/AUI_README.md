@@ -9,7 +9,7 @@ Ultra-concise API for AI-controlled frontend/backend operations in Next.js/Verce
 ## Quick Start
 
 ```tsx
-import aui, { z } from '@/lib/aui/lantos-aui';
+import aui, { z } from '@/lib/aui';
 
 // Simple tool - just 2 methods
 const simpleTool = aui

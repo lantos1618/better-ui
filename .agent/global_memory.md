@@ -109,7 +109,7 @@ Each execution receives a context object:
 ✅ React rendering integration
 ✅ Demo page with examples
 ✅ Comprehensive test suite
-✅ Cleaned up all lantos-named files
+✅ Cleaned up all references to old naming
 
-## Branch: lantos-aui
-Despite the branch name, the system is now called AUI (Assistant UI) throughout the codebase.
+## Branch: aui
+The system is called AUI (Assistant UI) throughout the codebase.

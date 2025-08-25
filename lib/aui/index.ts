@@ -45,10 +45,10 @@ export class AUITool<TInput = any, TOutput = any> {
   async run(input: TInput, ctx?: AUIContext): Promise<TOutput> {
     const validated = this.config.inputSchema ? this.config.inputSchema.parse(input) : input;
     
-    const isClient = typeof window !== 'undefined';
     const context = ctx || this.createDefaultContext();
     
-    if (isClient && this.config.clientHandler) {
+    // Use clientHandler if it exists and we have a context (indicating client-side execution)
+    if (ctx && this.config.clientHandler) {
       return await Promise.resolve(this.config.clientHandler({ input: validated, ctx: context }));
     }
     
@@ -69,6 +69,16 @@ export class AUITool<TInput = any, TOutput = any> {
   get name() { return this.config.name; }
   get schema() { return this.config.inputSchema; }
   get renderer() { return this.config.renderHandler; }
+  
+  toJSON() {
+    return {
+      name: this.config.name,
+      hasInput: !!this.config.inputSchema,
+      hasExecute: !!this.config.executeHandler,
+      hasClientExecute: !!this.config.clientHandler,
+      hasRender: !!this.config.renderHandler
+    };
+  }
 }
 
 export class AUI {
@@ -106,6 +116,10 @@ export class AUI {
     return Array.from(this.tools.values());
   }
 
+  list(): AUITool[] {
+    return this.getTools();
+  }
+
   getToolNames(): string[] {
     return Array.from(this.tools.keys());
   }
@@ -129,4 +143,5 @@ export type InferToolInput<T> = T extends AUITool<infer I, any> ? I : never;
 export type InferToolOutput<T> = T extends AUITool<any, infer O> ? O : never;
 
 export { z } from 'zod';
+export { AUITool };
 export default aui;

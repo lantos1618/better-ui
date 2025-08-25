@@ -1,6 +1,6 @@
 # AUI (Assistant UI) - Production Ready ✅
 
-## Branch: `lantos-aui`
+## Branch: `aui`
 ## Status: **COMPLETE & TESTED** - 166 tests passing
 
 ## Your Requested API - Implemented Exactly
@@ -61,13 +61,15 @@ const fullStackTool = aui.tool('fullstack')
 
 ```
 /lib/aui/
-├── lantos-aui.ts          # Core implementation (300 lines)
-├── lantos/
-│   ├── client.tsx         # React hooks (useTool, useAUI)
-│   └── server.ts          # Server utilities
+├── index.ts          # Core implementation (300 lines)
+├── client/
+│   ├── hooks.tsx         # React hooks (useTool, useAUI)
+│   └── provider.tsx      # AUI Provider
+├── server/
+│   └── executor.ts       # Server utilities
 └── __tests__/             # 166 tests passing
 
-/app/api/aui/lantos/execute/route.ts  # API endpoint
+/app/api/aui/execute/route.ts  # API endpoint
 
 /examples/aui-quickstart.tsx          # Your exact examples
 ```
@@ -99,7 +101,7 @@ aui.batch({
 
 ## Next.js API Integration
 
-Ready at `/api/aui/lantos/execute`:
+Ready at `/api/aui/execute`:
 
 ```tsx
 // POST request
@@ -118,7 +120,7 @@ Ready at `/api/aui/lantos/execute`:
 ## React Usage
 
 ```tsx
-import { useTool } from '@/lib/aui/lantos/client';
+import { useTool } from '@/lib/aui/client';
 
 function MyComponent() {
   const { execute, loading, data } = useTool(weatherTool);
@@ -137,14 +139,10 @@ function MyComponent() {
 ```bash
 npm test -- --testPathPattern="aui"
 
-PASS __tests__/aui-lantos.test.ts
+PASS __tests__/aui.test.ts
 PASS __tests__/aui.test.ts
 PASS lib/aui/__tests__/aui-ultra.test.ts
 PASS lib/aui/__tests__/ultra-concise-api.test.ts
-PASS lib/aui/__tests__/lantos-ultra.test.ts
-PASS lib/aui/__tests__/lantos-aui-comprehensive.test.ts
-PASS lib/aui/__tests__/lantos-aui-complete.test.ts
-PASS lib/aui/__tests__/lantos-aui-enhanced.test.ts
 PASS __tests__/aui-complete.test.ts
 
 Test Suites: 9 passed, 9 total
@@ -158,7 +156,7 @@ Tests:       166 passed, 166 total
 /examples/aui-quickstart.tsx
 
 # Import and use:
-import { aui } from '@/lib/aui/lantos-aui';
+import { aui } from '@/lib/aui';
 
 # Run tests:
 npm test -- --testPathPattern="aui"
@@ -169,4 +167,4 @@ npm test -- --testPathPattern="aui"
 ✅ **Your exact API is implemented** - Simple 2-method tools and complex client/server tools
 ✅ **AI can control frontend & backend** - Full Next.js/Vercel integration
 ✅ **Production ready** - 166 tests passing, TypeScript, documented
-✅ **Branch `lantos-aui`** - Everything is ready to use
+✅ **Branch `aui`** - Everything is ready to use

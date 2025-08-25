@@ -16,7 +16,7 @@ AUI is a concise, elegant tool system for Next.js/Vercel that enables AI assista
 ### 1. Simple Tool Pattern (2 methods minimum)
 
 ```tsx
-import aui from '@/lib/aui/lantos-aui';
+import aui from '@/lib/aui';
 import { z } from 'zod';
 
 // Simple tool - just input + execute
@@ -104,7 +104,7 @@ aui.batch({
 ```tsx
 'use client';
 
-import { useTool } from '@/lib/aui/lantos/client';
+import { useTool } from '@/lib/aui/client';
 
 function WeatherComponent() {
   const { execute, loading, data, error } = useTool(weatherTool);
@@ -131,7 +131,7 @@ function WeatherComponent() {
 ### Using Provider
 
 ```tsx
-import { AUIProvider, ToolRenderer } from '@/lib/aui/lantos/client';
+import { AUIProvider, ToolRenderer } from '@/lib/aui/client';
 
 function App() {
   return (
@@ -193,7 +193,7 @@ const dbTool = aui
 
 ```tsx
 // app/api/aui/execute/route.ts
-import { executeServerTool } from '@/lib/aui/lantos/server';
+import { executeServerTool } from '@/lib/aui/server';
 
 export async function POST(request: Request) {
   const { toolName, input } = await request.json();
@@ -394,9 +394,9 @@ if (isClient) {
 ## Next Steps
 
 1. Explore the [examples directory](/examples/aui-patterns.tsx)
-2. Check out the [showcase page](/app/lantos-aui-showcase/page.tsx)
+2. Check out the [showcase page](/app/aui/page.tsx)
 3. Read the [full documentation](/lib/aui/README.md)
-4. Try the [interactive demo](/app/lantos-aui-full-demo/page.tsx)
+4. Try the [interactive demo](/app/aui/page.tsx)
 
 ## Summary
 

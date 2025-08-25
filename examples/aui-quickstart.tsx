@@ -1,4 +1,4 @@
-import { aui } from '@/lib/aui/lantos-aui';
+import aui from '@/lib/aui';
 import { z } from 'zod';
 import React from 'react';
 
