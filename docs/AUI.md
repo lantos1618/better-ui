@@ -1,264 +1,345 @@
 # AUI (Assistant-UI) System
 
-A concise and elegant API for creating AI-controlled tools that can execute on both frontend and backend in Next.js/Vercel applications.
+A concise, powerful tool system for AI control of frontend and backend operations in Next.js/Vercel applications.
 
-## Core Philosophy
-
-AUI follows a simple, chainable API pattern without any build steps. Tools are immediately usable after definition:
+## Quick Start
 
 ```tsx
-const tool = aui
-  .tool('name')
-  .input(schema)
-  .execute(handler)
-  .render(component)
-```
-
-## API Patterns
-
-### Simple Tool (2 methods minimum)
-
-The simplest possible tool only needs `execute` and `render`:
-
-```tsx
+// Simple tool - just 2 methods
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
   .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-```
 
-### Complex Tool (with client optimization)
-
-Add `clientExecute` only when you need client-side features like caching, offline support, or optimistic updates:
-
-```tsx
+// Complex tool - adds client optimization
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
   .execute(async ({ input }) => db.search(input.query))
   .clientExecute(async ({ input, ctx }) => {
-    // Check cache first
+    // Only when you need caching, offline, etc.
     const cached = ctx.cache.get(input.query);
-    if (cached) return cached;
-    
-    // Fetch from server
-    const result = await ctx.fetch('/api/tools/search', { 
-      method: 'POST',
-      body: JSON.stringify(input) 
-    });
-    
-    // Cache result
-    ctx.cache.set(input.query, result);
-    return result;
+    return cached || ctx.fetch('/api/tools/search', { body: input });
   })
   .render(({ data }) => <SearchResults results={data} />)
 ```
 
-## Core Methods
+## Core Concepts
 
-### `.tool(name: string)`
-Creates a new tool with the given name. Returns a chainable AUITool instance.
+### 1. Tool Creation
+Tools are created using the fluent API pattern with method chaining:
 
-### `.input(schema: ZodType)`
-Defines the input schema using Zod. This enables:
-- Type safety
-- Runtime validation
-- Automatic error handling
+```typescript
+const tool = aui
+  .tool('name')           // Create tool with unique name
+  .input(schema)          // Define input validation with Zod
+  .execute(handler)       // Server/default execution logic
+  .clientExecute(handler) // Optional: Client-side optimization
+  .render(component)      // Optional: React component for rendering
+```
 
-### `.execute(handler: Function)`
-Defines the server-side execution logic. This runs in the API route context and has access to:
-- Database connections
-- File system
-- Environment variables
-- Server-only APIs
+### 2. Execution Context
+Every tool execution receives a context object with useful utilities:
 
-### `.clientExecute(handler: Function)` (optional)
-Defines client-side execution logic. Use this for:
-- Caching strategies
-- Offline support
-- Optimistic updates
-- Direct browser API access
-
-### `.render(component: Function)`
-Defines how to render the tool's output. Receives props:
-- `data`: The execution result
-- `input`: The original input (optional)
-- `loading`: Loading state (optional)
-- `error`: Error object if failed (optional)
-
-## Context Object
-
-The context object (`ctx`) provides utilities for tool execution:
-
-```tsx
+```typescript
 interface AUIContext {
-  cache: Map<string, any>;      // In-memory cache
-  fetch: typeof fetch;           // Fetch function
-  user?: any;                    // User data
-  session?: any;                 // Session data
-  env?: Record<string, string>;  // Environment variables
+  cache: Map<string, any>      // In-memory cache
+  fetch: typeof fetch           // Fetch API
+  user?: any                    // User info
+  session?: any                 // Session data
+  env?: Record<string, string>  // Environment variables
+  headers?: HeadersInit         // HTTP headers
+  cookies?: Record<string, string> // Cookies
+  isServer?: boolean           // Server/client indicator
 }
+```
+
+### 3. Tool Execution
+Tools can be executed directly or through the AUI instance:
+
+```typescript
+// Direct execution
+const result = await tool.run(input, context);
+
+// Through AUI instance
+const result = await aui.execute('toolName', input, context);
+```
+
+## AI Control Features
+
+### Database Operations
+```typescript
+const dbTool = aui
+  .tool('database')
+  .input(z.object({
+    operation: z.enum(['find', 'create', 'update', 'delete']),
+    collection: z.string(),
+    data: z.any()
+  }))
+  .execute(async ({ input }) => {
+    // Perform database operations
+    return db[input.operation](input.collection, input.data);
+  })
+```
+
+### DOM Manipulation
+```typescript
+const domTool = aui
+  .tool('dom')
+  .input(z.object({
+    selector: z.string(),
+    action: z.enum(['click', 'type', 'scroll'])
+  }))
+  .clientExecute(async ({ input }) => {
+    const element = document.querySelector(input.selector);
+    // Perform DOM operations
+  })
+```
+
+### API Requests
+```typescript
+const apiTool = aui
+  .tool('api')
+  .input(z.object({
+    url: z.string().url(),
+    method: z.enum(['GET', 'POST', 'PUT', 'DELETE']),
+    body: z.any().optional()
+  }))
+  .execute(async ({ input }) => {
+    return fetch(input.url, {
+      method: input.method,
+      body: JSON.stringify(input.body)
+    }).then(r => r.json());
+  })
 ```
 
 ## Server Integration
 
-### API Route (`/api/aui/execute`)
-
-```tsx
+### API Route Setup
+```typescript
+// app/api/aui/execute/route.ts
+import { NextRequest, NextResponse } from 'next/server';
 import aui from '@/lib/aui';
 
 export async function POST(request: NextRequest) {
-  const { tool: toolName, input } = await request.json();
-  
-  const tool = aui.get(toolName);
-  if (!tool) {
-    return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
-  }
-
-  const data = await tool.run(input);
-  return NextResponse.json({ success: true, data });
+  const { tool, input } = await request.json();
+  const result = await aui.execute(tool, input);
+  return NextResponse.json({ data: result });
 }
 ```
 
-## Client Usage
-
-### Direct Execution
-
-```tsx
-const tool = aui.get('weather');
-const result = await tool.run({ city: 'Tokyo' }, ctx);
+### Batch Execution
+```typescript
+// Execute multiple tools in parallel
+const results = await Promise.all([
+  weatherTool.run({ city: 'Tokyo' }),
+  searchTool.run({ query: 'AI' }),
+  dbTool.run({ operation: 'find', collection: 'users' })
+]);
 ```
 
-### With React Hook
+## Client Components
 
+### Using Tools in React
 ```tsx
+import { useState } from 'react';
+import aui from '@/lib/aui';
+
 function MyComponent() {
-  const { execute, data, loading, error } = useAUITool('weather');
+  const [data, setData] = useState(null);
+  
+  const handleSearch = async (query: string) => {
+    const tool = aui.get('search');
+    const result = await tool.run({ query });
+    setData(result);
+  };
   
   return (
-    <button onClick={() => execute({ city: 'Tokyo' })}>
-      Get Weather
+    <div>
+      {data && tool.renderer && tool.renderer({ data })}
+    </div>
+  );
+}
+```
+
+### With Provider
+```tsx
+import { AUIProvider, useAUITool } from '@/lib/aui';
+
+function App() {
+  return (
+    <AUIProvider>
+      <SearchComponent />
+    </AUIProvider>
+  );
+}
+
+function SearchComponent() {
+  const { execute, loading, data } = useAUITool('search');
+  
+  return (
+    <button onClick={() => execute({ query: 'test' })}>
+      Search
     </button>
   );
 }
 ```
 
-## Built-in Tools
+## Advanced Features
 
-AUI comes with several example tools:
+### Middleware
+```typescript
+const tool = aui
+  .tool('protected')
+  .middleware(async ({ input, ctx, next }) => {
+    // Authentication check
+    if (!ctx.user) throw new Error('Unauthorized');
+    return next();
+  })
+  .execute(async ({ input }) => {
+    // Protected operation
+  });
+```
 
-- **weather**: Get weather for a city
-- **search**: Search with caching
-- **calculator**: Basic math operations
-- **database**: CRUD operations
-- **filesystem**: File operations
-- **api**: HTTP requests
-- **process**: Command execution
-- **state**: State management
-- **notification**: User notifications
-- **userProfile**: User data with caching
+### Tags and Discovery
+```typescript
+// Tag tools for organization
+const tool = aui
+  .tool('analytics')
+  .tag('metrics', 'reporting')
+  .describe('Track user analytics')
+  .execute(handler);
 
-## Type Safety
+// Find tools by tag
+const metricTools = aui.findByTag('metrics');
+```
 
-AUI provides full TypeScript support with type inference:
+### Type Safety
+```typescript
+import { InferToolInput, InferToolOutput } from '@/lib/aui';
 
-```tsx
-// Infer input and output types
-type WeatherInput = InferToolInput<typeof weatherTool>;
-type WeatherOutput = InferToolOutput<typeof weatherTool>;
+const tool = aui.tool('typed')
+  .input(z.object({ id: z.number() }))
+  .execute(async ({ input }) => ({ name: 'User' }));
+
+type Input = InferToolInput<typeof tool>;   // { id: number }
+type Output = InferToolOutput<typeof tool>;  // { name: string }
 ```
 
 ## Best Practices
 
-1. **Keep it Simple**: Start with just `execute` and `render`
-2. **Add Complexity Gradually**: Only add `clientExecute` when needed
-3. **Use Context Wisely**: Leverage the context for caching and state
-4. **Type Everything**: Use Zod schemas for robust validation
-5. **Handle Errors**: Always handle potential failures gracefully
+1. **Keep Tools Focused**: Each tool should do one thing well
+2. **Use Type Safety**: Always define input schemas with Zod
+3. **Optimize with clientExecute**: Add client execution for caching and offline support
+4. **Render Components**: Provide render methods for visual feedback
+5. **Handle Errors**: Use try-catch blocks and provide meaningful error messages
+6. **Context Aware**: Leverage context for caching, authentication, and state
 
-## Example: Building a Custom Tool
+## Examples
 
-```tsx
-// Define a tool for GitHub API
-const githubTool = aui
-  .tool('github')
-  .input(z.object({
-    owner: z.string(),
-    repo: z.string(),
-    endpoint: z.enum(['issues', 'pulls', 'commits'])
+### Weather Tool
+```typescript
+const weatherTool = aui
+  .tool('weather')
+  .input(z.object({ 
+    city: z.string(),
+    units: z.enum(['celsius', 'fahrenheit']).optional()
   }))
   .execute(async ({ input }) => {
     const response = await fetch(
-      `https://api.github.com/repos/${input.owner}/${input.repo}/${input.endpoint}`
+      `https://api.weather.com/v1/weather?city=${input.city}`
     );
     return response.json();
   })
-  .clientExecute(async ({ input, ctx }) => {
-    const key = `${input.owner}/${input.repo}/${input.endpoint}`;
-    const cached = ctx.cache.get(key);
-    
-    if (cached && Date.now() - cached.timestamp < 60000) {
-      return cached.data;
-    }
-    
-    const data = await ctx.fetch('/api/aui/execute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool: 'github', input })
-    }).then(r => r.json());
-    
-    ctx.cache.set(key, { data, timestamp: Date.now() });
-    return data;
+  .render(({ data }) => (
+    <WeatherCard city={data.city} temp={data.temp} />
+  ));
+```
+
+### Form Submission
+```typescript
+const formTool = aui
+  .tool('contactForm')
+  .input(z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+    message: z.string().min(10)
+  }))
+  .execute(async ({ input }) => {
+    // Send email
+    await sendEmail(input);
+    return { success: true };
   })
-  .render(({ data, loading }) => {
-    if (loading) return <div>Loading...</div>;
-    
-    return (
-      <div className="space-y-2">
-        {data.map(item => (
-          <div key={item.id} className="p-2 border rounded">
-            <h3>{item.title || item.message}</h3>
-            <p className="text-sm text-gray-600">
-              by {item.user?.login || item.author?.name}
-            </p>
-          </div>
-        ))}
-      </div>
-    );
+  .clientExecute(async ({ input, ctx }) => {
+    // Show optimistic UI update
+    return ctx.fetch('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }).then(r => r.json());
   });
 ```
 
-## Architecture Benefits
-
-- **Simplicity**: Clean, minimal API surface
-- **Flexibility**: Works in any Next.js environment
-- **Performance**: Optional client-side optimization
-- **Type Safety**: Full TypeScript and Zod integration
-- **AI-Ready**: Designed for LLM tool calling
-- **Testable**: Easy to test in isolation
-
-## Migration from Other Systems
-
-If migrating from other tool systems, AUI provides a simpler alternative:
-
-```tsx
-// Before (complex systems)
-const tool = new ToolBuilder()
-  .setName('weather')
-  .setSchema(schema)
-  .setHandler(handler)
-  .setRenderer(renderer)
-  .build(); // Extra build step
-
-// After (AUI)
-const tool = aui
-  .tool('weather')
-  .input(schema)
-  .execute(handler)
-  .render(renderer); // Ready immediately
+### Database Query
+```typescript
+const queryTool = aui
+  .tool('userQuery')
+  .input(z.object({
+    filters: z.object({
+      role: z.string().optional(),
+      active: z.boolean().optional()
+    })
+  }))
+  .execute(async ({ input }) => {
+    return db.users.find(input.filters);
+  })
+  .clientExecute(async ({ input, ctx }) => {
+    // Check cache first
+    const cacheKey = JSON.stringify(input);
+    const cached = ctx.cache.get(cacheKey);
+    if (cached) return cached;
+    
+    const result = await ctx.fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }).then(r => r.json());
+    
+    ctx.cache.set(cacheKey, result);
+    return result;
+  });
 ```
 
-## Summary
+## Migration Guide
 
-AUI provides a concise, powerful way to create AI-controlled tools that can seamlessly operate across your entire Next.js stack. With just 2-4 method calls, you can create sophisticated tools that handle both server and client execution with built-in rendering.
+If you're migrating from a previous tool system:
+
+1. Remove any `.build()` method calls - tools are ready to use immediately
+2. Replace tool registries with `aui.tool()` calls
+3. Update execution calls to use `.run()` or `aui.execute()`
+4. Add type safety with Zod schemas
+5. Leverage clientExecute for performance optimization
+
+## API Reference
+
+### AUI Instance Methods
+- `tool(name)` - Create a new tool
+- `get(name)` - Get existing tool
+- `execute(name, input, ctx)` - Execute a tool
+- `getTools()` - List all tools
+- `findByTag(tag)` - Find tools by tag
+- `clear()` - Clear all tools
+- `remove(name)` - Remove a specific tool
+
+### Tool Methods
+- `input(schema)` - Define input validation
+- `execute(handler)` - Set execution handler
+- `clientExecute(handler)` - Set client-side handler
+- `render(component)` - Set render component
+- `middleware(fn)` - Add middleware
+- `describe(text)` - Add description
+- `tag(...tags)` - Add tags
+- `run(input, ctx)` - Execute the tool
+
+## Support
+
+For questions and issues, visit the [GitHub repository](https://github.com/your-repo/aui).
