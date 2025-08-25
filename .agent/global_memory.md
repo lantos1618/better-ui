@@ -12,18 +12,17 @@ A Next.js application with AUI (Assistant-UI) system for AI control of frontend 
 - AI control system with permissions
 
 ## Recent Activity (2025-08-25 - Latest Update)
-- Fixed failing rate limit test in aui-complete.test.ts (added audit: true)
-- All tests now passing (143/143 tests)
-- Latest local commit: 9ed8bea docs: Update .agent metadata after general checkup
-- Repository status: 6 commits ahead of origin/main (need push access/authentication)
+- Updated Next.js from 14.2.0 to 15.5.0 (fixed critical security vulnerability)
+- Fixed all React hook warnings in useAUIToolEnhanced.ts
+- Updated API routes for Next.js 15 compatibility (async params)
+- Removed deprecated swcMinify from next.config.js
+- All tests passing (143/143 tests)
+- Build: Successful production build with Next.js 15
 - TypeScript check: All types valid (npm run type-check)
-- Build: Successful production build
-- Linting: 4 warnings in useAUIToolEnhanced.ts (missing dependency warnings)
-- Security: 1 critical vulnerability in next.js (<=14.2.29, needs update to 14.2.32+)
-- General checkup completed successfully
-- .agent metadata files updated
+- Latest local commit: 89eb2df docs: Update .agent metadata after general checkup
+- Repository status: 7 commits ahead of origin/main (need push access/authentication)
 - GitHub authentication needed for push (gh auth login required)
-- All systems operational, codebase healthy
+- All systems operational, codebase healthy and secure
 
 ## Repository Structure
 ```

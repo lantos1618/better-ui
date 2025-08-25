@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import aui, { AUIContext } from '@/lib/aui';
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     toolName: string;
-  };
+  }>;
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const { toolName } = params;
+    const { toolName } = await params;
     const input = await request.json();
     
     // Get the tool from registry
@@ -51,7 +51,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       output: result
     });
   } catch (error) {
-    console.error(`Tool ${params.toolName} execution error:`, error);
+    const { toolName } = await params;
+    console.error(`Tool ${toolName} execution error:`, error);
     return NextResponse.json(
       { 
         error: 'Tool execution failed',
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
 // Get tool information
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { toolName } = params;
+  const { toolName } = await params;
   const tool = aui.getTool(toolName);
   
   if (!tool) {

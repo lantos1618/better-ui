@@ -74,7 +74,7 @@ export function useAUIToolEnhanced<TInput = any, TOutput = any>(
   // Handle loading state changes
   useEffect(() => {
     options.onLoadingChange?.(loading);
-  }, [loading, options.onLoadingChange]);
+  }, [loading, options]);
   
   // Get cache key for input
   const getCacheKey = useCallback((input: TInput): string => {
@@ -83,7 +83,7 @@ export function useAUIToolEnhanced<TInput = any, TOutput = any>(
       return options.cacheKey(input);
     }
     return options.cacheKey;
-  }, [options.cacheKey]);
+  }, [options]);
   
   // Check cache
   const checkCache = useCallback((input: TInput): TOutput | null => {
@@ -137,7 +137,7 @@ export function useAUIToolEnhanced<TInput = any, TOutput = any>(
       
       throw error;
     }
-  }, [tool, options.context, options.retryCount, options.retryDelay]);
+  }, [tool, options]);
   
   // Main execute function
   const execute = useCallback(async (input: TInput): Promise<TOutput> => {
@@ -197,10 +197,7 @@ export function useAUIToolEnhanced<TInput = any, TOutput = any>(
     checkCache,
     executeWithRetry,
     setCache,
-    options.onSuccess,
-    options.onError,
-    options.pollingInterval,
-    options.pollingCondition
+    options
   ]);
   
   // Debounced execute
@@ -272,7 +269,7 @@ export function useAUIToolEnhanced<TInput = any, TOutput = any>(
     if (options.autoExecute && options.autoExecuteInput) {
       finalExecute(options.autoExecuteInput);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [finalExecute, options.autoExecute, options.autoExecuteInput]);
   
   return {
     execute: finalExecute,
