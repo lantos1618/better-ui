@@ -12,16 +12,13 @@ export const weatherTool = aui
     condition: 'Sunny',
     humidity: 65
   }))
-  .render(({ data }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-blue-50 rounded-lg">
-        <h3 className="text-lg font-semibold">{data.city}</h3>
-        <p className="text-2xl font-bold">{data.temp}°F</p>
-        <p className="text-sm text-gray-600">{data.condition} • {data.humidity}% humidity</p>
-      </div>
-    );
-  });
+  .render(({ data }) => (
+    <div className="p-4 bg-blue-50 rounded-lg">
+      <h3 className="text-lg font-semibold">{data.city}</h3>
+      <p className="text-2xl font-bold">{data.temp}°F</p>
+      <p className="text-sm text-gray-600">{data.condition} • {data.humidity}% humidity</p>
+    </div>
+  ));
 
 // Complex search tool - adds client optimization
 export const searchTool = aui
@@ -61,7 +58,7 @@ export const searchTool = aui
   .render(({ data, loading, error }) => {
     if (loading) return <div className="animate-pulse">Searching...</div>;
     if (error) return <div className="text-red-500">Error: {error.message}</div>;
-    if (!data) return null;
+    if (!data) return <div className="text-gray-400">No data</div>;
     
     return (
       <div className="space-y-3">
@@ -97,15 +94,12 @@ export const calculatorTool = aui
       expression: `${input.a} ${input.op} ${input.b}`
     };
   })
-  .render(({ data }) => {
-    if (!data) return null;
-    return (
-      <div className="p-3 bg-gray-50 rounded-lg font-mono">
-        <span className="text-gray-600">{data.expression} =</span>
-        <span className="ml-2 text-xl font-bold">{data.result}</span>
-      </div>
-    );
-  });
+  .render(({ data }) => (
+    <div className="p-3 bg-gray-50 rounded-lg font-mono">
+      <span className="text-gray-600">{data?.expression || ''} =</span>
+      <span className="ml-2 text-xl font-bold">{data?.result || 0}</span>
+    </div>
+  ));
 
 // Data fetcher tool with both server and client execution
 export const dataFetcherTool = aui
@@ -158,10 +152,9 @@ export const dataFetcherTool = aui
   })
   .render(({ data, loading }) => {
     if (loading) return <div className="animate-pulse">Fetching data...</div>;
-    if (!data) return null;
     return (
       <pre className="p-3 bg-gray-900 text-green-400 rounded-lg overflow-auto">
-        {JSON.stringify(data, null, 2)}
+        {data ? JSON.stringify(data, null, 2) : 'No data'}
       </pre>
     );
   });

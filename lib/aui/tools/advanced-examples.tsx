@@ -72,17 +72,14 @@ export const databaseTool = aui
     
     return { batched: true, operation: input.operation };
   })
-  .render(({ data }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-purple-50 rounded-lg">
-        <h4 className="font-semibold mb-2">Database Result</h4>
-        <pre className="text-xs bg-white p-2 rounded">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
-    );
-  });
+  .render(({ data }) => (
+    <div className="p-4 bg-purple-50 rounded-lg">
+      <h4 className="font-semibold mb-2">Database Result</h4>
+      <pre className="text-xs bg-white p-2 rounded">
+        {data ? JSON.stringify(data, null, 2) : 'No data'}
+      </pre>
+    </div>
+  ));
 
 // File system operations tool - allows AI to read/write files
 export const fileSystemTool = aui
@@ -121,18 +118,15 @@ export const fileSystemTool = aui
         throw new Error(`Unknown operation: ${input.operation}`);
     }
   })
-  .render(({ data, input }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-yellow-50 rounded-lg">
-        <h4 className="font-semibold mb-2">File System: {input?.operation}</h4>
-        <code className="text-xs text-gray-600">{input?.path}</code>
-        <pre className="mt-2 text-xs bg-white p-2 rounded">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
-    );
-  });
+  .render(({ data, input }) => (
+    <div className="p-4 bg-yellow-50 rounded-lg">
+      <h4 className="font-semibold mb-2">File System: {input?.operation}</h4>
+      <code className="text-xs text-gray-600">{input?.path}</code>
+      <pre className="mt-2 text-xs bg-white p-2 rounded">
+        {data ? JSON.stringify(data, null, 2) : 'No data'}
+      </pre>
+    </div>
+  ));
 
 // API integration tool - allows AI to make HTTP requests
 export const apiTool = aui
@@ -195,24 +189,21 @@ export const apiTool = aui
       }).then(r => r.json());
     }
   })
-  .render(({ data, input }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-green-50 rounded-lg">
-        <h4 className="font-semibold mb-2">
-          {input?.method} {input?.url}
-        </h4>
-        <div className="text-sm text-gray-600 mb-2">
-          Status: {data.status} {data.statusText}
-        </div>
-        <pre className="text-xs bg-white p-2 rounded overflow-auto max-h-64">
-          {typeof data.data === 'string' 
-            ? data.data 
-            : JSON.stringify(data.data, null, 2)}
-        </pre>
+  .render(({ data, input }) => (
+    <div className="p-4 bg-green-50 rounded-lg">
+      <h4 className="font-semibold mb-2">
+        {input?.method} {input?.url}
+      </h4>
+      <div className="text-sm text-gray-600 mb-2">
+        Status: {data?.status || 'N/A'} {data?.statusText || ''}
       </div>
-    );
-  });
+      <pre className="text-xs bg-white p-2 rounded overflow-auto max-h-64">
+        {data ? (typeof data.data === 'string' 
+          ? data.data 
+          : JSON.stringify(data.data, null, 2)) : 'No data'}
+      </pre>
+    </div>
+  ));
 
 // Process execution tool - allows AI to run commands
 export const processTool = aui
@@ -234,21 +225,18 @@ export const processTool = aui
       duration: Math.floor(Math.random() * 1000)
     };
   })
-  .render(({ data, input }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-sm">
-        <div className="text-gray-400 mb-2">$ {input?.command} {input?.args?.join(' ')}</div>
-        {data.stdout && <div className="whitespace-pre">{data.stdout}</div>}
-        {data.stderr && <div className="text-red-400 whitespace-pre">{data.stderr}</div>}
-        {data.exitCode !== undefined && (
-          <div className="text-gray-400 mt-2">
-            Exit code: {data.exitCode} | Duration: {data.duration}ms
-          </div>
-        )}
-      </div>
-    );
-  });
+  .render(({ data, input }) => (
+    <div className="p-4 bg-gray-900 text-green-400 rounded-lg font-mono text-sm">
+      <div className="text-gray-400 mb-2">$ {input?.command} {input?.args?.join(' ')}</div>
+      {data?.stdout && <div className="whitespace-pre">{data.stdout}</div>}
+      {data?.stderr && <div className="text-red-400 whitespace-pre">{data.stderr}</div>}
+      {data?.exitCode !== undefined && (
+        <div className="text-gray-400 mt-2">
+          Exit code: {data.exitCode} | Duration: {data?.duration || 0}ms
+        </div>
+      )}
+    </div>
+  ));
 
 // State management tool - allows AI to manage application state
 export const stateTool = aui
@@ -316,18 +304,15 @@ export const stateTool = aui
         }).then(r => r.json());
     }
   })
-  .render(({ data, input }) => {
-    if (!data) return null;
-    return (
-      <div className="p-4 bg-indigo-50 rounded-lg">
-        <h4 className="font-semibold mb-2">State: {input?.action}</h4>
-        {input?.key && <code className="text-sm text-gray-600">{input.key}</code>}
-        <pre className="mt-2 text-xs bg-white p-2 rounded">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      </div>
-    );
-  });
+  .render(({ data, input }) => (
+    <div className="p-4 bg-indigo-50 rounded-lg">
+      <h4 className="font-semibold mb-2">State: {input?.action}</h4>
+      {input?.key && <code className="text-sm text-gray-600">{input.key}</code>}
+      <pre className="mt-2 text-xs bg-white p-2 rounded">
+        {data ? JSON.stringify(data, null, 2) : 'No data'}
+      </pre>
+    </div>
+  ));
 
 // Notification tool - allows AI to send notifications
 export const notificationTool = aui
@@ -385,7 +370,6 @@ export const notificationTool = aui
     return notification;
   })
   .render(({ data }) => {
-    if (!data) return null;
     const colors = {
       info: 'bg-blue-100 text-blue-800 border-blue-200',
       success: 'bg-green-100 text-green-800 border-green-200',
@@ -393,11 +377,13 @@ export const notificationTool = aui
       error: 'bg-red-100 text-red-800 border-red-200'
     };
     
+    const colorClass = data ? colors[data.type as keyof typeof colors] : colors.info;
+    
     return (
-      <div className={`p-4 rounded-lg border ${colors[data.type as keyof typeof colors]}`}>
-        <h4 className="font-semibold">{data.title}</h4>
-        <p className="mt-1">{data.message}</p>
-        {data.action && (
+      <div className={`p-4 rounded-lg border ${colorClass}`}>
+        <h4 className="font-semibold">{data?.title || 'Notification'}</h4>
+        <p className="mt-1">{data?.message || 'No message'}</p>
+        {data?.action && (
           <button className="mt-2 text-sm underline">
             {data.action.label}
           </button>

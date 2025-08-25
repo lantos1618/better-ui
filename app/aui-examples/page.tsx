@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { weatherTool, searchTool, calculatorTool, userProfileTool } from '@/lib/aui/tools/examples';
+import { weatherTool, searchTool, calculatorTool, userProfileTool } from '@/lib/aui/examples';
 import aui from '@/lib/aui';
 
 export default function AUIExamplesPage() {
@@ -9,7 +9,7 @@ export default function AUIExamplesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [calcA, setCalcA] = useState(10);
   const [calcB, setCalcB] = useState(5);
-  const [calcOp, setCalcOp] = useState<'add' | 'subtract' | 'multiply' | 'divide'>('add');
+  const [calcOp, setCalcOp] = useState<'+' | '-' | '*' | '/'>('*');
   const [userId, setUserId] = useState('123');
   
   const [results, setResults] = useState<Record<string, any>>({});
@@ -101,10 +101,10 @@ export default function AUIExamplesPage() {
             onChange={(e) => setCalcOp(e.target.value as any)}
             className="px-3 py-2 border rounded"
           >
-            <option value="add">+</option>
-            <option value="subtract">-</option>
-            <option value="multiply">×</option>
-            <option value="divide">÷</option>
+            <option value="+">+</option>
+            <option value="-">-</option>
+            <option value="*">×</option>
+            <option value="/">÷</option>
           </select>
           <input
             type="number"
@@ -113,7 +113,7 @@ export default function AUIExamplesPage() {
             className="px-3 py-2 border rounded w-24"
           />
           <button
-            onClick={() => runTool('calculator', { a: calcA, b: calcB, operation: calcOp })}
+            onClick={() => runTool('calculator', { a: calcA, b: calcB, op: calcOp })}
             disabled={loading.calculator}
             className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
           >
