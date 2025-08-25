@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchTool } from '@/lib/aui/tools.tsx';
 
 export async function POST(request: NextRequest) {
   try {
-    const input = await request.json();
+    const { query, limit = 10 } = await request.json();
     
-    // Execute the search tool on the server
-    const result = await searchTool.run(input, {
-      cache: new Map(),
-      fetch: global.fetch,
-      isServer: true
-    });
+    // Simulate database search on server
+    const results = Array.from({ length: Math.min(limit, 5) }, (_, i) => ({
+      id: `server-result-${i}`,
+      title: `${query} result ${i + 1}`,
+      description: `Server-side search result for "${query}"`,
+      relevance: 1 - (i * 0.1),
+      timestamp: new Date().toISOString()
+    }));
     
-    return NextResponse.json(result);
+    // Simulate processing time
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    return NextResponse.json(results);
   } catch (error) {
     console.error('Search tool error:', error);
     return NextResponse.json(
