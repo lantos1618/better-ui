@@ -1,16 +1,16 @@
 'use client';
 
-import { aui } from '../index';
+import { useState } from 'react';
 import { z } from 'zod';
-import React from 'react';
+import aui from '@/lib/aui/lantos';
+import { useAUITool, useAUI } from '@/lib/aui/lantos/hooks';
 
-// Simple tool - just 2 methods (execute + render)
+// Simple tool - just 2 methods (NO .build() required!)
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
 
 // Complex tool - adds client optimization
 const complexTool = aui
@@ -25,14 +25,14 @@ const complexTool = aui
   })
   .clientExecute(async ({ input, ctx }) => {
     // Only when you need caching, offline, etc.
-    const cached = ctx.cache?.get(input.query);
+    const cached = ctx.cache.get(input.query);
     if (cached) return cached;
     
     const result = await ctx.fetch('/api/tools/search', { 
       method: 'POST',
       body: JSON.stringify(input) 
     });
-    ctx.cache?.set(input.query, result);
+    ctx.cache.set(input.query, result);
     return result;
   })
   .render(({ data }) => (
@@ -42,97 +42,67 @@ const complexTool = aui
         {data.results.map((r, i) => <li key={i}>{r}</li>)}
       </ul>
     </div>
-  ))
-  .build();
+  ));
 
-// Even simpler - using aui.simple()
-const pingTool = aui.simple(
-  'ping',
-  z.object({ message: z.string() }),
-  async ({ message }) => ({ response: `Pong: ${message}` }),
-  ({ response }) => <div>{response}</div>
-);
-
-// Ultra-concise one-liner
-const timestampTool = aui.do('timestamp', () => ({ time: new Date().toISOString() }));
-
-// AI-optimized tool with retry and caching
-const aiTool = aui.ai('smart-search', {
-  input: z.object({ query: z.string() }),
-  execute: async ({ query }) => {
-    // Simulated AI processing
-    return { answer: `AI response for: ${query}` };
-  },
-  render: ({ answer }) => <div className="text-green-600">{answer}</div>,
-  retry: 3,
-  cache: true,
-  timeout: 5000
-});
-
-// Batch definition for multiple related tools
-const uiTools = aui.defineTools({
-  toggleTheme: {
-    input: z.object({ theme: z.enum(['light', 'dark']) }),
-    execute: async ({ theme }) => ({ newTheme: theme }),
-    render: ({ newTheme }) => <div>Theme changed to: {newTheme}</div>
-  },
-  showModal: {
-    input: z.object({ title: z.string(), content: z.string() }),
-    execute: async ({ title, content }) => ({ title, content, shown: true }),
-    render: ({ title, content }) => (
-      <div className="p-4 bg-white shadow-lg rounded">
-        <h2 className="text-xl font-bold">{title}</h2>
-        <p>{content}</p>
-      </div>
-    )
-  }
-});
-
-// Export all tools for demo
+// Export tools for demo
 export const lantosTools = {
   simpleTool,
-  complexTool,
-  pingTool,
-  timestampTool,
-  aiTool,
-  ...uiTools
+  complexTool
 };
 
 // Demo component
 export function LantosAUIDemo() {
-  const [results, setResults] = React.useState<any[]>([]);
-
-  const runTool = async (tool: any, input: any) => {
-    const result = await tool.execute({ input });
-    setResults(prev => [...prev, { tool: tool.name, data: result }]);
-  };
-
+  const [city, setCity] = useState('San Francisco');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const weather = useAUITool(simpleTool);
+  const search = useAUITool(complexTool);
+  
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold">Lantos AUI Demo</h1>
+    <div className="container mx-auto p-8 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8">Lantos AUI - Ultra-Concise API</h1>
       
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">Simple Tool Pattern</h2>
-        <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
-{`const simpleTool = aui
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold mb-4">Simple Tool Pattern</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm mb-4">
+{`// Simple tool - just 2 methods (NO .build() required!)
+const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();`}
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)`}
         </pre>
-        <button 
-          onClick={() => runTool(simpleTool, { city: 'San Francisco' })}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          Run Weather Tool
-        </button>
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Enter city name"
+            className="px-3 py-2 border rounded flex-1"
+          />
+          <button
+            onClick={() => weather.execute({ city })}
+            disabled={weather.loading}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            {weather.loading ? 'Loading...' : 'Get Weather'}
+          </button>
+        </div>
+        
+        {weather.error && (
+          <div className="p-3 bg-red-50 text-red-700 rounded mb-4">
+            Error: {weather.error.message}
+          </div>
+        )}
+        
+        {weather.data && weather.render?.()}
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">Complex Tool with Client Optimization</h2>
-        <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm">
-{`const complexTool = aui
+      <section className="mb-12">
+        <h2 className="text-2xl font-semibold mb-4">Complex Tool with Client Optimization</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-x-auto text-sm mb-4">
+{`// Complex tool - adds client optimization
+const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
   .execute(async ({ input }) => db.search(input.query))
@@ -140,54 +110,44 @@ export function LantosAUIDemo() {
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();`}
+  .render(({ data }) => <SearchResults results={data} />)`}
         </pre>
-        <button 
-          onClick={() => runTool(complexTool, { query: 'test query' })}
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-        >
-          Run Search Tool
-        </button>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">Ultra-Concise Patterns</h2>
-        <div className="space-y-2">
-          <button 
-            onClick={() => runTool(pingTool, { message: 'Hello!' })}
-            className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+        <div className="flex gap-2 mb-4">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search for something..."
+            className="px-3 py-2 border rounded flex-1"
+          />
+          <button
+            onClick={() => search.execute({ query: searchQuery })}
+            disabled={search.loading || !searchQuery}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
           >
-            Run Ping (aui.simple)
-          </button>
-          <button 
-            onClick={async () => {
-              const result = await timestampTool.execute({ input: {} });
-              setResults(prev => [...prev, { tool: 'timestamp', data: result }]);
-            }}
-            className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-          >
-            Run Timestamp (aui.do)
-          </button>
-          <button 
-            onClick={() => runTool(aiTool, { query: 'What is AUI?' })}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            Run AI Tool (aui.ai)
+            {search.loading ? 'Searching...' : 'Search'}
           </button>
         </div>
+        
+        {search.error && (
+          <div className="p-3 bg-red-50 text-red-700 rounded mb-4">
+            Error: {search.error.message}
+          </div>
+        )}
+        
+        {search.data && search.render?.()}
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-2xl font-semibold">Results</h2>
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {results.map((result, i) => (
-            <div key={i} className="p-3 bg-gray-50 rounded">
-              <div className="font-semibold">{result.tool}</div>
-              <pre className="text-sm mt-1">{JSON.stringify(result.data, null, 2)}</pre>
-            </div>
-          ))}
-        </div>
+      <section className="mt-12 p-6 bg-gray-900 text-gray-100 rounded-lg">
+        <h2 className="text-xl font-semibold mb-4">Key Features</h2>
+        <ul className="space-y-2 text-sm">
+          <li>✅ No .build() required - tools are ready immediately</li>
+          <li>✅ Full TypeScript inference throughout the chain</li>
+          <li>✅ Server-side execution by default</li>
+          <li>✅ Optional client-side optimization with caching</li>
+          <li>✅ Built-in React component rendering</li>
+          <li>✅ React hooks for easy integration</li>
+        </ul>
       </section>
     </div>
   );

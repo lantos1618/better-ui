@@ -1,12 +1,11 @@
-import { aui } from '../index';
+import aui from '../lantos/index';
 import { z } from 'zod';
+import React from 'react';
 
 describe('Lantos AUI API', () => {
   beforeEach(() => {
     // Clear registry between tests
-    aui.getTools().forEach(tool => {
-      // Registry cleanup if needed
-    });
+    aui.clear();
   });
 
   describe('Simple Tool Pattern', () => {
@@ -15,8 +14,7 @@ describe('Lantos AUI API', () => {
         .tool('weather')
         .input(z.object({ city: z.string() }))
         .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-        .render(({ data }) => `${data.city}: ${data.temp}°`)
-        .build();
+        .render(({ data }) => React.createElement('div', {}, `${data.city}: ${data.temp}°`));
 
       expect(tool.name).toBe('weather');
       expect(tool.inputSchema).toBeDefined();
@@ -28,16 +26,25 @@ describe('Lantos AUI API', () => {
       const tool = aui
         .tool('test')
         .input(z.object({ value: z.number() }))
-        .execute(async ({ input }) => ({ doubled: input.value * 2 }))
-        .build();
+        .execute(async ({ input }) => ({ doubled: input.value * 2 }));
 
       const result = await tool.execute({ input: { value: 5 } });
       expect(result).toEqual({ doubled: 10 });
     });
+
+    it('should work without render method', async () => {
+      const tool = aui
+        .tool('minimal')
+        .input(z.object({ x: z.number() }))
+        .execute(async ({ input }) => ({ result: input.x * 3 }));
+
+      const result = await tool.execute({ input: { x: 4 } });
+      expect(result).toEqual({ result: 12 });
+    });
   });
 
   describe('Complex Tool Pattern', () => {
-    it('should create tool with client optimization', () => {
+    it('should create tool with client optimization', async () => {
       const mockCache = new Map();
       
       const tool = aui
@@ -45,76 +52,54 @@ describe('Lantos AUI API', () => {
         .input(z.object({ query: z.string() }))
         .execute(async ({ input }) => ({ results: [`server: ${input.query}`] }))
         .clientExecute(async ({ input, ctx }) => {
-          const cached = mockCache.get(input.query);
+          const cached = ctx.cache.get(input.query);
           if (cached) return cached;
           
           const result = { results: [`client: ${input.query}`] };
-          mockCache.set(input.query, result);
+          ctx.cache.set(input.query, result);
           return result;
-        })
-        .build();
+        });
 
       expect(tool.clientExecute).toBeDefined();
-      expect(tool.isServerOnly).toBe(false);
-    });
-  });
-
-  describe('Ultra-Concise Methods', () => {
-    it('should create tool with aui.simple()', () => {
-      const tool = aui.simple(
-        'ping',
-        z.object({ msg: z.string() }),
-        async ({ msg }) => ({ pong: msg }),
-        ({ pong }) => `Pong: ${pong}`
-      );
-
-      expect(tool.name).toBe('ping');
-      expect(tool.execute).toBeDefined();
-    });
-
-    it('should create tool with aui.do()', async () => {
-      const tool = aui.do('timestamp', () => ({ time: 'now' }));
       
-      expect(tool.name).toBe('timestamp');
-      const result = await tool.execute({ input: {} });
-      expect(result).toEqual({ time: 'now' });
-    });
-
-    it('should create AI-optimized tool', () => {
-      const tool = aui.ai('smart', {
-        input: z.object({ query: z.string() }),
-        execute: async ({ query }) => ({ answer: query }),
-        retry: 3,
-        cache: true,
-        timeout: 5000
-      });
-
-      expect(tool.name).toBe('smart');
-      expect(tool.metadata?.retry).toBe(3);
-      expect(tool.metadata?.cache).toBe(true);
+      // Test client execution
+      const ctx = {
+        cache: mockCache,
+        fetch: async () => ({ results: ['fetched'] })
+      };
+      
+      const result = await tool.clientExecute!({ input: { query: 'test' }, ctx });
+      expect(result).toEqual({ results: ['client: test'] });
+      
+      // Test cache hit
+      const cachedResult = await tool.clientExecute!({ input: { query: 'test' }, ctx });
+      expect(cachedResult).toEqual({ results: ['client: test'] });
+      expect(mockCache.get('test')).toBeDefined();
     });
   });
 
-  describe('Batch Definitions', () => {
-    it('should define multiple tools at once', () => {
-      const tools = aui.defineTools({
-        tool1: {
-          input: z.object({ a: z.string() }),
-          execute: async ({ a }) => ({ result: a })
-        },
-        tool2: {
-          input: z.object({ b: z.number() }),
-          execute: async ({ b }) => ({ result: b * 2 })
-        }
-      });
+  describe('Tool Registry', () => {
+    it('should register tools automatically', () => {
+      const tool1 = aui.tool('tool1').input(z.object({ a: z.string() }));
+      const tool2 = aui.tool('tool2').input(z.object({ b: z.number() }));
 
-      expect(tools.tool1.name).toBe('tool1');
-      expect(tools.tool2.name).toBe('tool2');
+      expect(aui.get('tool1')).toBe(tool1);
+      expect(aui.get('tool2')).toBe(tool2);
+      expect(aui.list()).toHaveLength(2);
+    });
+
+    it('should clear registry', () => {
+      aui.tool('test1');
+      aui.tool('test2');
+      expect(aui.list()).toHaveLength(2);
+      
+      aui.clear();
+      expect(aui.list()).toHaveLength(0);
     });
   });
 
   describe('Type Inference', () => {
-    it('should properly infer types through the chain', () => {
+    it('should properly infer types through the chain', async () => {
       const tool = aui
         .tool('typed')
         .input(z.object({ 
@@ -124,49 +109,96 @@ describe('Lantos AUI API', () => {
         .execute(async ({ input }) => ({
           combined: `${input.str}-${input.num}`,
           double: input.num * 2
-        }))
-        .build();
+        }));
 
       // TypeScript should infer these types correctly
       type Input = z.infer<typeof tool.inputSchema>;
       type Output = Awaited<ReturnType<typeof tool.execute>>;
       
-      // These assertions verify type structure
-      const testInput: Input = { str: 'test', num: 42 };
-      expect(testInput).toBeDefined();
+      // Test execution with proper types
+      const result = await tool.execute({ 
+        input: { str: 'test', num: 42 } 
+      });
+      
+      expect(result.combined).toBe('test-42');
+      expect(result.double).toBe(84);
     });
   });
 
-  describe('Server-Only Tools', () => {
-    it('should create server-only tool', () => {
-      const tool = aui.server(
-        'database',
-        z.object({ query: z.string() }),
-        async ({ query }) => ({ data: `DB result for: ${query}` })
-      );
+  describe('Chaining Pattern', () => {
+    it('should allow method chaining in any order', () => {
+      // Input -> Execute -> Render
+      const tool1 = aui
+        .tool('chain1')
+        .input(z.object({ x: z.number() }))
+        .execute(async ({ input }) => ({ y: input.x }))
+        .render(({ data }) => React.createElement('span', {}, data.y));
 
-      expect(tool.isServerOnly).toBe(true);
-      expect(tool.clientExecute).toBeUndefined();
+      // Execute -> Input -> Render (should still work)
+      const tool2 = aui
+        .tool('chain2')
+        .execute(async ({ input }) => ({ y: (input as any).x }))
+        .input(z.object({ x: z.number() }))
+        .render(({ data }) => React.createElement('span', {}, data.y));
+
+      expect(tool1.name).toBe('chain1');
+      expect(tool2.name).toBe('chain2');
+      expect(tool1.inputSchema).toBeDefined();
+      expect(tool2.inputSchema).toBeDefined();
     });
   });
 
-  describe('Contextual Tools', () => {
-    it('should create context-aware tool', async () => {
-      const tool = aui.contextual(
-        'contextual',
-        z.object({ value: z.string() }),
-        async ({ input, ctx }) => ({ 
-          result: input.value,
-          hasContext: ctx !== undefined 
-        })
-      );
+  describe('Error Handling', () => {
+    it('should handle validation errors', async () => {
+      const tool = aui
+        .tool('validated')
+        .input(z.object({ 
+          email: z.string().email(),
+          age: z.number().min(0).max(120) 
+        }))
+        .execute(async ({ input }) => ({ valid: true }));
+
+      // Invalid input should throw
+      await expect(
+        tool.execute({ input: { email: 'not-an-email', age: 150 } })
+      ).rejects.toThrow();
+    });
+
+    it('should handle execution errors', async () => {
+      const tool = aui
+        .tool('failing')
+        .input(z.object({ fail: z.boolean() }))
+        .execute(async ({ input }) => {
+          if (input.fail) throw new Error('Intentional failure');
+          return { success: true };
+        });
+
+      await expect(
+        tool.execute({ input: { fail: true } })
+      ).rejects.toThrow('Intentional failure');
+
+      const result = await tool.execute({ input: { fail: false } });
+      expect(result).toEqual({ success: true });
+    });
+  });
+
+  describe('Context Usage', () => {
+    it('should pass context to execute handlers', async () => {
+      const tool = aui
+        .tool('contextual')
+        .input(z.object({ value: z.string() }))
+        .execute(async ({ input, ctx }) => ({
+          hasContext: ctx !== undefined,
+          value: input.value
+        }));
 
       const result = await tool.execute({ 
         input: { value: 'test' },
-        ctx: {} as any 
+        ctx: { cache: new Map(), fetch: async () => null }
       });
-      
-      expect(result.result).toBe('test');
+
+      expect(result.hasContext).toBe(true);
+      expect(result.value).toBe('test');
     });
   });
 });

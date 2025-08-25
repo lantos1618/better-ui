@@ -2,16 +2,16 @@
 
 import React, { useState } from 'react';
 import aui, { z } from '@/lib/aui';
+import { useAUITool, useAUI } from '@/lib/aui/hooks';
 
-// Simple tool - just 2 methods
+// Simple tool - just 2 methods (no .build() required!)
 const weatherTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div className="p-4 bg-blue-50 rounded">{data.city}: {data.temp}°F</div>)
-  .build();
+  .render(({ data }) => <div className="p-4 bg-blue-50 rounded">{data.city}: {data.temp}°F</div>);
 
-// Complex tool - adds client optimization
+// Complex tool - adds client optimization (no .build() needed!)
 const searchTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
@@ -29,12 +29,12 @@ const searchTool = aui
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
     
-    const results = await ctx.fetch('/api/aui/search', { 
+    const results = await ctx.fetch('/api/aui/execute', { 
       method: 'POST',
-      body: JSON.stringify(input) 
+      body: JSON.stringify({ tool: 'search', input }) 
     });
-    ctx.cache.set(input.query, results);
-    return results;
+    ctx.cache.set(input.query, results.result);
+    return results.result;
   })
   .render(({ data }) => (
     <div className="space-y-2">
@@ -45,10 +45,9 @@ const searchTool = aui
         </div>
       ))}
     </div>
-  ))
-  .build();
+  ));
 
-// Stock price tool
+// Stock price tool (no .build() needed!)
 const stockTool = aui
   .tool('stock')
   .input(z.object({ ticker: z.string() }))
@@ -67,10 +66,9 @@ const stockTool = aui
         {data.change > 0 ? '+' : ''}{data.change.toFixed(2)}%
       </div>
     </div>
-  ))
-  .build();
+  ));
 
-// Database tool (server-only)
+// Database tool (server-only, no .build() needed!)
 const dbTool = aui
   .tool('database')
   .input(z.object({ 
@@ -93,8 +91,7 @@ const dbTool = aui
     <div className="p-4 bg-green-50 rounded font-mono text-sm">
       <pre>{JSON.stringify(data, null, 2)}</pre>
     </div>
-  ))
-  .build();
+  ));
 
 // Register tools
 aui.register(weatherTool);
@@ -103,38 +100,11 @@ aui.register(stockTool);
 aui.register(dbTool);
 
 export default function AUIDemoPage() {
-  const [results, setResults] = useState<Record<string, any>>({});
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
-
-  const context = {
-    cache: new Map(),
-    fetch: async (url: string, options?: any) => {
-      const response = await fetch(url, {
-        ...options,
-        headers: { 'Content-Type': 'application/json', ...options?.headers }
-      });
-      return response.json();
-    }
-  };
-
-  const executeTool = async (toolName: string, input: any) => {
-    setLoading(prev => ({ ...prev, [toolName]: true }));
-    
-    const tool = aui.getTool(toolName);
-    if (!tool) return;
-
-    try {
-      const result = tool.clientExecute 
-        ? await tool.clientExecute({ input, ctx: context })
-        : await tool.execute({ input, ctx: context });
-      
-      setResults(prev => ({ ...prev, [toolName]: result }));
-    } catch (error) {
-      console.error(`Error executing ${toolName}:`, error);
-    } finally {
-      setLoading(prev => ({ ...prev, [toolName]: false }));
-    }
-  };
+  // Use the new hooks for cleaner state management
+  const weather = useAUITool(weatherTool);
+  const search = useAUITool(searchTool);
+  const stock = useAUITool(stockTool);
+  const database = useAUITool(dbTool);
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
@@ -148,22 +118,22 @@ export default function AUIDemoPage() {
           
           <div className="flex gap-2 mb-4">
             <button
-              onClick={() => executeTool('weather', { city: 'San Francisco' })}
+              onClick={() => weather.execute({ city: 'San Francisco' })}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              disabled={loading.weather}
+              disabled={weather.loading}
             >
               Get SF Weather
             </button>
             <button
-              onClick={() => executeTool('weather', { city: 'New York' })}
+              onClick={() => weather.execute({ city: 'New York' })}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              disabled={loading.weather}
+              disabled={weather.loading}
             >
               Get NYC Weather
             </button>
           </div>
           
-          {results.weather && weatherTool.render({ data: results.weather })}
+          {weather.data && weather.render()}
         </section>
 
         {/* Search Tool */}
@@ -181,16 +151,16 @@ export default function AUIDemoPage() {
             <button
               onClick={() => {
                 const input = (document.getElementById('searchQuery') as HTMLInputElement).value;
-                if (input) executeTool('search', { query: input });
+                if (input) search.execute({ query: input });
               }}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              disabled={loading.search}
+              disabled={search.loading}
             >
               Search
             </button>
           </div>
           
-          {results.search && searchTool.render({ data: results.search })}
+          {search.data && search.render()}
         </section>
 
         {/* Stock Tool */}
@@ -202,16 +172,16 @@ export default function AUIDemoPage() {
             {['AAPL', 'GOOGL', 'MSFT', 'AMZN'].map(ticker => (
               <button
                 key={ticker}
-                onClick={() => executeTool('stock', { ticker })}
+                onClick={() => stock.execute({ ticker })}
                 className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-                disabled={loading.stock}
+                disabled={stock.loading}
               >
                 {ticker}
               </button>
             ))}
           </div>
           
-          {results.stock && stockTool.render({ data: results.stock })}
+          {stock.data && stock.render()}
         </section>
 
         {/* Database Tool */}
@@ -221,50 +191,50 @@ export default function AUIDemoPage() {
           
           <div className="grid grid-cols-2 gap-2 mb-4">
             <button
-              onClick={() => executeTool('database', { 
+              onClick={() => database.execute({ 
                 table: 'users', 
                 operation: 'create',
                 data: { name: 'John Doe', email: 'john@example.com' }
               })}
               className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-              disabled={loading.database}
+              disabled={database.loading}
             >
               Create User
             </button>
             <button
-              onClick={() => executeTool('database', { 
+              onClick={() => database.execute({ 
                 table: 'users', 
                 operation: 'read'
               })}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              disabled={loading.database}
+              disabled={database.loading}
             >
               Read User
             </button>
             <button
-              onClick={() => executeTool('database', { 
+              onClick={() => database.execute({ 
                 table: 'users', 
                 operation: 'update',
                 data: { name: 'Jane Doe' }
               })}
               className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-              disabled={loading.database}
+              disabled={database.loading}
             >
               Update User
             </button>
             <button
-              onClick={() => executeTool('database', { 
+              onClick={() => database.execute({ 
                 table: 'users', 
                 operation: 'delete'
               })}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              disabled={loading.database}
+              disabled={database.loading}
             >
               Delete User
             </button>
           </div>
           
-          {results.database && dbTool.render({ data: results.database })}
+          {database.data && database.render()}
         </section>
       </div>
 
@@ -272,13 +242,12 @@ export default function AUIDemoPage() {
       <section className="mt-12 border rounded-lg p-6 bg-gray-50">
         <h2 className="text-2xl font-semibold mb-4">API Usage Example</h2>
         <pre className="overflow-x-auto text-sm">
-          <code>{`// Simple tool - just 2 methods
+          <code>{`// Simple tool - just 2 methods (no .build() required!)
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
   .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
 
 // Complex tool - adds client optimization
 const complexTool = aui
@@ -290,8 +259,7 @@ const complexTool = aui
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();`}</code>
+  .render(({ data }) => <SearchResults results={data} />)`}</code>
         </pre>
       </section>
     </div>
