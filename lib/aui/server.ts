@@ -12,7 +12,7 @@ export interface ServerToolOptions {
 export function createServerTool<TInput = any, TOutput = any>(
   name: string,
   schema: z.ZodType<TInput>,
-  handler: (params: { input: TInput; ctx: AUIContext }) => Promise<TOutput> | TOutput,
+  handler: (params: { input: TInput; ctx?: AUIContext }) => Promise<TOutput> | TOutput,
   options?: ServerToolOptions
 ): AUITool<TInput, TOutput> {
   const tool = aui
@@ -30,7 +30,7 @@ export function createServerTool<TInput = any, TOutput = any>(
       }
 
       // Execute handler
-      return await handler({ input, ctx: ctx! });
+      return await handler({ input, ctx });
     });
 
   return tool;

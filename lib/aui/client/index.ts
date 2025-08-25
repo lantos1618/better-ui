@@ -14,14 +14,6 @@ export {
 export { useAUITool as useTool } from './hooks';
 export { AUIProvider as ToolExecutorProvider } from './provider';
 
-// Legacy exports (if they exist, otherwise they'll be undefined)
+// Legacy exports
 export { ClientToolExecutor } from './executor';
-export {
-  ToolRenderer,
-  useToolExecutor,
-  useToolExecution,
-} from './components';
-export {
-  useToolRenderer,
-  useToolBatch,
-} from './hooks';
+export { ToolRenderer } from './components';

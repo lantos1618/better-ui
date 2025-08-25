@@ -106,7 +106,7 @@ function MyComponent() {
 
 ```ts
 // app/api/aui/[tool]/route.ts
-import aui from '@/lib/aui/lantos-aui';
+import aui from '@/lib/aui';
 
 export async function POST(request: NextRequest) {
   const { tool: toolName, input } = await request.json();

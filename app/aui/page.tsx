@@ -95,6 +95,7 @@ const userTool = aui
   }))
   .render(({ data }) => (
     <div className="flex items-center gap-3 p-4 bg-gray-50 rounded">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={data.avatar} className="w-12 h-12 rounded-full" alt={data.name} />
       <div>
         <div className="font-medium">{data.name}</div>

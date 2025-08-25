@@ -46,25 +46,22 @@ export function useAUI<TInput = any, TOutput = any>(
       // Create client context
       const ctx: AUIContext = {
         cache: cacheRef.current,
-        fetch: async (url: string, opts?: any) => {
-          const response = await fetch(url, {
-            ...opts,
+        fetch: ((input: RequestInfo | URL, init?: RequestInit) => {
+          const url = typeof input === 'string' ? input : input.toString();
+          return fetch(url, {
+            ...init,
             headers: {
               'Content-Type': 'application/json',
-              ...opts?.headers,
+              ...init?.headers,
             },
           });
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        },
+        }) as typeof fetch,
       };
 
       let result: TOutput;
 
       // If tool has client execution, use it
-      if (typeof tool !== 'string' && tool.clientHandler) {
+      if (typeof tool !== 'string' && tool.toJSON && tool.toJSON().hasClientExecute) {
         result = await tool.run(input, ctx);
       } else {
         // Otherwise, call the server API

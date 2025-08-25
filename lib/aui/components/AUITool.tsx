@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { AUITool } from '../index';
+import { AUITool as AUIToolType } from '../index';
 import { useAUI, useAUIRender } from '../client/use-aui';
 
 interface AUIToolProps<TInput = any, TOutput = any> {
-  tool: AUITool<TInput, TOutput>;
+  tool: AUIToolType<TInput, TOutput>;
   input?: TInput;
   autoExecute?: boolean;
   onSuccess?: (data: TOutput) => void;
@@ -56,7 +56,7 @@ export namespace AUITool {
     onSuccess,
     onError,
   }: {
-    tool: AUITool<TInput, TOutput>;
+    tool: AUIToolType<TInput, TOutput>;
     input: TInput;
     children: (execute: () => Promise<void>) => React.ReactNode;
     onSuccess?: (data: TOutput) => void;
@@ -81,7 +81,7 @@ export namespace AUITool {
     data,
     input,
   }: {
-    tool: AUITool<TInput, TOutput>;
+    tool: AUIToolType<TInput, TOutput>;
     data: TOutput | null;
     input?: TInput;
   }) {
@@ -96,7 +96,7 @@ export function AUIToolList<TInput = any, TOutput = any>({
   inputs,
   autoExecute = false,
 }: {
-  tools: AUITool<TInput, TOutput>[];
+  tools: AUIToolType<TInput, TOutput>[];
   inputs?: Map<string, TInput>;
   autoExecute?: boolean;
 }) {

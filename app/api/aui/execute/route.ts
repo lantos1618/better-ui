@@ -3,7 +3,7 @@ import { handleToolRequest } from '@/lib/aui/server';
 import aui from '@/lib/aui';
 
 // Import and register example tools
-import '@/lib/aui/tools/examples';
+import '@/lib/aui/examples';
 
 export async function POST(request: NextRequest) {
   // Use the handleToolRequest from server.ts

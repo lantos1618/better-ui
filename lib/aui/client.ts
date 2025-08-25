@@ -1,6 +1,7 @@
 'use client';
 
-import aui, { AUITool, AUIContext, z } from './index';
+import aui, { AUITool, z } from './index';
+import type { AUIContext } from './index';
 
 export interface ClientToolOptions {
   cacheKey?: (input: any) => string;
@@ -12,7 +13,7 @@ export interface ClientToolOptions {
 export function createClientTool<TInput = any, TOutput = any>(
   name: string,
   schema: z.ZodType<TInput>,
-  handler: (params: { input: TInput; ctx: AUIContext }) => Promise<TOutput> | TOutput,
+  handler: (params: { input: TInput; ctx?: AUIContext }) => Promise<TOutput> | TOutput,
   options?: ClientToolOptions
 ): AUITool<TInput, TOutput> {
   const tool = aui
@@ -88,5 +89,3 @@ export async function executeClientTool<TInput = any, TOutput = any>(
   const { result } = await response.json();
   return result;
 }
-
-export { useToolExecution } from './hooks';

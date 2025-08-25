@@ -143,5 +143,4 @@ export type InferToolInput<T> = T extends AUITool<infer I, any> ? I : never;
 export type InferToolOutput<T> = T extends AUITool<any, infer O> ? O : never;
 
 export { z } from 'zod';
-export { AUITool };
 export default aui;

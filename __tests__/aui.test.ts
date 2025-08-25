@@ -157,9 +157,9 @@ describe('AUI - Concise Tool System', () => {
       const tool2 = tool1.input(z.object({ x: z.number() }));
       const tool3 = tool2.execute(async ({ input }) => input.x);
       
-      // Each method returns a new instance
-      expect(tool1).not.toBe(tool2);
-      expect(tool2).not.toBe(tool3);
+      // Each method returns the same tool instance (chained)
+      expect(tool1).toBe(tool2);
+      expect(tool2).toBe(tool3);
     });
   });
 
@@ -191,12 +191,11 @@ describe('AUI - Concise Tool System', () => {
         .input(z.object({ id: z.string() }))
         .execute(async ({ input }) => input.id);
 
-      const def = tool.definition;
-      expect(def.name).toBe('export');
-      expect(def.input).toBeDefined();
-      expect(def.execute).toBeDefined();
-      expect(def.clientExecute).toBeUndefined();
-      expect(def.render).toBeUndefined();
+      // Tool properties are directly accessible
+      expect(tool.name).toBe('export');
+      expect(tool.schema).toBeDefined();
+      expect(tool.run).toBeDefined();
+      expect(tool.renderer).toBeUndefined();
     });
   });
 });

@@ -170,8 +170,9 @@ export function useAUI(): UseAUIResult {
         body: JSON.stringify({ tool: toolName, input }),
       });
 
-      setResults(prev => new Map(prev).set(toolName, response.data));
-      return response.data;
+      const data = await response.json();
+      setResults(prev => new Map(prev).set(toolName, data));
+      return data;
     } catch (error) {
       setErrors(prev => new Map(prev).set(toolName, error as Error));
       throw error;

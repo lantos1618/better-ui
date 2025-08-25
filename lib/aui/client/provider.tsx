@@ -22,22 +22,17 @@ export function AUIProvider({
 }: AUIProviderProps) {
   const context = useMemo<ToolContext>(() => ({
     cache: cache || new Map(),
-    fetch: async (url: string, options?: RequestInit) => {
+    fetch: ((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input.toString();
       const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
-      const response = await fetch(fullUrl, {
-        ...options,
+      return fetch(fullUrl, {
+        ...init,
         headers: {
           'Content-Type': 'application/json',
-          ...options?.headers,
+          ...init?.headers,
         },
       });
-      
-      if (!response.ok) {
-        throw new Error(`Request failed: ${response.statusText}`);
-      }
-      
-      return response.json();
-    },
+    }) as typeof fetch,
     user,
     session,
   }), [baseUrl, cache, user, session]);
