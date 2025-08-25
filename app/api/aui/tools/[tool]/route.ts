@@ -1,37 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui/aui';
+import aui from '@/lib/aui';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: { tool: string } }
 ) {
   try {
-    const { tool: toolName } = params;
-    const input = await request.json();
-    
-    // Get the tool from registry
+    const toolName = params.tool;
     const tool = aui.get(toolName);
+    
     if (!tool) {
       return NextResponse.json(
         { error: `Tool "${toolName}" not found` },
         { status: 404 }
       );
     }
-    
-    // Execute the tool
-    const result = await tool.run(input);
-    
-    return NextResponse.json({ 
-      success: true, 
-      data: result 
+
+    const body = await request.json();
+    const context = aui.createContext({
+      user: body.user,
+      session: body.session,
+      env: process.env as Record<string, string>
     });
+
+    const result = await tool.run(body.input || {}, context);
+    
+    return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error.message || 'Tool execution failed' 
-      },
-      { status: 500 }
+      { error: error.message || 'Tool execution failed' },
+      { status: 400 }
     );
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import aui, { z } from '@/lib/aui/aui';
+import aui, { z } from '@/lib/aui';
 import { AUIProvider, useTool } from '@/lib/aui/client';
 import { tools } from '@/lib/aui/examples';
 
@@ -95,11 +95,7 @@ const dbTool = aui
     </div>
   ));
 
-// Register tools
-aui.register(weatherTool);
-aui.register(searchTool);
-aui.register(stockTool);
-aui.register(dbTool);
+// Tools are automatically registered when created
 
 function AUIContent() {
   // Use the new hooks for cleaner state management

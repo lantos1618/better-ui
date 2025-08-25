@@ -1,4 +1,4 @@
-import aui, { z, Tool } from '../lib/aui/lantos-ultra';
+import aui, { z, AUITool } from '../lib/aui';
 
 describe('Lantos AUI', () => {
   beforeEach(() => {
@@ -82,7 +82,7 @@ describe('Lantos AUI', () => {
         .execute(async ({ input }) => ({ temp: 72, city: input.city }))
         .render(renderFn);
 
-      expect(tool.renderer).toBe(renderFn);
+      expect((tool as any).renderer).toBe(renderFn);
     });
   });
 
@@ -128,11 +128,11 @@ describe('Lantos AUI', () => {
       aui.tool('tool2');
       aui.tool('tool3');
       
-      const tools = aui.list();
+      const tools = aui.getTools();
       expect(tools).toHaveLength(3);
-      expect(tools.map(t => t.name)).toContain('tool1');
-      expect(tools.map(t => t.name)).toContain('tool2');
-      expect(tools.map(t => t.name)).toContain('tool3');
+      expect(tools.map((t: any) => t.name)).toContain('tool1');
+      expect(tools.map((t: any) => t.name)).toContain('tool2');
+      expect(tools.map((t: any) => t.name)).toContain('tool3');
     });
 
     it('should execute tools by name', async () => {
@@ -148,10 +148,10 @@ describe('Lantos AUI', () => {
     it('should clear all tools', () => {
       aui.tool('tool1');
       aui.tool('tool2');
-      expect(aui.list().length).toBe(2);
+      expect(aui.getTools().length).toBe(2);
       
       aui.clear();
-      expect(aui.list().length).toBe(0);
+      expect(aui.getTools().length).toBe(0);
     });
   });
 

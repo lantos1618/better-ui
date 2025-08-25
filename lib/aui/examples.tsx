@@ -1,5 +1,5 @@
 import React from 'react';
-import aui, { z } from './aui';
+import aui, { z } from './index';
 
 // Simple tool - just 2 methods
 const simpleTool = aui
@@ -22,18 +22,23 @@ const complexTool = aui
     const cached = ctx.cache.get(input.query);
     if (cached) return cached;
     
-    const result = await ctx.fetch('/api/tools/search', { 
+    const result = await ctx.fetch('/api/aui/tools/search', { 
       method: 'POST',
-      body: JSON.stringify(input) 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input }) 
     }).then(r => r.json());
     
-    ctx.cache.set(input.query, result);
-    return result;
+    ctx.cache.set(input.query, result.data);
+    return result.data;
   })
   .render(({ data }) => <SearchResults results={data} />);
 
 // Component for search results
 function SearchResults({ results }: { results: any[] }) {
+  if (!results || !Array.isArray(results)) {
+    return <div>No results found</div>;
+  }
+  
   return (
     <div className="search-results">
       {results.map((item, i) => (
@@ -57,14 +62,13 @@ const calculatorTool = aui
   .execute(({ input }) => {
     const { a, b, op } = input;
     switch (op) {
-      case '+': return a + b;
-      case '-': return a - b;
-      case '*': return a * b;
-      case '/': return a / b;
-      default: throw new Error('Invalid operation');
+      case '+': return { result: a + b };
+      case '-': return { result: a - b };
+      case '*': return { result: a * b };
+      case '/': return { result: a / b };
     }
   })
-  .render(({ data }) => <div>Result: {data}</div>);
+  .render(({ data }) => <div>Result: {data.result}</div>);
 
 const databaseTool = aui
   .tool('database')
@@ -90,18 +94,18 @@ const databaseTool = aui
       if (cached) return cached;
     }
     
-    const result = await ctx.fetch('/api/tools/database', {
+    const result = await ctx.fetch('/api/aui/tools/database', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input)
+      body: JSON.stringify({ input })
     }).then(r => r.json());
     
     if (input.action === 'read') {
       const cacheKey = `${input.table}:${JSON.stringify(input.data)}`;
-      ctx.cache.set(cacheKey, result);
+      ctx.cache.set(cacheKey, result.data);
     }
     
-    return result;
+    return result.data;
   })
   .render(({ data }) => (
     <div className="db-result">
