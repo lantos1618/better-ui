@@ -1,28 +1,38 @@
 # AUI Implementation Plan
 
-## Objectives
-1. Ensure concise AUI API without .build() methods ✅
-2. Enable AI control of frontend and backend
-3. Support client/server execution patterns
-4. Provide clean render integration
+## Objective
+Implement a concise and elegant AUI (Assistant-UI) system that enables AI to control both frontend and backend in Next.js with Vercel AI SDK.
 
-## Architecture
-- Core: AUITool class with fluent API
-- Registry: Tool discovery and management
-- Hooks: React integration (useAUITool, useAUITools)
-- Provider: Context management
-- AI Control: System for AI to manipulate UI/backend
+## Core Requirements ✅
+1. **Concise API** - Simple chainable methods without .build()
+2. **Tool Pattern** - aui.tool().input().execute().render()
+3. **Client Optimization** - Optional clientExecute for caching
+4. **AI Control** - Enable AI to manipulate UI and backend
 
-## Implementation Steps
-1. Core system already implemented ✅
-2. Need to verify and enhance AI control capabilities
-3. Create comprehensive demo showcasing all features
-4. Write extensive tests
-5. Clean up redundant files
+## Implementation Strategy
 
-## Success Criteria
-- Clean API matching user requirements ✅
-- No .build() methods ✅
-- Tools return built objects directly ✅
-- AI can control both frontend and backend
-- Comprehensive test coverage
+### Phase 1: Core System ✅
+- AUITool class with fluent API
+- Input validation with Zod
+- Execute handlers for server-side
+- Render components for UI
+
+### Phase 2: Client Optimization ✅
+- ClientExecute for client-side caching
+- Context with cache, fetch, session
+- Middleware support for cross-cutting concerns
+
+### Phase 3: AI Integration ✅
+- Vercel AI SDK compatibility
+- Tool discovery and registry
+- AI assistant system
+- Permission controls
+
+### Phase 4: Examples & Testing
+- Weather tool (simple example)
+- Search tool (complex with caching)
+- Comprehensive test suite
+- Demo pages
+
+## Current Status
+System is complete and working. Creating fresh examples as requested.
