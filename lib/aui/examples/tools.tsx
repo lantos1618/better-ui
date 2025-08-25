@@ -1,24 +1,25 @@
 import React from 'react';
-import aui, { z } from '../index';
+import aui from '../index';
+import { z } from 'zod';
 
-// Simple weather tool - minimal setup
+// Simple weather tool - just execute and render
 export const weatherTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({
-    temp: Math.floor(60 + Math.random() * 30),
+  .execute(async ({ input }) => ({ 
+    temp: 72, 
     city: input.city,
-    conditions: ['sunny', 'cloudy', 'rainy'][Math.floor(Math.random() * 3)]
+    condition: 'sunny'
   }))
   .render(({ data }) => (
-    <div className="p-4 border rounded-lg bg-blue-50">
-      <h3 className="font-bold text-lg">{data.city}</h3>
+    <div className="p-4 bg-blue-50 rounded-lg">
+      <h3 className="font-semibold">{data.city}</h3>
       <p className="text-2xl">{data.temp}°F</p>
-      <p className="text-gray-600">{data.conditions}</p>
+      <p className="text-gray-600">{data.condition}</p>
     </div>
   ));
 
-// Complex search tool with client-side caching
+// Complex search tool with client optimization
 export const searchTool = aui
   .tool('search')
   .input(z.object({ 
@@ -26,223 +27,218 @@ export const searchTool = aui
     limit: z.number().optional().default(10)
   }))
   .execute(async ({ input }) => {
-    // Server-side execution - would hit database
-    const results = Array.from({ length: input.limit || 10 }, (_, i) => ({
-      id: `result-${i}`,
-      title: `Result ${i + 1} for "${input.query}"`,
-      description: `This is a mock result for the search query "${input.query}"`,
-      relevance: Math.random()
-    }));
-    return results.sort((a: any, b: any) => b.relevance - a.relevance);
+    // Server-side database search
+    const results = await simulateDBSearch(input.query, input.limit);
+    return results;
   })
   .clientExecute(async ({ input, ctx }) => {
-    // Client-side execution with caching
+    // Client-side caching and optimization
     const cacheKey = `search:${input.query}:${input.limit}`;
     const cached = ctx.cache.get(cacheKey);
     
-    if (cached) {
-      console.log('Returning cached results for:', input.query);
-      return cached;
+    if (cached && Date.now() - cached.timestamp < 60000) {
+      return cached.data;
     }
     
-    // Fetch from API endpoint
     const response = await ctx.fetch('/api/tools/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
     });
     
-    const results = await response.json();
-    ctx.cache.set(cacheKey, results);
+    const data = await response.json();
+    ctx.cache.set(cacheKey, { data, timestamp: Date.now() });
     
-    return results;
+    return data;
   })
-  .render(({ data, input, loading, error }) => {
-    if (loading) return <div className="p-4">Searching for &quot;{input?.query}&quot;...</div>;
-    if (error) return <div className="p-4 text-red-500">Error: {error.message}</div>;
+  .render(({ data, loading, error }) => {
+    if (loading) return <div>Searching...</div>;
+    if (error) return <div>Error: {error.message}</div>;
     
     return (
       <div className="space-y-2">
-        <h3 className="font-semibold">Search Results for &quot;{input?.query}&quot;</h3>
-        {data.map((result: any) => (
-          <div key={result.id} className="p-3 border rounded hover:bg-gray-50">
-            <h4 className="font-medium">{result.title}</h4>
-            <p className="text-sm text-gray-600">{result.description}</p>
-            <span className="text-xs text-gray-400">
-              Relevance: {(result.relevance * 100).toFixed(1)}%
-            </span>
+        {data.map((item: any) => (
+          <div key={item.id} className="p-3 border rounded">
+            <h4 className="font-medium">{item.title}</h4>
+            <p className="text-sm text-gray-600">{item.description}</p>
           </div>
         ))}
       </div>
     );
   });
 
-// Calculator tool - pure function, no client execution needed
+// Calculator tool with validation
 export const calculatorTool = aui
   .tool('calculator')
   .input(z.object({
-    expression: z.string(),
-    precision: z.number().optional().default(2)
+    expression: z.string().regex(/^[\d\s+\-*/().]+$/, 'Invalid expression')
   }))
   .execute(async ({ input }) => {
-    // Simple safe math evaluation (in production use math.js or similar)
-    const result = Function('"use strict"; return (' + input.expression + ')')();
-    return {
-      expression: input.expression,
-      result: Number(result.toFixed(input.precision))
-    };
+    try {
+      // Safe evaluation for simple math expressions
+      const result = evaluateExpression(input.expression);
+      return { 
+        expression: input.expression, 
+        result,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      throw new Error('Invalid calculation');
+    }
   })
   .render(({ data }) => (
     <div className="p-3 bg-gray-100 rounded font-mono">
-      {data.expression} = <span className="font-bold">{data.result}</span>
+      <div className="text-sm text-gray-600">{data.expression}</div>
+      <div className="text-xl font-bold">= {data.result}</div>
     </div>
   ));
 
-// User profile tool with session context
-export const userProfileTool = aui
-  .tool('userProfile')
-  .input(z.object({ userId: z.string() }))
-  .execute(async ({ input, ctx }) => {
-    // Check if user is viewing their own profile
-    const isOwnProfile = ctx?.user?.id === input.userId;
-    
-    // Mock user data
-    return {
-      id: input.userId,
-      name: isOwnProfile ? ctx?.user?.name : `User ${input.userId}`,
-      email: isOwnProfile ? ctx?.user?.email : `user${input.userId}@example.com`,
-      isOwnProfile,
-      private: !isOwnProfile
-    };
-  })
-  .render(({ data }) => (
-    <div className="p-4 border rounded-lg">
-      <h3 className="font-bold text-lg">{data.name}</h3>
-      {!data.private && <p className="text-gray-600">{data.email}</p>}
-      {data.isOwnProfile && (
-        <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-          Your Profile
-        </span>
-      )}
-    </div>
-  ));
-
-// Data visualization tool
-export const chartTool = aui
-  .tool('chart')
-  .input(z.object({
-    data: z.array(z.object({
-      label: z.string(),
-      value: z.number()
-    })),
-    type: z.enum(['bar', 'line', 'pie']).optional().default('bar')
-  }))
-  .execute(async ({ input }) => {
-    const max = Math.max(...input.data.map(d => d.value));
-    return {
-      ...input,
-      max,
-      normalized: input.data.map(d => ({
-        ...d,
-        percentage: (d.value / max) * 100
-      }))
-    };
-  })
-  .render(({ data }) => (
-    <div className="p-4 border rounded-lg">
-      <h4 className="font-semibold mb-2">Chart ({data.type})</h4>
-      <div className="space-y-2">
-        {data.normalized.map((item: any) => (
-          <div key={item.label} className="flex items-center gap-2">
-            <span className="w-20 text-sm">{item.label}</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-6 relative">
-              <div 
-                className="bg-blue-500 h-full rounded-full flex items-center justify-end pr-2"
-                style={{ width: `${item.percentage}%` }}
-              >
-                <span className="text-xs text-white">{item.value}</span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  ));
-
-// Form submission tool
+// Form submission tool with middleware
 export const formTool = aui
   .tool('form')
   .input(z.object({
-    action: z.enum(['submit', 'validate', 'save']),
-    formData: z.record(z.any())
+    name: z.string().min(1),
+    email: z.string().email(),
+    message: z.string().min(10)
+  }))
+  .middleware(async ({ input, ctx, next }) => {
+    // Add timestamp and user info
+    const enrichedInput = {
+      ...input,
+      timestamp: Date.now(),
+      userAgent: ctx.headers?.['user-agent']
+    };
+    return next();
+  })
+  .execute(async ({ input }) => {
+    // Save to database
+    const id = Math.random().toString(36).substr(2, 9);
+    return { 
+      success: true, 
+      id,
+      message: `Thank you ${input.name}, we'll respond to ${input.email} soon!`
+    };
+  })
+  .render(({ data, loading }) => {
+    if (loading) return <div>Submitting...</div>;
+    
+    return (
+      <div className="p-4 bg-green-50 border border-green-200 rounded">
+        <p className="text-green-800">{data.message}</p>
+        <p className="text-sm text-gray-600 mt-2">Reference: {data.id}</p>
+      </div>
+    );
+  });
+
+// Analytics tool with complex visualization
+export const analyticsTool = aui
+  .tool('analytics')
+  .input(z.object({
+    metric: z.enum(['views', 'clicks', 'conversions']),
+    period: z.enum(['day', 'week', 'month']),
+    groupBy: z.enum(['hour', 'day', 'week']).optional()
   }))
   .execute(async ({ input }) => {
-    switch (input.action) {
-      case 'validate':
-        const errors: Record<string, string> = {};
-        if (!input.formData.email?.includes('@')) {
-          errors.email = 'Invalid email';
-        }
-        return { valid: Object.keys(errors).length === 0, errors };
-      
-      case 'save':
-        return { saved: true, timestamp: new Date().toISOString() };
-      
-      case 'submit':
-        return { 
-          submitted: true, 
-          id: Math.random().toString(36).substr(2, 9),
-          data: input.formData 
-        };
-      
-      default:
-        throw new Error(`Unknown action: ${input.action}`);
-    }
+    const data = generateAnalyticsData(input);
+    return {
+      metric: input.metric,
+      period: input.period,
+      data,
+      summary: calculateSummary(data)
+    };
   })
   .clientExecute(async ({ input, ctx }) => {
-    // Client-side optimistic update
-    if (input.action === 'save') {
-      ctx.cache.set('draft', input.formData);
-      return { saved: true, timestamp: new Date().toISOString(), cached: true };
+    // Use cached data if available for expensive queries
+    const cacheKey = `analytics:${JSON.stringify(input)}`;
+    const cached = ctx.cache.get(cacheKey);
+    
+    if (cached && Date.now() - cached.timestamp < 300000) { // 5 min cache
+      return cached.data;
     }
     
-    // For submit, still go to server
-    const response = await ctx.fetch('/api/tools/form', {
+    const response = await ctx.fetch('/api/tools/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
     });
     
-    return response.json();
+    const data = await response.json();
+    ctx.cache.set(cacheKey, { data, timestamp: Date.now() });
+    
+    return data;
   })
-  .render(({ data, input }) => (
-    <div className="p-3 rounded border">
-      {data.saved && (
-        <p className="text-green-600">
-          ✓ {'cached' in data && data.cached ? 'Cached locally' : 'Saved'} at {new Date(data.timestamp).toLocaleTimeString()}
-        </p>
-      )}
-      {data.submitted && (
-        <p className="text-blue-600">✓ Submitted with ID: {data.id}</p>
-      )}
-      {data.errors && Object.keys(data.errors).length > 0 && (
-        <div className="text-red-600">
-          {Object.entries(data.errors).map(([field, error]) => (
-            <p key={field}>{field}: {error}</p>
-          ))}
+  .render(({ data }) => (
+    <div className="p-4 space-y-4">
+      <div>
+        <h3 className="text-lg font-semibold capitalize">
+          {data.metric} - {data.period}
+        </h3>
+        <div className="grid grid-cols-3 gap-4 mt-2">
+          <div>
+            <p className="text-sm text-gray-600">Total</p>
+            <p className="text-xl font-bold">{data.summary.total}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Average</p>
+            <p className="text-xl font-bold">{data.summary.average}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">Peak</p>
+            <p className="text-xl font-bold">{data.summary.peak}</p>
+          </div>
         </div>
-      )}
+      </div>
+      <div className="h-32 bg-gray-100 rounded flex items-center justify-center">
+        [Chart visualization would go here]
+      </div>
     </div>
   ));
 
-// Export all tools for easy access
+// Helper functions
+async function simulateDBSearch(query: string, limit: number) {
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  return Array.from({ length: Math.min(limit, 5) }, (_, i) => ({
+    id: `result-${i}`,
+    title: `${query} result ${i + 1}`,
+    description: `This is a search result for "${query}"`
+  }));
+}
+
+function evaluateExpression(expr: string): number {
+  // Simple safe math evaluation (production would use a proper parser)
+  const sanitized = expr.replace(/[^0-9+\-*/().\s]/g, '');
+  try {
+    // This is a simplified version - use a proper math parser in production
+    const result = Function(`"use strict"; return (${sanitized})`)();
+    return Number(result.toFixed(2));
+  } catch {
+    throw new Error('Invalid expression');
+  }
+}
+
+function generateAnalyticsData(input: any) {
+  const points = input.period === 'day' ? 24 : input.period === 'week' ? 7 : 30;
+  return Array.from({ length: points }, (_, i) => ({
+    label: `Point ${i + 1}`,
+    value: Math.floor(Math.random() * 1000) + 100
+  }));
+}
+
+function calculateSummary(data: any[]) {
+  const values = data.map(d => d.value);
+  return {
+    total: values.reduce((a, b) => a + b, 0),
+    average: Math.floor(values.reduce((a, b) => a + b, 0) / values.length),
+    peak: Math.max(...values)
+  };
+}
+
+// Export all tools
 export const tools = {
   weather: weatherTool,
   search: searchTool,
   calculator: calculatorTool,
-  userProfile: userProfileTool,
-  chart: chartTool,
-  form: formTool
+  form: formTool,
+  analytics: analyticsTool
 };
-
-export default tools;
