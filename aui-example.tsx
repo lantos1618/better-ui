@@ -19,13 +19,31 @@ const simpleTool = aui
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => db.search(input.query))
+  .execute(async ({ input }) => {
+    // In real app: db.search(input.query)
+    return [
+      { id: 1, title: `Result for ${input.query}` },
+      { id: 2, title: `Another result for ${input.query}` }
+    ];
+  })
   .clientExecute(async ({ input, ctx }) => {
     // Only when you need caching, offline, etc.
     const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
+    return cached || ctx.fetch('/api/tools/search', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input) 
+    }).then(r => r.json());
   })
-  .render(({ data }) => <SearchResults results={data} />)
+  .render(({ data }) => (
+    <div className="space-y-2">
+      {data.map((item: any) => (
+        <div key={item.id} className="p-2 border rounded">
+          {item.title}
+        </div>
+      ))}
+    </div>
+  ))
 
 // ============================================
 // MORE EXAMPLES FOR AI CONTROL
@@ -63,10 +81,10 @@ const databaseTool = aui
   .execute(async ({ input }) => {
     // Server-side database operations
     switch (input.operation) {
-      case 'create': return await db.insert(input.table, input.data);
-      case 'read': return await db.find(input.table, input.data);
-      case 'update': return await db.update(input.table, input.data);
-      case 'delete': return await db.delete(input.table, input.data);
+      case 'create': return { id: Math.random(), ...input.data };
+      case 'read': return { id: 1, name: 'Example', table: input.table };
+      case 'update': return { success: true, updated: input.data };
+      case 'delete': return { success: true, deleted: input.data?.id };
     }
   })
   .render(({ data }) => <pre>{JSON.stringify(data, null, 2)}</pre>)
@@ -112,7 +130,7 @@ import { AUIProvider } from '@/lib/aui/provider';
 export default function App() {
   return (
     <AUIProvider>
-      {/* Your app components */}
+      <div>{/* Your app components */}</div>
     </AUIProvider>
   );
 }

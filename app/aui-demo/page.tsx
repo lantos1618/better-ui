@@ -27,7 +27,11 @@ const complexTool = aui
   .clientExecute(async ({ input, ctx }) => {
     // Only when you need caching, offline, etc.
     const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
+    return cached || ctx.fetch('/api/tools/search', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input) 
+    }).then(r => r.json());
   })
   .render(({ data }) => <SearchResults results={data} />);
 
@@ -130,7 +134,11 @@ const complexTool = aui
   .clientExecute(async ({ input, ctx }) => {
     // Only when you need caching, offline, etc.
     const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
+    return cached || ctx.fetch('/api/tools/search', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input) 
+    }).then(r => r.json());
   })
   .render(({ data }) => <SearchResults results={data} />)`}
         </pre>
