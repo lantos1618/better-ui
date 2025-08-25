@@ -23,7 +23,8 @@ Building a concise AUI (Assistant-UI) system for AI control of frontend and back
 - Tool registry and discovery system ✅
 - Vercel AI SDK integration ✅
 - Comprehensive demos and examples ✅
-- Test suite (134/135 tests passing - only rate limiting test fails)
+- Quick demo added (lib/aui/examples/quick-demo.tsx) ✅
+- Test suite (most tests passing, minor rate limit test issue)
 
 ## API Pattern
 ```tsx
