@@ -219,5 +219,18 @@ export type ExtractTools<T> = T extends { [K in keyof T]: AUITool<infer I, infer
   ? { [K in keyof T]: ToolDefinition<InferToolInput<T[K]>, InferToolOutput<T[K]>> }
   : never;
 
+// Re-export everything for convenience
 export { z } from 'zod';
+export { useAUITool, useAUI } from './hooks/useAUITool';
+export { AUIProvider, useAUIContext, useAUIInstance } from './provider';
+export { 
+  createServerContext, 
+  createServerTool, 
+  executeServerTool,
+  createServerAction,
+  batchExecute,
+  registerServerTools,
+  handleToolRequest
+} from './server';
+
 export default aui;

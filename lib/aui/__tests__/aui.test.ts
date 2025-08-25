@@ -51,7 +51,7 @@ describe('AUI System', () => {
       clientExecute.mockClear();
 
       // With context (client execution)
-      const ctx = testAUI.createContext();
+      const ctx = testAUI.createContext({ isServer: false });
       const clientResult = await tool.run('test', ctx);
       expect(clientResult).toBe('client: test');
       expect(clientExecute).toHaveBeenCalled();
@@ -172,6 +172,7 @@ describe('AUI System', () => {
     it('should support cache operations in context', async () => {
       const tool = testAUI
         .tool('cached')
+        .execute(async ({ input }) => `server: ${input}`)
         .clientExecute(async ({ input, ctx }) => {
           const cached = ctx.cache.get(input);
           if (cached) return cached;
@@ -181,7 +182,7 @@ describe('AUI System', () => {
           return result;
         });
 
-      const ctx = testAUI.createContext();
+      const ctx = testAUI.createContext({ isServer: false });
       
       // First call - compute
       const result1 = await tool.run('test', ctx);
@@ -281,10 +282,13 @@ describe('AUI System', () => {
       
       expect(json).toEqual({
         name: 'serializable',
+        description: undefined,
+        tags: undefined,
         hasInput: true,
         hasExecute: true,
         hasClientExecute: true,
-        hasRender: true
+        hasRender: true,
+        hasMiddleware: false
       });
     });
   });
