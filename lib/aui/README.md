@@ -10,8 +10,7 @@ const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
 ```
 
 ### Complex Tool - Adds Client Optimization
@@ -25,8 +24,7 @@ const complexTool = aui
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();
+  .render(({ data }) => <SearchResults results={data} />);
 ```
 
 ## API Reference
@@ -38,7 +36,7 @@ const complexTool = aui
 - `.execute(handler)` - Server-side execution logic
 - `.clientExecute(handler)` - Optional client-side execution
 - `.render(component)` - React component for rendering results
-- `.build()` - Build the final tool definition
+- Returns a built tool object ready to use (no build step needed)
 
 ### React Components
 
