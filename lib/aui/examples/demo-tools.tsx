@@ -125,6 +125,6 @@ export const analyticsTool = aui
   })
   .render(({ data }) => (
     <div className="text-xs text-gray-500">
-      Event "{data.event}" tracked
+      Event &ldquo;{data.event}&rdquo; tracked
     </div>
   ));

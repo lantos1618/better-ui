@@ -295,7 +295,7 @@ export function AIControlDemo() {
           ],
           submitAction: 'Submit'
         });
-        executedTools.push({ name: 'form-generator', input: { fields: [...] }, output: result });
+        executedTools.push({ name: 'form-generator', input: { fields: ['name', 'email', 'message'] }, output: result });
       }
       
       // Workflow execution
@@ -308,7 +308,7 @@ export function AIControlDemo() {
           ],
           parallel: false
         });
-        executedTools.push({ name: 'workflow', input: { steps: [...] }, output: result });
+        executedTools.push({ name: 'workflow', input: { steps: ['database', 'api-call', 'ui-control'] }, output: result });
       }
       
       // Add assistant response
