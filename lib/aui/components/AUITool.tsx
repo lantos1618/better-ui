@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Tool } from '../lantos-aui';
+import { AUITool } from '../index';
 import { useAUI, useAUIRender } from '../client/use-aui';
 
 interface AUIToolProps<TInput = any, TOutput = any> {
-  tool: Tool<TInput, TOutput>;
+  tool: AUITool<TInput, TOutput>;
   input?: TInput;
   autoExecute?: boolean;
   onSuccess?: (data: TOutput) => void;
@@ -56,7 +56,7 @@ export namespace AUITool {
     onSuccess,
     onError,
   }: {
-    tool: Tool<TInput, TOutput>;
+    tool: AUITool<TInput, TOutput>;
     input: TInput;
     children: (execute: () => Promise<void>) => React.ReactNode;
     onSuccess?: (data: TOutput) => void;
@@ -81,7 +81,7 @@ export namespace AUITool {
     data,
     input,
   }: {
-    tool: Tool<TInput, TOutput>;
+    tool: AUITool<TInput, TOutput>;
     data: TOutput | null;
     input?: TInput;
   }) {
@@ -96,7 +96,7 @@ export function AUIToolList<TInput = any, TOutput = any>({
   inputs,
   autoExecute = false,
 }: {
-  tools: Tool<TInput, TOutput>[];
+  tools: AUITool<TInput, TOutput>[];
   inputs?: Map<string, TInput>;
   autoExecute?: boolean;
 }) {

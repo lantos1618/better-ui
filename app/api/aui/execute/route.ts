@@ -1,66 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleToolRequest } from '@/lib/aui/server';
 import aui from '@/lib/aui';
 
+// Import and register example tools
+import '@/lib/aui/tools/examples';
+
 export async function POST(request: NextRequest) {
-  try {
-    const { tool, input, context } = await request.json();
-    
-    if (!tool) {
-      return NextResponse.json(
-        { error: 'Tool name is required' },
-        { status: 400 }
-      );
-    }
-    
-    // Execute the tool
-    const result = await aui.execute(tool, input, context);
-    
-    return NextResponse.json({ success: true, data: result });
-  } catch (error: any) {
-    console.error('Tool execution error:', error);
-    
-    if (error.message?.includes('not found')) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 404 }
-      );
-    }
-    
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
+  // Use the handleToolRequest from server.ts
+  return handleToolRequest(request as unknown as Request);
 }
 
-// Support batch execution
-export async function PUT(request: NextRequest) {
-  try {
-    const { tools, context } = await request.json();
-    
-    if (!Array.isArray(tools)) {
-      return NextResponse.json(
-        { error: 'Tools must be an array' },
-        { status: 400 }
-      );
-    }
-    
-    // Batch execute
-    const results = await aui.batch(tools, context);
-    
-    return NextResponse.json({ success: true, data: results });
-  } catch (error: any) {
-    console.error('Batch execution error:', error);
-    
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// List available tools for AI discovery
+// List available tools
 export async function GET() {
-  const tools = aui.list();
+  const tools = aui.getTools().map(tool => ({
+    name: tool.name,
+    schema: tool.schema,
+  }));
+  
   return NextResponse.json({ tools });
 }

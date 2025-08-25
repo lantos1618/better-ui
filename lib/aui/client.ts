@@ -1,7 +1,6 @@
 'use client';
 
-import { Tool, aui, AUIContext } from './lantos-ultra';
-import { z } from 'zod';
+import aui, { AUITool, AUIContext, z } from './index';
 
 export interface ClientToolOptions {
   cacheKey?: (input: any) => string;
@@ -15,7 +14,7 @@ export function createClientTool<TInput = any, TOutput = any>(
   schema: z.ZodType<TInput>,
   handler: (params: { input: TInput; ctx: AUIContext }) => Promise<TOutput> | TOutput,
   options?: ClientToolOptions
-): Tool<TInput, TOutput> {
+): AUITool<TInput, TOutput> {
   const tool = aui
     .tool(name)
     .input(schema)

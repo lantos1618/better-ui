@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
-import aui, { z, AUITool } from './aui';
+import aui, { z, AUITool } from '../lib/aui';
 
 describe('AUI - Concise Tool System', () => {
   beforeEach(() => {
     // Clear registry between tests
-    aui.registry.clear();
+    aui.clear();
   });
 
   describe('Tool Creation', () => {

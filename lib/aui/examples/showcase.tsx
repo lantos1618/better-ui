@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { z } from 'zod';
-import aui from '@/lib/aui/lantos';
-import { useAUITool } from '@/lib/aui/lantos/hooks';
+import aui from '@/lib/aui';
+import { useAUITool } from '@/lib/aui/client/hooks';
 
 // Ultra-concise API examples
 
@@ -36,7 +36,7 @@ const searchTool = aui
     const cached = ctx.cache.get(cacheKey);
     if (cached) return cached;
     
-    const result = await ctx.fetch('/api/aui/lantos/execute', {
+    const result = await ctx.fetch('/api/aui/execute', {
       method: 'POST',
       body: JSON.stringify({ tool: 'search', input })
     }).then((res: Response) => res.json()).then((data: any) => data.result);

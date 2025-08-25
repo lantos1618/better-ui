@@ -1,5 +1,5 @@
 import React from 'react';
-import aui, { z } from '../lantos-aui';
+import aui, { z } from '../index';
 
 // Simple weather tool - just 2 methods (execute + render)
 export const weatherTool = aui
@@ -66,7 +66,7 @@ export const searchTool = aui
   .render(({ data }) => (
     <div className="space-y-2">
       <h3 className="text-lg font-semibold">
-        Search Results for "{data.query}"
+        Search Results for &quot;{data.query}&quot;
       </h3>
       <div className="space-y-2">
         {data.results.map((result) => (
@@ -205,12 +205,13 @@ export const calculatorTool = aui
   ));
 
 // AI assistant tool with retry and caching
-export const assistantTool = aui.ai('assistant', {
-  input: z.object({
+export const assistantTool = aui
+  .tool('assistant')
+  .input(z.object({
     message: z.string(),
     context: z.string().optional()
-  }),
-  execute: async ({ input }) => {
+  }))
+  .execute(async ({ input }) => {
     // Simulate AI API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
@@ -224,18 +225,15 @@ export const assistantTool = aui.ai('assistant', {
       confidence: Math.random(),
       context: input.context
     };
-  },
-  render: ({ data }) => (
+  })
+  .render(({ data }) => (
     <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
       <p className="text-gray-800">{data.response}</p>
       <p className="text-xs text-gray-500 mt-2">
         Confidence: {(data.confidence * 100).toFixed(1)}%
       </p>
     </div>
-  ),
-  retry: 3,
-  cache: true
-});
+  ));
 
 // Export all tools for easy registration
 export const exampleTools = [
@@ -248,6 +246,6 @@ export const exampleTools = [
 
 // Helper to register all example tools
 export function registerExampleTools() {
-  aui.registerAll(...exampleTools);
+  // Tools are automatically registered when created with aui.tool()
   return aui;
 }

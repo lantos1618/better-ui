@@ -61,22 +61,29 @@ Each execution receives a context object:
 ## File Structure
 
 ```
-/lib/
-  aui.ts               # Core implementation (NO lantos files)
-  
 /lib/aui/
-  hooks.tsx            # React hooks (useAUI, useAUIBatch, useAUIStream)
+  index.ts             # Core AUI implementation
+  server.ts            # Server-side utilities
+  client.ts            # Client-side utilities
+  types.ts             # Type definitions
+  
+/lib/aui/client/
+  hooks.tsx            # React hooks (useAUI, useAUITool)
+  provider.tsx         # AUI context provider
+  use-aui.tsx          # Main client hook
+  
+/lib/aui/tools/
+  examples.tsx         # Example tool implementations
   
 /app/api/aui/
   execute/             # Server execution endpoint
     route.ts
     
-/app/aui-demo/
-  page.tsx             # Demo implementation
+/app/aui/
+  page.tsx             # Main demo page
   
 /__tests__/
-  aui.test.ts          # Test suite
-  aui-concise.test.ts  # Concise API tests
+  aui.test.ts          # Main test suite
 ```
 
 ## Integration Points

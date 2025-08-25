@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const tools = aui.list();
+  const tools = aui.getTools().map(tool => ({
+    name: tool.name,
+    schema: tool.schema
+  }));
   return NextResponse.json({ 
     tools,
     count: tools.length 

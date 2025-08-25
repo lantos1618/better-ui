@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, ReactNode } from 'react';
-import type { ToolContext } from '../lantos-aui';
+import type { AUIContext as ToolContext } from '../index';
 
 interface AUIProviderProps {
   children: ReactNode;
@@ -15,7 +15,7 @@ const AUIContext = createContext<ToolContext | null>(null);
 
 export function AUIProvider({ 
   children, 
-  baseUrl = '/api/aui/lantos',
+  baseUrl = '/api/aui',
   cache,
   user,
   session 

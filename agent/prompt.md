@@ -26,6 +26,11 @@ const complexTool = aui
 
 ```
 
+-  HIGH PRIORITY STOP USING LANTOS AS A NAME LOOK at the files tree there are files called lantos and also like components or react things or ts thigns called lantos also there are examples that can be cleaned up. clean up this lantos-aui and the LantosAUI and lantos everything ffs
+-  HIGH PRIORITY REMOVE THE .build() API WE WANT EVERY ACTION TO RETURN A BUILT object!
+-  HIGH PRIORITY FIND ALL the redundant code we have app/aui and lib/aui 
+-  HIGH PRIORITY we have two systems built please remove the lantos aui choose the best version and like think about this... infact you can run Tree and ignore the node_modules and .next
+
 
 notes from Lyndon
 - read the .agent folder to help you

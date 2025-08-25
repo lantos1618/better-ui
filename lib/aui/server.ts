@@ -1,5 +1,4 @@
-import { Tool, aui, AUIContext } from './lantos-ultra';
-import { z } from 'zod';
+import aui, { AUITool, AUIContext, z } from './index';
 
 export interface ServerToolOptions {
   requireAuth?: boolean;
@@ -15,7 +14,7 @@ export function createServerTool<TInput = any, TOutput = any>(
   schema: z.ZodType<TInput>,
   handler: (params: { input: TInput; ctx: AUIContext }) => Promise<TOutput> | TOutput,
   options?: ServerToolOptions
-): Tool<TInput, TOutput> {
+): AUITool<TInput, TOutput> {
   const tool = aui
     .tool(name)
     .input(schema)
@@ -46,7 +45,7 @@ export async function executeServerTool<TInput = any, TOutput = any>(
   return await aui.execute(toolName, input, context);
 }
 
-export function registerServerTools(tools: Tool[]) {
+export function registerServerTools(tools: AUITool[]) {
   tools.forEach(tool => {
     if (!aui.has(tool.name)) {
       aui.get(tool.name); // This will register the tool

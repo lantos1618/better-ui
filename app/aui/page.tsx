@@ -42,14 +42,11 @@ const searchTool = aui
       return cached;
     }
     
-    const result = await ctx.fetch('/api/tools/search', {
+    const result = await ctx.fetch('/api/aui/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input)
-    }).then(r => r.json()).catch(() => {
-      // Fallback to executing locally
-      return searchTool.run(input);
-    });
+      body: JSON.stringify({ tool: 'search', input })
+    }).then(r => r.json()).then(res => res.data);
     
     ctx.cache.set(input.query, result);
     return result;
@@ -164,7 +161,7 @@ export default function AUIDemo() {
                     onClick={() => runTool('search', { query: 'Next.js tutorials' })}
                     className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
                   >
-                    Search "Next.js tutorials"
+                    Search &quot;Next.js tutorials&quot;
                   </button>
                 </div>
                 
@@ -199,7 +196,9 @@ export default function AUIDemo() {
                       <div className="text-sm text-gray-500 mb-1">
                         {result.tool} • {new Date(result.timestamp).toLocaleTimeString()}
                       </div>
-                      {tool?.renderResult(result.output, result.input)}
+                      {tool?.renderer ? tool.renderer({ data: result.output, input: result.input }) : (
+                        <pre className="text-xs">{JSON.stringify(result.output, null, 2)}</pre>
+                      )}
                     </div>
                   );
                 })}

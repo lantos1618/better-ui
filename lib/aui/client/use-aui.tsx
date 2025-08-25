@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Tool, ToolContext } from '../lantos-aui';
+import { AUITool, AUIContext } from '../index';
 
 export interface UseAUIOptions {
   cache?: boolean;
@@ -19,7 +19,7 @@ export interface UseAUIResult<TInput = any, TOutput = any> {
 
 // Client-side hook for executing AUI tools
 export function useAUI<TInput = any, TOutput = any>(
-  tool: Tool<TInput, TOutput> | string,
+  tool: AUITool<TInput, TOutput> | string,
   options: UseAUIOptions = {}
 ): UseAUIResult<TInput, TOutput> {
   const [data, setData] = useState<TOutput | null>(null);
@@ -44,7 +44,7 @@ export function useAUI<TInput = any, TOutput = any>(
       }
 
       // Create client context
-      const ctx: ToolContext = {
+      const ctx: AUIContext = {
         cache: cacheRef.current,
         fetch: async (url: string, opts?: any) => {
           const response = await fetch(url, {
@@ -64,7 +64,7 @@ export function useAUI<TInput = any, TOutput = any>(
       let result: TOutput;
 
       // If tool has client execution, use it
-      if (typeof tool !== 'string' && tool.hasClientExecute) {
+      if (typeof tool !== 'string' && tool.clientHandler) {
         result = await tool.run(input, ctx);
       } else {
         // Otherwise, call the server API
@@ -113,16 +113,16 @@ export function useAUI<TInput = any, TOutput = any>(
 
 // Hook for rendering tool results
 export function useAUIRender<TInput = any, TOutput = any>(
-  tool: Tool<TInput, TOutput>,
+  tool: AUITool<TInput, TOutput>,
   data: TOutput | null,
   input?: TInput
 ) {
   if (!data) return null;
-  return tool.renderResult(data, input);
+  return tool.renderer ? tool.renderer({ data, input }) : null;
 }
 
 // Hook for batch tool execution
-export function useAUIBatch<T extends Record<string, Tool>>(
+export function useAUIBatch<T extends Record<string, AUITool>>(
   tools: T,
   options: UseAUIOptions = {}
 ): {
@@ -150,7 +150,7 @@ export function useAUIBatch<T extends Record<string, Tool>>(
 
     try {
       const tool = tools[name];
-      const ctx: ToolContext = {
+      const ctx: AUIContext = {
         cache: new Map(),
         fetch: globalThis.fetch.bind(globalThis),
       };

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import aui, { z } from './lantos-ultra';
+import aui, { z } from '../aui';
 import { createServerTool } from './server';
 import { createClientTool } from './client';
 

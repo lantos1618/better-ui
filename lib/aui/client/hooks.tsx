@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { Tool, ToolContext } from '../lantos-aui';
+import type { AUITool, AUIContext } from '../index';
 import { useAUIContext } from './provider';
 
 export interface UseToolOptions {
@@ -21,7 +21,7 @@ export interface UseToolResult<TInput, TOutput> {
 }
 
 export function useAUITool<TInput, TOutput>(
-  tool: Tool<TInput, TOutput>,
+  tool: AUITool<TInput, TOutput>,
   options: UseToolOptions = {}
 ): UseToolResult<TInput, TOutput> {
   const [loading, setLoading] = useState(false);
@@ -133,7 +133,7 @@ export function useAUITool<TInput, TOutput>(
     data,
     error,
     reset,
-    render: data ? () => tool.renderResult(data) : null,
+    render: data ? () => (tool.renderer ? tool.renderer({ data }) : null) : null,
   };
 }
 
