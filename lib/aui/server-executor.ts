@@ -58,7 +58,7 @@ export class ServerExecutor {
     }
     
     // Execute with timeout
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise((_, reject) => {
       timeoutId = setTimeout(() => {
         reject(new Error(`Tool execution timeout (${this.options.maxExecutionTime}ms)`));
@@ -72,7 +72,7 @@ export class ServerExecutor {
       ]) as TOutput;
       
       // Clear the timeout after successful execution
-      clearTimeout(timeoutId);
+      if (timeoutId) clearTimeout(timeoutId);
       
       if (this.options.logExecution) {
         console.log(`[AUI] Tool executed successfully: ${toolName}`);
@@ -81,7 +81,7 @@ export class ServerExecutor {
       return result;
     } catch (error) {
       // Clear the timeout on error as well
-      clearTimeout(timeoutId!);
+      if (timeoutId) clearTimeout(timeoutId);
       
       if (this.options.logExecution) {
         console.error(`[AUI] Tool execution failed: ${toolName}`, error);
