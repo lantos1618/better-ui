@@ -10,6 +10,7 @@ import aui, {
   globalToolRegistry,
   aiControlSystem
 } from '@/lib/aui';
+import { AIControlDemo } from '@/lib/aui/examples/ai-control-demo';
 
 // Define some example tools
 const weatherTool = aui
@@ -75,6 +76,7 @@ const searchTool = aui
   ));
 
 export default function AUIDemo() {
+  const [showAIControl, setShowAIControl] = useState(false);
   const [city, setCity] = useState('London');
   const [query, setQuery] = useState('Next.js');
   const [toolList, setToolList] = useState<any[]>([]);
@@ -137,9 +139,32 @@ export default function AUIDemo() {
     setCacheStats(clientExecutor.getCacheStats());
   };
 
+  if (showAIControl) {
+    return (
+      <div>
+        <button
+          onClick={() => setShowAIControl(false)}
+          className="m-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+        >
+          ← Back to Original Demo
+        </button>
+        <AIControlDemo />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-3xl font-bold mb-8">AUI System Demo</h1>
+      
+      <div className="mb-4">
+        <button
+          onClick={() => setShowAIControl(true)}
+          className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+        >
+          View AI Control Demo (Frontend & Backend) →
+        </button>
+      </div>
       
       {/* Simple Tool Execution */}
       <section className="mb-8">
