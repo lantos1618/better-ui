@@ -15,14 +15,29 @@
 - ✅ Error handling and boundaries
 - ✅ Client-side caching optimization
 - ✅ No Lantos references in codebase
-
-## Current Session Tasks
-- ✅ Review existing implementation
-- ✅ Update .agent directory documentation
-- ⏳ Verify tests pass
-- ⏳ Run lint and typecheck
-- ⏳ Commit changes if needed
-- ⏳ Clean up unnecessary files
+- ✅ Verified exact API matches user request
+- ✅ Tests for user-requested patterns passing
 
 ## System Ready
 The AUI system is production-ready for AI agent control of frontend and backend in Next.js/Vercel applications.
+
+## API Examples Working
+```tsx
+// Simple tool - just 2 methods ✅
+const simpleTool = aui
+  .tool('weather')
+  .input(z.object({ city: z.string() }))
+  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+
+// Complex tool - adds client optimization ✅
+const complexTool = aui
+  .tool('search')
+  .input(z.object({ query: z.string() }))
+  .execute(async ({ input }) => db.search(input.query))
+  .clientExecute(async ({ input, ctx }) => {
+    const cached = ctx.cache.get(input.query);
+    return cached || ctx.fetch('/api/tools/search', { body: input });
+  })
+  .render(({ data }) => <SearchResults results={data} />)
+```
