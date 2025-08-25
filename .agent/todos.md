@@ -12,7 +12,7 @@
 5. 🔄 Enhance client-side execution with caching
 
 ### Pending 📋
--  HIGH PRIORITY [ ] STOP USING LANTOS AS A NAME
+-  HIGH PRIORITY [ ] STOP USING LANTOS AS A NAME LOOK at the files tree there are files called lantos also there are exmplae that can be cleaned up
 - REMOVE THE .build() API WE WANT EVERY ACTION TO RETURN A BUILT object!
 6. [ ] Create comprehensive example implementations
 7. [ ] Write comprehensive tests
