@@ -52,13 +52,16 @@ export const calculatorTool = aui
     };
     return { result: operations[op], a, b, op };
   })
-  .render(({ data }) => (
-    <div className="p-4 bg-gray-50 rounded">
-      <span className="font-mono">
-        {data.a} {data.op === '*' ? '×' : data.op === '/' ? '÷' : data.op} {data.b} = {data.result}
-      </span>
-    </div>
-  ));
+  .render(({ data }) => {
+    if (!data) return null;
+    return (
+      <div className="p-4 bg-gray-50 rounded">
+        <span className="font-mono">
+          {data.a} {data.op === '*' ? '×' : data.op === '/' ? '÷' : data.op} {data.b} = {data.result}
+        </span>
+      </div>
+    );
+  });
 
 // Database tool for data operations
 export const databaseTool = aui
