@@ -6,8 +6,28 @@ import aui from '@/lib/aui';
 import '@/lib/aui/examples';
 
 export async function POST(request: NextRequest) {
-  // Use the handleToolRequest from server.ts
-  return handleToolRequest(request as unknown as Request);
+  try {
+    const { tool: toolName, input } = await request.json();
+    
+    const tool = aui.get(toolName);
+    if (!tool) {
+      return NextResponse.json(
+        { error: `Tool "${toolName}" not found` },
+        { status: 404 }
+      );
+    }
+
+    const ctx = aui.createContext();
+    const data = await tool.run(input, ctx);
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { error: message },
+      { status: 400 }
+    );
+  }
 }
 
 // List available tools
