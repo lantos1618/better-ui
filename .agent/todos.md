@@ -1,16 +1,17 @@
 # Todos
 
 ## High Priority
-1. [ ] Push 14 local commits to remote (requires manual GitHub auth - run `gh auth login`)
+1. [ ] Push 16 local commits to remote (requires manual GitHub auth - run `gh auth login`)
    - Need to authenticate with GitHub CLI first
 
 ## Low Priority
-2. [ ] Consider refactoring test suite to properly clean up async operations
-3. [ ] Migrate from deprecated `next lint` to ESLint CLI (Next.js 16 preparation)
+2. [ ] Migrate from deprecated `next lint` to ESLint CLI (Next.js 16 preparation)
+   - Run: `npx @next/codemod@canary next-lint-to-eslint-cli .`
 
-## Completed (2025-08-25 - Latest Merge & Checkup)
+## Completed (2025-08-25 - Latest Checkup with Fixes)
+- [x] Fix Jest timeout cleanup in server-executor.ts (open handles warning resolved)
 - [x] Read .agent folder for context and metadata
-- [x] Check current git status and branch information (on main, 14 commits ahead)
+- [x] Check current git status and branch information (on main, 16 commits ahead)
 - [x] Pull latest changes from remote (already up to date)
 - [x] Ensure we're on main branch (already on main, no merge needed)
 - [x] Run all tests (143/143 passing)
