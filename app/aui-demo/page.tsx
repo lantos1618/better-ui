@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 import aui, { 
-  weatherTool,
-  searchTool,
   clientTools,
   globalToolRegistry,
   toolDiscovery 
