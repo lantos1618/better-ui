@@ -103,11 +103,11 @@ export default function AIControlDemo() {
       try {
         let result;
         if (step.tool === 'weather') {
-          result = await weatherTool.run(step.input, ctx);
+          result = await weatherTool.run(step.input as { city: string }, ctx);
         } else if (step.tool === 'search') {
-          result = await searchTool.run(step.input, ctx);
+          result = await searchTool.run(step.input as { query: string }, ctx);
         } else if (aiControlTools[step.tool as keyof typeof aiControlTools]) {
-          result = await aiControlTools[step.tool as keyof typeof aiControlTools].run(step.input, ctx);
+          result = await aiControlTools[step.tool as keyof typeof aiControlTools].run(step.input as any, ctx);
         }
         
         logExecution(step.tool, 'execute', step.input, result);
