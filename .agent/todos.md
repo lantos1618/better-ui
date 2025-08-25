@@ -1,26 +1,34 @@
-# Todos - Better-ui Implementation
+# Todos - Lantos AUI Implementation
 
-## Completed ✅
-1. ✅ Explore codebase structure and existing implementations
-2. ✅ Review and enhance existing ui implementation  
-3. ✅ Create enhanced ui with server/client separation
-4. ✅ Add server/client execution separation for Next.js
-5. ✅ Implement caching and optimization features
-6. ✅ Create example tools (weather and search)
-7. ✅ Build showcase page with live examples
-8. ✅ Write comprehensive tests
-9. ✅ Create .agent directory with meta files
+## Current Session Tasks
 
-## In Progress 🔄
-10. 🔄 Commit and push changes
+### Completed ✅
+1. ✅ Analyze existing codebase structure and AUI implementation
+2. ✅ Design the concise AUI API with fluent interface
+3. ✅ Review and enhance core AUI builder
 
-## Future Tasks 📋
-- [ ] mark and sweep things to clean up, DRY KISS principles. Rename lantos to bui or better-ui use consistancy!
-- [ ] Add WebSocket support for real-time tool updates
-- [ ] Create server actions for Next.js App Router
-- [ ] Build plugin system for extending functionality
-- [ ] Add tool composition and chaining
-- [ ] Implement tool versioning
-- [ ] Create visual tool builder UI
-- [ ] Add metrics and observability
-- [ ] Build tool marketplace/registry
+### In Progress 🔄
+4. 🔄 Improve server-side execution handlers
+5. 🔄 Enhance client-side execution with caching
+
+### Pending 📋
+-  HIGH PRIORITY [ ] STOP USING LANTOS AS A NAME
+- REMOVE THE .build() API WE WANT EVERY ACTION TO RETURN A BUILT object!
+6. [ ] Create comprehensive example implementations
+7. [ ] Write comprehensive tests
+8. [ ] Run linting and type checking
+9. [ ] Commit changes with descriptive message
+
+## Estimated Time
+- Server improvements: 15 min
+- Client enhancements: 20 min
+- Examples: 25 min
+- Tests: 30 min
+- Linting/Commit: 10 min
+Total: ~100 min
+
+## Notes
+- Focus on simplicity and elegance
+- Maintain backwards compatibility
+- Ensure AI discoverability
+- Follow DRY & KISS principles

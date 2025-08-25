@@ -12,7 +12,7 @@ Implement a concise and elegant AUI (Assistant UI) system for AI-controlled fron
 4. **Type Safety**: Full TypeScript support with Zod validation
 
 ### Key Features
-- Ultra-concise API (2 methods minimum: input, execute)
+- Ultra-concise API (2 methods minimum: tool, execute)
 - Optional client-side optimization (caching, offline support)
 - React hooks for easy integration
 - Server/client execution flexibility
@@ -21,24 +21,24 @@ Implement a concise and elegant AUI (Assistant UI) system for AI-controlled fron
 ## Implementation Steps
 
 ### Phase 1: Core API ✓
-- Already have basic lantos-aui.ts implementation
+- Basic lantos-concise.ts implementation
 - Tool class with chainable methods
 - AUI global instance
 
-### Phase 2: Enhanced Features (Current Focus)
-- Improve the builder pattern for even more concise usage
-- Add shorthand methods (t(), do(), simple(), ai())
-- Implement retry logic and caching
+### Phase 2: Enhanced Features (Current)
+- Improve caching system with global cache
+- Add middleware support
+- Implement streaming responses
 - Create batch tool definitions
 
 ### Phase 3: React Integration
-- Enhance hooks (useAUITool, useAUI)
-- Create provider components
-- Add SSR support
-- Implement streaming responses
+- Enhanced hooks (useAUITool, useAUI)
+- Provider components
+- SSR support
+- Real-time updates
 
 ### Phase 4: Testing & Documentation
-- Unit tests for all components
+- Comprehensive unit tests
 - Integration tests
 - Example implementations
 - Performance benchmarks

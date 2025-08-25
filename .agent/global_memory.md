@@ -1,138 +1,86 @@
-# Global Memory - Lantos AUI Implementation
+# Lantos AUI System - Global Memory
 
-## Project Context
-- **Branch**: lantos-aui
-- **Purpose**: Implement a concise and elegant AUI (Assistant UI) system for AI-controlled frontend and backend operations in Next.js Vercel applications
-- **Latest Update**: Complete implementation with demo and integration tests (2025-08-25)
+## System Overview
+The Lantos AUI (Assistant UI) system provides a concise, fluent API for creating tools that can be executed on both client and server sides in Next.js/Vercel applications. This enables AI assistants to control both frontend and backend operations seamlessly.
 
-## Key Components Created
+## Core Architecture
 
-### 1. Lantos Concise AUI (`/lib/aui/lantos-concise.ts`)
-- Ultra-concise fluent API - tools in just 2-4 method calls
-- Advanced features:
-  - Smart caching with TTL and automatic expiry
-  - Retry logic with exponential backoff
-  - Timeout handling for long operations
-  - Client/server execution separation
-  - AI agent context support
-  - Tool registry for discovery
-  - Batch execution capabilities
-- Type-safe with Zod validation
-- Optimized for both development speed and runtime performance
+### Key Components
+1. **Tool Builder**: Fluent API for creating tools with chainable methods
+2. **Dual Execution**: Separate client/server execution paths
+3. **Smart Caching**: Built-in cache management with TTL
+4. **Retry Logic**: Automatic retry with exponential backoff
+5. **Tool Registry**: Global registry for AI discovery
 
-### 2. Enhanced Examples (`/examples/lantos-aui-concise.tsx`)
-- Simple weather tool (2 methods)
-- Complex search tool with caching
-- AI assistant tool with advanced features
-- Calculator tool 
-- Database tool with operation-aware caching
-- Demonstrates batch execution
+### Design Philosophy
+- **Concise**: Minimal boilerplate, maximum expressiveness
+- **Fluent**: Natural method chaining
+- **Type-Safe**: Full TypeScript support with Zod validation
+- **AI-Friendly**: Tools are discoverable and self-documenting
 
-### 3. Server API Route (`/app/api/aui/lantos-execute/route.ts`)
-- POST: Execute any registered tool server-side
-- GET: Discover all available tools
-- Full error handling and validation
-- AI agent context support
+## API Pattern
 
-### 4. Demo Page (`/app/lantos-aui/demo/page.tsx`)
-- Interactive demo showcasing all AUI features
-- Live examples of weather, search, and calculator tools
-- Batch execution demonstration
-- Tool registry display
-
-### 5. Comprehensive Tests
-- **Unit Tests** (`/__tests__/lantos-aui-concise.test.ts`): 20 passing tests
-- **Integration Tests** (`/__tests__/lantos-aui-integration.test.ts`): 5 passing tests covering:
-  - Tool creation with fluent API
-  - Input validation with Zod
-  - Client/server execution logic
-  - Caching with TTL and expiry
-  - Retry with exponential backoff
-  - Timeout handling
-  - Tool registry and discovery
-  - Batch execution
-  - Context management
-  - Schema export for AI
-
-## Design Principles
-- **Simplicity**: Tools defined in 2-4 method calls
-- **Type Safety**: Zod schema validation throughout
-- **Performance**: Smart caching, retries, and timeouts
-- **Developer Experience**: Fluent API, clear patterns
-- **AI Integration**: Clear server/client boundaries for AI control
-
-## API Patterns
-
-### Simple Tool (exactly as requested)
 ```typescript
-const simpleTool = aui
-  .tool('weather')
-  .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+const tool = aui
+  .tool('name')
+  .input(schema)
+  .execute(serverFunction)
+  .clientExecute(clientFunction) // optional
+  .render(component)              // optional
 ```
 
-### Complex Tool (exactly as requested)
-```typescript
-const complexTool = aui
-  .tool('search')
-  .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => db.search(input.query))
-  .clientExecute(async ({ input, ctx }) => {
-    // Only when you need caching, offline, etc.
-    const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
-  })
-  .render(({ data }) => <SearchResults results={data} />)
+## Key Features
+
+### Required Methods (2 minimum)
+- `.tool(name)`: Initialize tool
+- `.execute(fn)`: Server-side execution
+
+### Optional Enhancements
+- `.input(zodSchema)`: Input validation
+- `.clientExecute(fn)`: Client-side optimization
+- `.render(component)`: UI rendering
+- `.cache(ttl)`: Enable caching
+- `.retry(attempts)`: Retry on failure
+- `.timeout(ms)`: Execution timeout
+- `.description(text)`: Tool documentation
+
+## Context System
+
+Each execution receives a context object:
+- `cache`: Local cache store
+- `fetch`: Fetch API
+- `user`: Current user
+- `session`: Session data
+- `aiAgent`: AI agent identifier
+
+## File Structure
+
+```
+/lib/aui/
+  lantos-concise.ts    # Core implementation
+  
+/app/api/aui/
+  lantos-execute/      # Server execution endpoint
+    route.ts
+    
+/examples/
+  lantos-aui-*.tsx     # Example implementations
+  
+/__tests__/
+  lantos-aui-*.test.ts # Test suites
 ```
 
-### With Advanced Features
-```typescript
-const aiTool = aui
-  .tool('ai-assistant')
-  .description('AI code generator')
-  .input(z.object({ prompt: z.string() }))
-  .execute(async ({ input }) => generateCode(input))
-  .cache(300000)   // 5 minutes
-  .retry(2)        // Retry twice
-  .timeout(10000)  // 10 second timeout
-  .render(({ data }) => <CodeBlock code={data} />)
-```
+## Integration Points
 
-## Features Implemented
-- ✅ Concise fluent API (2-4 methods per tool)
-- ✅ Server/client execution separation
-- ✅ Built-in caching with TTL
-- ✅ Automatic retry with exponential backoff
-- ✅ Timeout handling
-- ✅ AI agent context support
-- ✅ Tool registry and discovery
-- ✅ Batch execution
-- ✅ Zod schema validation
-- ✅ React component rendering
-- ✅ Comprehensive test coverage
+1. **Server Route**: `/api/aui/lantos-execute`
+2. **Tool Registry**: Global tool discovery
+3. **Batch Execution**: Multiple tools in parallel
+4. **AI Discovery**: Tools expose schema for AI agents
 
-## Usage
-```typescript
-// Import
-import aui from '@/lib/aui/lantos-concise';
-import { z } from 'zod';
+## Best Practices
 
-// Create tool
-const tool = aui.tool('name')...
-
-// Register for AI discovery
-aui.register(tool);
-
-// Execute
-const result = await tool.run(input);
-
-// Or execute by name
-const result = await aui.execute('name', input);
-
-// Batch execution
-const results = await aui.batch([
-  { tool: 'tool1', input: {...} },
-  { tool: 'tool2', input: {...} }
-]);
-```
+1. Keep tools focused and single-purpose
+2. Use clientExecute only for caching/offline needs
+3. Always validate inputs with Zod schemas
+4. Provide clear descriptions for AI discovery
+5. Test both client and server execution paths
