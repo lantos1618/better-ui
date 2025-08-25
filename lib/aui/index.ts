@@ -16,6 +16,10 @@ export class AUI {
     return this.tools.get(name);
   }
 
+  getTool(name: string): AUITool | undefined {
+    return this.tools.get(name);
+  }
+
   async execute<TInput = any, TOutput = any>(
     name: string,
     input: TInput,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui';
+import aui, { AUIContext } from '@/lib/aui';
 
 interface RouteParams {
   params: {
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
     
     // Validate input
-    const validationResult = tool.inputSchema.safeParse(input);
+    const validationResult = tool.inputSchema?.safeParse(input) || { success: true, data: input };
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Invalid input', details: validationResult.error },
@@ -32,21 +32,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
     
     // Create context
-    const ctx = {
+    const ctx: AUIContext = {
       cache: new Map(),
-      fetch: async (url: string, options?: RequestInit) => {
-        const response = await fetch(url, options);
-        return response.json();
+      fetch: globalThis.fetch,
+      session: {
+        id: request.headers.get('x-session-id') || undefined,
+        userId: request.headers.get('x-user-id') || undefined
       },
-      sessionId: request.headers.get('x-session-id') || undefined,
-      userId: request.headers.get('x-user-id') || undefined
+      isServer: true
     };
     
     // Execute the tool
-    const result = await tool.execute({
-      input: validationResult.data,
-      ctx
-    });
+    const result = await tool.run(validationResult.data, ctx);
     
     return NextResponse.json({
       success: true,
@@ -80,8 +77,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   return NextResponse.json({
     name: tool.name,
     description: tool.description,
-    inputSchema: tool.inputSchema._def,
-    outputSchema: tool.outputSchema?._def,
+    inputSchema: tool.inputSchema ? (tool.inputSchema as any)._def : null,
+    outputSchema: null,
     isServerOnly: tool.isServerOnly,
     metadata: tool.metadata
   });

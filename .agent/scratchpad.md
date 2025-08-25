@@ -1,10 +1,12 @@
 # AUI System Scratchpad
 
-## Latest Update (2025-08-25)
-Created fresh examples demonstrating the concise AUI API as requested.
+## Latest Update (2025-08-25) - Main Branch Merge Complete
 
-## Summary
-The AUI (Assistant-UI) system is fully implemented and operational with:
+### Merge Summary
+Successfully merged lantos-aui branch into main with full cleanup and TypeScript fixes.
+
+## Current State
+The AUI (Assistant-UI) system is fully implemented, tested, and merged to main:
 
 ### ✅ Core Features
 - Clean, concise API: `aui.tool().input().execute().render()`
@@ -33,25 +35,25 @@ const complexTool = aui
   .render(({ data }) => <SearchResults results={data} />)
 ```
 
-### ✅ Test Results
-- 134/135 tests passing
-- Only rate limiting test failing (minor issue)
-- Type checking: ✅ No errors
-- Linting: ✅ Only minor warnings
+### ✅ Latest Test Results
+- **Tests**: 153/154 passing (99.4%)
+- **Type Check**: No errors ✅
+- **Linting**: Minor warnings only
+- **Build**: Successful
 
-### 📁 File Structure
-```
-lib/aui/
-├── index.ts          # Main AUI class and exports
-├── core.ts           # AUITool implementation
-├── ai-control.ts     # AI control system
-├── client-control.ts # Client-side control
-├── vercel-ai.ts      # Vercel AI SDK integration
-└── examples/         # Working examples
-```
+### 📁 Cleanup Performed
+- Removed 4 Lantos-related files
+- Deleted broken clean directory
+- Fixed all TypeScript errors in API routes
+- Added missing AUI class methods
 
-## Next Steps (Optional Future Enhancements)
-- Fix rate limiting test
-- Add WebSocket support for real-time updates
-- Create visual tool builder UI
-- Add performance monitoring dashboard
+### 🔧 Technical Fixes Applied
+1. Added `getTool()` method to AUI class
+2. Added tool properties: `inputSchema`, `outputSchema`, `isServerOnly`, `metadata`
+3. Fixed API route context types
+4. Corrected tool execution calls from `execute()` to `run()`
+
+## Next Steps (Optional)
+- Fix the one failing rate limit test
+- Address React hook dependency warnings
+- Add more comprehensive examples

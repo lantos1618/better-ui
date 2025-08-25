@@ -110,6 +110,10 @@ export class AUITool<TInput = any, TOutput = any> {
 
   get name() { return this.config.name; }
   get schema() { return this.config.inputSchema; }
+  get inputSchema() { return this.config.inputSchema; }
+  get outputSchema() { return undefined; } // Can be extended if needed
+  get isServerOnly() { return !this.config.clientHandler; }
+  get metadata() { return { description: this.config.description, tags: this.config.tags }; }
   get renderer() { return this.config.renderHandler; }
   get description() { return this.config.description; }
   get tags() { return this.config.tags || []; }
