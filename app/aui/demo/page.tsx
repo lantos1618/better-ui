@@ -89,7 +89,7 @@ export default function AUIDemo() {
             className="px-3 py-2 border rounded flex-1"
           />
           <button
-            onClick={() => calculator.execute({ expression, precision: 2 })}
+            onClick={() => calculator.execute({ expression })}
             disabled={calculator.loading}
             className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
           >
@@ -118,7 +118,7 @@ export default function AUIDemo() {
             className="px-3 py-2 border rounded flex-1"
           />
           <button
-            onClick={() => fetcher.execute({ url, method: 'GET' })}
+            onClick={() => fetcher.execute({ url })}
             disabled={fetcher.loading}
             className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50"
           >
