@@ -219,7 +219,7 @@ const formTool = aui
         </div>
         {data.newsletter && (
           <div className="text-sm text-blue-600 mt-2">
-            📧 You've been added to our newsletter
+            📧 You&apos;ve been added to our newsletter
           </div>
         )}
       </div>

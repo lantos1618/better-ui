@@ -91,7 +91,7 @@ export default function AUICleanDemo() {
               onClick={handleSearch}
               className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mb-4"
             >
-              Search for "Next.js"
+              Search for &quot;Next.js&quot;
             </button>
             
             {searchResults && searchTool.renderer && 

@@ -182,7 +182,7 @@ export default function AIControlDemo() {
                   onClick={() => executeTool('search', { query: 'Next.js' })}
                   className="w-full px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm"
                 >
-                  Search "Next.js"
+                  Search &quot;Next.js&quot;
                 </button>
                 <button
                   onClick={() => executeTool('database', { 
