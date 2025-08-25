@@ -1,3 +1,4 @@
+import { cookies, headers } from 'next/headers';
 import aui, { AUITool, AUIContext, z } from './index';
 
 export interface ServerToolOptions {
@@ -7,6 +8,37 @@ export interface ServerToolOptions {
     window: number; // in milliseconds
   };
   middleware?: (ctx: AUIContext) => Promise<void> | void;
+}
+
+/**
+ * Creates a server-side AUI context with Next.js integration
+ */
+export async function createServerContext(
+  additions?: Partial<AUIContext>
+): Promise<AUIContext> {
+  try {
+    const cookieStore = await cookies();
+    const headersList = await headers();
+    
+    return {
+      cache: new Map(),
+      fetch: globalThis.fetch,
+      isServer: true,
+      headers: Object.fromEntries(headersList.entries()),
+      cookies: Object.fromEntries(
+        cookieStore.getAll().map(c => [c.name, c.value])
+      ),
+      ...additions,
+    };
+  } catch {
+    // Fallback for non-Next.js environments
+    return {
+      cache: new Map(),
+      fetch: globalThis.fetch,
+      isServer: true,
+      ...additions,
+    };
+  }
 }
 
 export function createServerTool<TInput = any, TOutput = any>(
@@ -39,10 +71,44 @@ export function createServerTool<TInput = any, TOutput = any>(
 export async function executeServerTool<TInput = any, TOutput = any>(
   toolName: string,
   input: TInput,
-  ctx?: Partial<AUIContext>
+  contextAdditions?: Partial<AUIContext>
 ): Promise<TOutput> {
-  const context = aui.createContext(ctx);
-  return await aui.execute(toolName, input, context);
+  const ctx = await createServerContext(contextAdditions);
+  return await aui.execute(toolName, input, ctx);
+}
+
+/**
+ * Server action wrapper for tools
+ */
+export function createServerAction<TInput, TOutput>(
+  tool: AUITool<TInput, TOutput>
+) {
+  return async (input: TInput): Promise<TOutput> => {
+    'use server';
+    const ctx = await createServerContext();
+    return tool.run(input, ctx);
+  };
+}
+
+/**
+ * Batch execute multiple tools on the server
+ */
+export async function batchExecute(
+  executions: Array<{ tool: string; input: any }>,
+  contextAdditions?: Partial<AUIContext>
+): Promise<Array<{ tool: string; result?: any; error?: string }>> {
+  const ctx = await createServerContext(contextAdditions);
+  
+  const results = await Promise.allSettled(
+    executions.map(exec => aui.execute(exec.tool, exec.input, ctx))
+  );
+  
+  return results.map((result, index) => ({
+    tool: executions[index].tool,
+    ...(result.status === 'fulfilled'
+      ? { result: result.value }
+      : { error: result.reason?.message || 'Unknown error' }),
+  }));
 }
 
 export function registerServerTools(tools: AUITool[]) {
@@ -70,11 +136,11 @@ export async function handleToolRequest(
       );
     }
 
-    const ctx = aui.createContext(context);
+    const ctx = await createServerContext(context);
     const result = await tool.run(input, ctx);
 
     return new Response(
-      JSON.stringify({ success: true, result }),
+      JSON.stringify({ success: true, data: result }),
       { 
         status: 200,
         headers: { 'Content-Type': 'application/json' }
