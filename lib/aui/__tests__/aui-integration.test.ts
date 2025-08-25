@@ -31,7 +31,7 @@ describe('AUI Integration Tests', () => {
   describe('Client and Server Execution', () => {
     it('should use server execution by default', async () => {
       const serverFn = jest.fn(async ({ input }) => ({ server: true, value: input }));
-      const clientFn = jest.fn(async ({ input }) => ({ client: true, value: input }));
+      const clientFn = jest.fn(async ({ input }) => ({ server: false, client: true, value: input }));
       
       const tool = aui
         .tool('dual')
@@ -48,7 +48,7 @@ describe('AUI Integration Tests', () => {
     
     it('should use client execution when isServer is false', async () => {
       const serverFn = jest.fn(async ({ input }) => ({ server: true }));
-      const clientFn = jest.fn(async ({ input }) => ({ client: true }));
+      const clientFn = jest.fn(async ({ input }) => ({ server: false, client: true }));
       
       const tool = aui
         .tool('dual')
@@ -59,7 +59,7 @@ describe('AUI Integration Tests', () => {
       
       expect(serverFn).not.toHaveBeenCalled();
       expect(clientFn).toHaveBeenCalled();
-      expect(result).toEqual({ client: true });
+      expect(result).toEqual({ server: false, client: true });
     });
   });
   

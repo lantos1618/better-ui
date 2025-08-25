@@ -20,7 +20,7 @@ describe('AUI Comprehensive Tests', () => {
     });
 
     it('should handle client execution when not on server', async () => {
-      const clientFn = jest.fn(async ({ input }) => ({ client: true, value: input.value }));
+      const clientFn = jest.fn(async ({ input }) => ({ server: false, client: true, value: input.value }));
       const serverFn = jest.fn(async ({ input }) => ({ server: true, value: input.value }));
 
       const tool = aui
@@ -39,13 +39,13 @@ describe('AUI Comprehensive Tests', () => {
         }
       );
 
-      expect(result).toEqual({ client: true, value: 'test' });
+      expect(result).toEqual({ server: false, client: true, value: 'test' });
       expect(clientFn).toHaveBeenCalled();
       expect(serverFn).not.toHaveBeenCalled();
     });
 
     it('should use server execution when on server', async () => {
-      const clientFn = jest.fn(async ({ input }) => ({ client: true }));
+      const clientFn = jest.fn(async ({ input }) => ({ server: false, client: true }));
       const serverFn = jest.fn(async ({ input }) => ({ server: true }));
 
       const tool = aui
