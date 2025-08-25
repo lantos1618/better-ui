@@ -1,18 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { weatherTool, searchTool, calculatorTool } from '@/lib/aui/examples';
-import { ToolRenderer, useAUITool } from '@/lib/aui/components/ToolRenderer';
+import { weatherTool, searchTool, calculatorTool, chartTool } from '@/lib/aui/tools.tsx';
+import { useAUITool } from '@/lib/aui/hooks/useAUITool';
+import { AUIProvider } from '@/lib/aui/provider';
 import aui from '@/lib/aui';
 
-export default function AUIDemoPage() {
+function AUIDemoContent() {
   const [city, setCity] = useState('San Francisco');
   const [searchQuery, setSearchQuery] = useState('Next.js');
-  const [calcInput, setCalcInput] = useState({ a: 10, b: 5, op: '+' as const });
+  const [expression, setExpression] = useState('10 + 5 * 2');
 
   // Using the hook approach
-  const weather = useAUITool(weatherTool, aui.createContext());
-  const search = useAUITool(searchTool, aui.createContext());
+  const weather = useAUITool(weatherTool);
+  const search = useAUITool(searchTool);
+  const calculator = useAUITool(calculatorTool);
 
   return (
     <div className="container mx-auto p-8 max-w-4xl">
@@ -85,39 +87,33 @@ export default function AUIDemoPage() {
         {/* Calculator Tool Demo */}
         <section className="border rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Calculator Tool</h2>
-          <p className="text-gray-600 mb-4">Simple calculation tool with automatic rendering</p>
+          <p className="text-gray-600 mb-4">Expression-based calculator with safe evaluation</p>
           
           <div className="flex gap-2 mb-4">
             <input
-              type="number"
-              value={calcInput.a}
-              onChange={(e) => setCalcInput(prev => ({ ...prev, a: Number(e.target.value) }))}
-              className="px-3 py-2 border rounded-lg w-24"
+              type="text"
+              value={expression}
+              onChange={(e) => setExpression(e.target.value)}
+              className="px-3 py-2 border rounded-lg flex-1 font-mono"
+              placeholder="Enter math expression"
             />
-            <select
-              value={calcInput.op}
-              onChange={(e) => setCalcInput(prev => ({ ...prev, op: e.target.value as any }))}
-              className="px-3 py-2 border rounded-lg"
+            <button
+              onClick={() => calculator.execute({ expression, precision: 2 })}
+              disabled={calculator.loading}
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50"
             >
-              <option value="+">+</option>
-              <option value="-">-</option>
-              <option value="*">×</option>
-              <option value="/">÷</option>
-            </select>
-            <input
-              type="number"
-              value={calcInput.b}
-              onChange={(e) => setCalcInput(prev => ({ ...prev, b: Number(e.target.value) }))}
-              className="px-3 py-2 border rounded-lg w-24"
-            />
+              {calculator.loading ? 'Calculating...' : 'Calculate'}
+            </button>
           </div>
           
-          <ToolRenderer
-            tool={calculatorTool}
-            input={calcInput}
-            context={aui.createContext()}
-            autoExecute={true}
-          />
+          {(calculator.data || calculator.error) && calculatorTool.renderer && (
+            calculatorTool.renderer({ 
+              data: calculator.data!, 
+              input: { expression, precision: 2 }, 
+              loading: calculator.loading,
+              error: calculator.error || undefined
+            })
+          )}
         </section>
 
         {/* Code Examples */}
@@ -155,5 +151,13 @@ export default function AUIDemoPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+export default function AUIDemoPage() {
+  return (
+    <AUIProvider>
+      <AUIDemoContent />
+    </AUIProvider>
   );
 }

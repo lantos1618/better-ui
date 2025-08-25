@@ -28,7 +28,7 @@ export const searchTool = aui
   }))
   .execute(async ({ input }) => {
     // Server-side database search
-    const results = await simulateDBSearch(input.query, input.limit);
+    const results = await simulateDBSearch(input.query, input.limit || 10);
     return results;
   })
   .clientExecute(async ({ input, ctx }) => {
@@ -106,7 +106,9 @@ export const formTool = aui
     const enrichedInput = {
       ...input,
       timestamp: Date.now(),
-      userAgent: ctx.headers?.['user-agent']
+      userAgent: typeof ctx.headers === 'object' && ctx.headers && 'user-agent' in ctx.headers 
+        ? (ctx.headers as any)['user-agent'] 
+        : undefined
     };
     return next();
   })

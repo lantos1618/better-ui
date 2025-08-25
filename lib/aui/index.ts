@@ -223,14 +223,7 @@ export type ExtractTools<T> = T extends { [K in keyof T]: AUITool<infer I, infer
 export { z } from 'zod';
 export { useAUITool, useAUI } from './hooks/useAUITool';
 export { AUIProvider, useAUIContext, useAUIInstance } from './provider';
-export { 
-  createServerContext, 
-  createServerTool, 
-  executeServerTool,
-  createServerAction,
-  batchExecute,
-  registerServerTools,
-  handleToolRequest
-} from './server';
+
+// Server exports are in ./server - import them separately when needed
 
 export default aui;

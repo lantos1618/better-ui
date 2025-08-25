@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useCallback, useRef } from 'react';
 import type { AUITool, AUIContext } from '../index';
 
