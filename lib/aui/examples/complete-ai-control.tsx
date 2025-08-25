@@ -83,7 +83,7 @@ const userTool = aui
   })
   .render(({ data, input }) => (
     <div className="p-4 bg-gray-100 rounded">
-      <h3 className="font-bold">User {input.action}</h3>
+      <h3 className="font-bold">User {input?.action || 'action'}</h3>
       <pre className="mt-2 text-sm">
         {JSON.stringify(data, null, 2)}
       </pre>

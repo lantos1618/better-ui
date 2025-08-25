@@ -26,7 +26,7 @@ const apiGatewayTool = aui
 
     // Retry logic
     let lastError;
-    for (let i = 0; i < input.retries; i++) {
+    for (let i = 0; i < (input.retries || 3); i++) {
       try {
         const response = await ctx.fetch(input.endpoint, {
           method: input.method,
@@ -54,7 +54,7 @@ const apiGatewayTool = aui
         return data;
       } catch (error) {
         lastError = error;
-        if (i < input.retries - 1) {
+        if (i < (input.retries || 3) - 1) {
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
         }
       }
@@ -133,7 +133,7 @@ const analyticsTool = aui
       ...input,
       sessionId: ctx?.session?.id,
       userId: ctx?.user?.id,
-      userAgent: ctx?.headers?.['user-agent'] || 'unknown'
+      userAgent: (ctx?.headers as any)?.['user-agent'] || 'unknown'
     };
 
     // Log to server
@@ -161,7 +161,15 @@ const analyticsTool = aui
       ctx.cache.set('__analytics_queue__', []);
     }
 
-    return { queued: true, queueLength: queue.length };
+    // Return same format as execute
+    return {
+      tracked: true,
+      eventId: Math.random().toString(36).substr(2, 9),
+      ...input,
+      sessionId: ctx?.session?.id,
+      userId: ctx?.user?.id,
+      userAgent: (ctx?.headers as any)?.['user-agent'] || 'unknown'
+    };
   })
   .render(({ data }) => (
     <div className="text-green-600 text-sm">
@@ -245,11 +253,11 @@ const websocketTool = aui
         ws = new WebSocket(input.url || 'ws://localhost:3000');
         
         ws.onopen = () => console.log('WebSocket connected');
-        ws.onmessage = (event) => {
+        ws.onmessage = (event: MessageEvent) => {
           const handlers = ctx.cache.get('__ws_handlers__') || [];
           handlers.forEach((handler: Function) => handler(event.data));
         };
-        ws.onerror = (error) => console.error('WebSocket error:', error);
+        ws.onerror = (error: Event) => console.error('WebSocket error:', error);
         
         ctx.cache.set('__websocket__', ws);
         return { connected: true, url: input.url };

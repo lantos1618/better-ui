@@ -100,7 +100,7 @@ export const formTool = aui
     if (data?.success) {
       return <div className="text-green-600 p-4 bg-green-50 rounded">{data.message}</div>;
     }
-    return null;
+    return <div>Processing...</div>;
   });
 
 // Analytics tool with middleware

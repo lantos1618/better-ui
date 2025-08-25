@@ -195,7 +195,7 @@ function AnalyticsDemo() {
         
         {data && (
           <div className="p-3 bg-green-50 text-green-700 rounded">
-            {data.queued ? `Event queued (${data.queueLength} in queue)` : 'Event tracked'}
+            Event tracked: {data.event} ({data.category})
           </div>
         )}
       </div>

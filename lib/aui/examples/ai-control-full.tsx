@@ -187,12 +187,12 @@ const formGeneratorTool = aui
       const formData = new FormData(e.currentTarget);
       console.log('Form submitted:', Object.fromEntries(formData));
     }}>
-      {fields.map((field) => (
+      {fields.map((field: any) => (
         <div key={field.name} className="flex flex-col">
           <label className="text-sm font-medium mb-1">{field.label}</label>
           {field.type === 'select' ? (
             <select name={field.name} required={field.required} className="border rounded px-2 py-1">
-              {field.options?.map(opt => (
+              {field.options?.map((opt: any) => (
                 <option key={opt} value={opt}>{opt}</option>
               ))}
             </select>

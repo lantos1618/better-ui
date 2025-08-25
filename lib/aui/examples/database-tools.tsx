@@ -168,7 +168,7 @@ export const contentTool = aui
     }
     
     if (input.action === 'search') {
-      return await db.searchPosts(input.query || '', input.limit);
+      return await db.searchPosts(input.query || '', input.limit || 10);
     }
     
     if (input.action === 'update' && input.id) {

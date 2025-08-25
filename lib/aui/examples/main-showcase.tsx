@@ -1,4 +1,4 @@
-import { aui } from '../index';
+import aui from '../index';
 import { z } from 'zod';
 
 // ============================================
@@ -52,7 +52,7 @@ export const uiControlTool = aui
   .clientExecute(async ({ input }) => {
     switch (input.action) {
       case 'click':
-        document.querySelector(input.target)?.click();
+        (document.querySelector(input.target) as HTMLElement)?.click();
         return { success: true, action: 'clicked', target: input.target };
       case 'type':
         const element = document.querySelector(input.target) as HTMLInputElement;
@@ -163,7 +163,7 @@ export const formTool = aui
     } catch (error) {
       ctx.cache.set(`form-${input.formId}`, { 
         status: 'error', 
-        error: error.message 
+        error: (error as Error).message 
       });
       throw error;
     }

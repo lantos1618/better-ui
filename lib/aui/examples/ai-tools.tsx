@@ -93,7 +93,7 @@ export const uiControlTool = aui
     if (data.type === 'notification') {
       return <Notification message={data.message} />;
     }
-    return null;
+    return <div>Action executed: {data.action}</div>;
   });
 
 // File system tool - AI can read/write files
