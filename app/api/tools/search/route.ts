@@ -9,14 +9,18 @@ export async function POST(request: NextRequest) {
       id: `server-result-${i}`,
       title: `${query} result ${i + 1}`,
       description: `Server-side search result for "${query}"`,
-      relevance: 1 - (i * 0.1),
+      score: 1 - (i * 0.1),
       timestamp: new Date().toISOString()
     }));
     
     // Simulate processing time
     await new Promise(resolve => setTimeout(resolve, 200));
     
-    return NextResponse.json(results);
+    return NextResponse.json({
+      query,
+      count: results.length,
+      results
+    });
   } catch (error) {
     console.error('Search tool error:', error);
     return NextResponse.json(
