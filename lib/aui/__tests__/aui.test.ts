@@ -62,7 +62,7 @@ describe('AUI System', () => {
       const tool = testAUI
         .tool('renderable')
         .execute(async ({ input }) => ({ value: input }))
-        .render(({ data }) => `Rendered: ${data.value}`);
+        .render(({ data }) => `Rendered: ${data.value}` as any);
 
       expect(tool.renderer).toBeDefined();
       if (tool.renderer) {

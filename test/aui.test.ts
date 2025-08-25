@@ -17,12 +17,11 @@ describe('AUI - Concise API', () => {
       expect(tool.name).toBe('test');
     });
 
-    it('creates tool with simple helper', () => {
-      const tool = aui.simple(
-        'calc',
-        z.object({ a: z.number(), b: z.number() }),
-        ({ a, b }) => a + b
-      );
+    it('creates tool with input and execute', () => {
+      const tool = aui
+        .tool('calc')
+        .input(z.object({ a: z.number(), b: z.number() }))
+        .execute(({ input }) => input.a + input.b);
 
       expect(tool.name).toBe('calc');
     });
@@ -67,24 +66,28 @@ describe('AUI - Concise API', () => {
     });
   });
 
-  describe('AI Tools', () => {
-    it('creates AI tool with retry', async () => {
-      let attempts = 0;
-      const tools = aui.aiTools({
-        flaky: {
-          input: z.object({ value: z.number() }),
-          execute: () => {
-            attempts++;
-            if (attempts < 3) throw new Error('Failed');
-            return 'success';
-          },
-          retry: 3
-        }
-      });
+  describe('Tool Registry', () => {
+    it('registers and retrieves tools', () => {
+      const tool = aui
+        .tool('registry-test')
+        .input(z.object({ value: z.number() }))
+        .execute(({ input }) => input.value * 3);
 
-      const result = await tools.flaky.run({ value: 1 });
-      expect(result).toBe('success');
-      expect(attempts).toBe(3);
+      expect(aui.has('registry-test')).toBe(true);
+      expect(aui.get('registry-test')).toBe(tool);
+      
+      const names = aui.getToolNames();
+      expect(names).toContain('registry-test');
+    });
+
+    it('executes tools by name', async () => {
+      aui
+        .tool('by-name')
+        .input(z.object({ value: z.number() }))
+        .execute(({ input }) => input.value + 10);
+
+      const result = await aui.execute('by-name', { value: 5 });
+      expect(result).toBe(15);
     });
   });
 });

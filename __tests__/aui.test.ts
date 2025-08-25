@@ -182,7 +182,7 @@ describe('AUI - Concise Tool System', () => {
       expect(result).toBe('data');
       
       // Should work fine without render
-      expect(tool.toJSON().render).toBeUndefined();
+      expect(tool.toJSON().hasRender).toBe(false);
     });
 
     it('exports tool definition correctly', () => {
