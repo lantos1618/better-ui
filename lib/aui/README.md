@@ -1,6 +1,16 @@
 # AUI (Assistant-UI) System
 
-Clean, concise API for AI tool calls that control both frontend and backend in Next.js/Vercel.
+A concise and elegant tool system for AI-controlled frontend and backend operations in Next.js/Vercel applications.
+
+## Features
+
+- ✅ **Clean API** - No `.build()` methods, just chainable calls
+- ✅ **Type-safe** - Full TypeScript support with Zod validation
+- ✅ **Client/Server** - Optimized execution for both environments
+- ✅ **AI Control** - Enable AI assistants to control UI and backend
+- ✅ **Caching** - Built-in context and caching support
+- ✅ **Middleware** - Composable middleware for auth, logging, etc.
+- ✅ **React Integration** - Hooks and providers for React apps
 
 ## Quick Start
 
@@ -60,10 +70,65 @@ See `/lib/aui/examples/` for complete examples including:
 - Form tool (with middleware)
 - Analytics tool (complex visualization)
 
+## Using Tools in React
+
+```tsx
+import { useAUITool, AUIProvider } from '@/lib/aui';
+
+function MyComponent() {
+  const { execute, data, loading, error } = useAUITool(weatherTool);
+  
+  return (
+    <div>
+      <button onClick={() => execute({ city: 'NYC' })}>
+        Get Weather
+      </button>
+      {loading && <div>Loading...</div>}
+      {data && weatherTool.renderer({ data })}
+    </div>
+  );
+}
+
+// Wrap your app with AUIProvider
+export default function App() {
+  return (
+    <AUIProvider>
+      <MyComponent />
+    </AUIProvider>
+  );
+}
+```
+
+## AI Control Example
+
+Enable AI assistants to control both frontend and backend:
+
+```tsx
+const databaseTool = aui
+  .tool('database')
+  .input(z.object({
+    table: z.string(),
+    operation: z.enum(['select', 'insert', 'update', 'delete']),
+    conditions: z.record(z.any()).optional()
+  }))
+  .execute(async ({ input }) => {
+    // Server-side database operations
+    return await db[input.operation](input.table, input.conditions);
+  })
+  .clientExecute(async ({ input, ctx }) => {
+    // Client-side optimistic updates
+    if (input.operation === 'select') {
+      const cached = ctx.cache.get(`${input.table}:${input.operation}`);
+      if (cached) return cached;
+    }
+    return ctx.fetch('/api/database', { body: input });
+  });
+```
+
 ## Testing
 
 ```bash
-npm test -- lib/aui/__tests__/aui.test.ts
+npm test lib/aui/__tests__/aui-tools.test.ts
 ```
 
-All 18 tests passing ✓
+All 22 tests passing ✓ with comprehensive coverage

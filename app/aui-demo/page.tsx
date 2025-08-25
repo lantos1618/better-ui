@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { weatherTool, searchTool, calculatorTool, chartTool } from '@/lib/aui/tools.tsx';
+import { weatherTool, searchTool, calculatorTool } from '@/lib/aui/examples/comprehensive-demo';
 import { useAUITool } from '@/lib/aui/hooks/useAUITool';
 import { AUIProvider } from '@/lib/aui/provider';
+import { AIControlDemoWithProvider } from '@/lib/aui/examples/ai-control-demo';
 import aui from '@/lib/aui';
 
 function AUIDemoContent() {
@@ -155,9 +156,34 @@ function AUIDemoContent() {
 }
 
 export default function AUIDemoPage() {
+  const [showAIDemo, setShowAIDemo] = useState(false);
+
   return (
     <AUIProvider>
-      <AUIDemoContent />
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto p-8">
+          <div className="flex gap-4 mb-8">
+            <button
+              onClick={() => setShowAIDemo(false)}
+              className={`px-4 py-2 rounded-lg font-medium ${
+                !showAIDemo ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'
+              }`}
+            >
+              Tool Demos
+            </button>
+            <button
+              onClick={() => setShowAIDemo(true)}
+              className={`px-4 py-2 rounded-lg font-medium ${
+                showAIDemo ? 'bg-blue-500 text-white' : 'bg-white text-gray-700'
+              }`}
+            >
+              AI Control Demo
+            </button>
+          </div>
+          
+          {showAIDemo ? <AIControlDemoWithProvider /> : <AUIDemoContent />}
+        </div>
+      </div>
     </AUIProvider>
   );
 }
