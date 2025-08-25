@@ -14,10 +14,11 @@ A Next.js application with AUI (Assistant-UI) system for AI control of frontend 
 ## Recent Activity (2025-08-25 - Latest Update)
 - Fixed failing rate limit test in aui-complete.test.ts (added audit: true)
 - All tests now passing (143/143 tests)
-- Latest local commit: 8dc7971 fix: Enable audit for rate limiting test
-- Repository status: 2 commits ahead of origin/main (need push access)
+- Latest local commit: cc877d3 docs: Update .agent metadata after general checkup
+- Repository status: 3 commits ahead of origin/main (need push access)
 - TypeScript check: All types valid (npm run type-check)
 - Linting: 4 warnings in useAUIToolEnhanced.ts (missing dependency warnings)
+- Security: 1 critical vulnerability in next.js (<=14.2.29, needs update to 14.2.32+)
 - General checkup completed successfully
 - .agent metadata files updated
 
