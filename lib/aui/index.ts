@@ -222,7 +222,15 @@ export type ExtractTools<T> = T extends { [K in keyof T]: AUITool<infer I, infer
 // Re-export everything for convenience
 export { z } from 'zod';
 export { useAUITool, useAUI } from './hooks/useAUITool';
+export { useAUITools } from './hooks/useAUITools';
 export { AUIProvider, useAUIContext, useAUIInstance } from './provider';
+export { 
+  createAITool, 
+  AIControlledTool, 
+  aiControlSystem,
+  aiTools,
+  type AIControlOptions 
+} from './ai-control';
 
 // Server exports are in ./server - import them separately when needed
 

@@ -1,323 +1,220 @@
-import { aiControlTools } from '../examples/ai-complete-control';
-import { AUIContext } from '../index';
+import { createAITool, AIControlledTool, aiControlSystem, createAIControlSystem } from '../ai-control';
+import { z } from 'zod';
 
-describe('AI Control Tools', () => {
-  let mockContext: AUIContext;
-
+describe('AI Control System', () => {
   beforeEach(() => {
-    mockContext = {
-      cache: new Map(),
-      fetch: jest.fn().mockResolvedValue({
-        json: async () => ({ success: true }),
-        status: 200,
-        headers: new Map(),
-      }),
-      isServer: false,
-    };
-
-    // Mock WebSocket
-    (global as any).WebSocket = jest.fn().mockImplementation(() => ({
-      readyState: 1, // OPEN
-      send: jest.fn(),
-      close: jest.fn(),
-    }));
-    
-    // Define OPEN constant on WebSocket
-    (global as any).WebSocket.OPEN = 1;
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('State Management Tool', () => {
-    it('should set and get state values', async () => {
-      const { stateManagementTool } = aiControlTools;
-      
-      // Set a value
-      const setResult = await stateManagementTool.run(
-        { action: 'set', key: 'user', value: { name: 'AI Agent' } },
-        mockContext
-      );
-      expect(setResult.action).toBe('set');
-      expect(setResult.value).toEqual({ name: 'AI Agent' });
+  describe('AIControlledTool', () => {
+    it('creates a tool with permissions', () => {
+      const tool = createAITool('test-tool')
+        .withPermissions({
+          allowClientExecution: true,
+          allowServerExecution: false
+        })
+        .input(z.object({ action: z.string() }))
+        .execute(async ({ input }) => ({ result: input.action }));
 
-      // Get the value
-      const getResult = await stateManagementTool.run(
-        { action: 'get', key: 'user', value: undefined },
-        mockContext
-      );
-      expect(getResult.action).toBe('get');
-      expect(getResult.value).toEqual({ name: 'AI Agent' });
+      expect(tool).toBeInstanceOf(AIControlledTool);
+      expect(tool.name).toBe('test-tool');
     });
 
-    it('should update existing state', async () => {
-      const { stateManagementTool } = aiControlTools;
-      
-      await stateManagementTool.run(
-        { action: 'set', key: 'config', value: { theme: 'light' } },
-        mockContext
-      );
+    it('enforces client execution permissions', async () => {
+      const tool = createAITool('restricted-tool')
+        .withPermissions({ allowClientExecution: false })
+        .execute(async () => 'result');
 
-      const updateResult = await stateManagementTool.run(
-        { action: 'update', key: 'config', value: { lang: 'en' } },
-        mockContext
-      );
-      
-      expect(updateResult.value).toEqual({ theme: 'light', lang: 'en' });
-    });
-  });
-
-  describe('DOM Manipulation Tool', () => {
-    it('should have correct tool configuration', () => {
-      const { domTool } = aiControlTools;
-      
-      expect(domTool.name).toBe('dom-manipulation');
-      expect(domTool.description).toBe('Direct DOM manipulation capabilities');
-      expect(domTool.schema).toBeDefined();
-    });
-  });
-
-  describe('Navigation Tool', () => {
-    it('should have correct tool configuration', () => {
-      const { navigationTool } = aiControlTools;
-      
-      expect(navigationTool.name).toBe('navigation');
-      expect(navigationTool.description).toBe('Control app navigation and routing');
-      expect(navigationTool.schema).toBeDefined();
-    });
-  });
-
-  describe('API Tool', () => {
-    it('should make API requests', async () => {
-      const { apiTool } = aiControlTools;
-      
-      // Mock fetch properly for this test
-      const mockFetch = jest.fn().mockResolvedValue({
-        json: async () => ({ success: true }),
-        status: 200,
-        headers: new Map(),
-      });
-      
-      // Override global fetch
-      global.fetch = mockFetch as any;
-      
-      const result = await apiTool.run(
-        {
-          method: 'POST',
-          endpoint: 'http://localhost:3000/api/test',  // Use full URL
-          body: { data: 'test' },
-          headers: { 'X-Custom': 'header' },
-        },
-        { ...mockContext, fetch: mockFetch }
-      );
-      
-      expect(result.status).toBe(200);
-      expect(result.data).toEqual({ success: true });
-      expect(mockFetch).toHaveBeenCalledWith('http://localhost:3000/api/test', expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          'X-Custom': 'header',
-        }),
-      }));
+      await expect(
+        tool.run({}, { isServer: false, cache: new Map(), fetch: globalThis.fetch })
+      ).rejects.toThrow('Client execution not allowed');
     });
 
-    it('should cache GET requests on client', async () => {
-      const { apiTool } = aiControlTools;
-      (global as any).fetch = jest.fn().mockResolvedValue({
-        json: async () => ({ data: 'cached' }),
-        status: 200,
-        headers: new Map(),
-      });
+    it('enforces server execution permissions', async () => {
+      const tool = createAITool('client-only-tool')
+        .withPermissions({ allowServerExecution: false })
+        .execute(async () => 'result');
 
-      // First request
-      await apiTool.run(
-        { method: 'GET', endpoint: '/api/data' },
-        mockContext
-      );
+      await expect(
+        tool.run({}, { isServer: true, cache: new Map(), fetch: globalThis.fetch })
+      ).rejects.toThrow('Server execution not allowed');
+    });
+
+    it('tracks execution in audit log', async () => {
+      const tool = createAITool('audited-tool')
+        .enableAudit()
+        .input(z.object({ value: z.number() }))
+        .execute(async ({ input }) => input.value * 2);
+
+      await tool.run({ value: 5 });
+      await tool.run({ value: 10 });
+
+      const log = tool.getExecutionLog();
+      expect(log).toHaveLength(2);
+      expect(log[0].input).toEqual({ value: 5 });
+      expect(log[0].output).toBe(10);
+      expect(log[1].input).toEqual({ value: 10 });
+      expect(log[1].output).toBe(20);
+    });
+
+    it('enforces rate limiting per minute', async () => {
+      const tool = createAITool('rate-limited')
+        .withRateLimit({ requestsPerMinute: 2 })
+        .enableAudit()
+        .execute(async () => 'ok');
+
+      await tool.run({});
+      await tool.run({});
       
-      // Second request (should use cache)
-      await apiTool.run(
-        { method: 'GET', endpoint: '/api/data' },
-        mockContext
-      );
-      
-      // Fetch should only be called once due to caching
-      expect((global as any).fetch).toHaveBeenCalledTimes(1);
+      await expect(tool.run({})).rejects.toThrow('Rate limit exceeded');
+    });
+
+    it('logs errors in audit log', async () => {
+      const tool = createAITool('error-tool')
+        .enableAudit()
+        .execute(async () => {
+          throw new Error('Test error');
+        });
+
+      try {
+        await tool.run({});
+      } catch {}
+
+      const log = tool.getExecutionLog();
+      expect(log).toHaveLength(1);
+      expect(log[0].error?.message).toBe('Test error');
+    });
+
+    it('clears execution log', async () => {
+      const tool = createAITool('clearable-tool')
+        .enableAudit()
+        .execute(async () => 'done');
+
+      await tool.run({});
+      expect(tool.getExecutionLog()).toHaveLength(1);
+
+      tool.clearExecutionLog();
+      expect(tool.getExecutionLog()).toHaveLength(0);
     });
   });
 
-  describe('Database Tool', () => {
-    it('should perform database queries', async () => {
-      const { dbTool } = aiControlTools;
+  describe('AI Control System', () => {
+    it('registers and retrieves tools', () => {
+      const tool = createAITool('system-tool')
+        .execute(async () => 'result');
+
+      aiControlSystem.register(tool);
+      const retrieved = aiControlSystem.get('system-tool');
       
-      const result = await dbTool.run(
-        { operation: 'query', table: 'users' },
-        { ...mockContext, isServer: true }
-      );
-      
-      expect(result.operation).toBe('query');
-      expect(result.results).toHaveLength(2);
-      expect(result.count).toBe(2);
+      expect(retrieved).toBe(tool);
     });
 
-    it('should handle insert operations', async () => {
-      const { dbTool } = aiControlTools;
+    it('executes tools through the system', async () => {
+      const tool = createAITool('executable-tool')
+        .input(z.object({ message: z.string() }))
+        .execute(async ({ input }) => `Echo: ${input.message}`);
+
+      aiControlSystem.register(tool);
       
-      const result = await dbTool.run(
-        { 
-          operation: 'insert', 
-          table: 'users', 
-          data: { name: 'AI User', email: 'ai@example.com' } 
-        },
-        { ...mockContext, isServer: true }
+      const result = await aiControlSystem.execute(
+        'executable-tool',
+        { message: 'Hello' }
       );
       
-      expect(result.operation).toBe('insert');
-      expect(result.id).toBeDefined();
-      expect(result.data).toEqual({ name: 'AI User', email: 'ai@example.com' });
+      expect(result).toBe('Echo: Hello');
     });
 
-    it('should handle transactions', async () => {
-      const { dbTool } = aiControlTools;
+    it('lists all registered tools', () => {
+      // Clear and re-register for clean test
+      const tool1 = createAITool('tool-1')
+        .describe('First tool')
+        .tag('test')
+        .execute(async () => null);
       
-      const result = await dbTool.run(
-        {
-          operation: 'transaction',
-          table: 'multi',
-          transaction: [
-            { operation: 'insert', table: 'users', data: { name: 'User 1' } },
-            { operation: 'update', table: 'settings', data: { theme: 'dark' } },
-          ],
-        },
-        { ...mockContext, isServer: true }
-      );
-      
-      expect(result.success).toBe(true);
-      expect(result.operations).toBe(2);
-    });
-  });
+      const tool2 = createAITool('tool-2')
+        .describe('Second tool')
+        .tag('test', 'demo')
+        .execute(async () => null);
 
-  describe('WebSocket Tool', () => {
-    it('should connect to WebSocket', async () => {
-      const { websocketTool } = aiControlTools;
+      aiControlSystem.register(tool1);
+      aiControlSystem.register(tool2);
+
+      const tools = aiControlSystem.listTools();
+      const toolNames = tools.map(t => t.name);
       
-      const result = await websocketTool.run(
-        { action: 'connect', url: 'ws://localhost:3000' },
-        mockContext
-      );
-      
-      expect(result.action).toBe('connect');
-      expect(result.url).toBe('ws://localhost:3000');
-      expect(global.WebSocket).toHaveBeenCalledWith('ws://localhost:3000');
+      expect(toolNames).toContain('tool-1');
+      expect(toolNames).toContain('tool-2');
     });
 
-    it('should send messages', async () => {
-      const { websocketTool } = aiControlTools;
-      
-      // First connect
-      await websocketTool.run(
-        { action: 'connect', url: 'ws://localhost:3000' },
-        mockContext
-      );
-      
-      // Then send message
-      const result = await websocketTool.run(
-        { action: 'send', message: { type: 'chat', text: 'Hello AI' } },
-        mockContext
-      );
-      
-      expect(result.sent).toBe(true);
-    });
-  });
+    it('retrieves audit logs for specific tools', async () => {
+      const tool = createAITool('logged-tool')
+        .enableAudit()
+        .execute(async () => 'done');
 
-  describe('File System Tool', () => {
-    it('should read files', async () => {
-      const { fileSystemTool } = aiControlTools;
+      aiControlSystem.register(tool);
       
-      const result = await fileSystemTool.run(
-        { operation: 'read', path: '/tmp/test.txt', encoding: 'utf8' },
-        { ...mockContext, isServer: true }
-      );
-      
-      expect(result.operation).toBe('read');
-      expect(result.content).toContain('Mock content');
+      await aiControlSystem.execute('logged-tool', {});
+      await aiControlSystem.execute('logged-tool', {});
+
+      const logs = aiControlSystem.getAuditLog('logged-tool');
+      expect(logs).toHaveLength(2);
     });
 
-    it('should list directory contents', async () => {
-      const { fileSystemTool } = aiControlTools;
+    it('retrieves combined audit logs sorted by timestamp', async () => {
+      // Create a separate control system for this test
+      const testSystem = createAIControlSystem();
       
-      const result = await fileSystemTool.run(
-        { operation: 'list', path: '/tmp', encoding: 'utf8' },
-        { ...mockContext, isServer: true }
-      );
+      const tool1 = createAITool('tool-a')
+        .enableAudit()
+        .execute(async () => 'a');
       
-      expect(result.operation).toBe('list');
-      expect(result.files).toContain('file1.txt');
-      expect(result.files).toContain('dir/');
+      const tool2 = createAITool('tool-b')
+        .enableAudit()
+        .execute(async () => 'b');
+
+      testSystem.register(tool1);
+      testSystem.register(tool2);
+
+      await testSystem.execute('tool-a', {});
+      await new Promise(resolve => setTimeout(resolve, 10));
+      await testSystem.execute('tool-b', {});
+
+      const logs = testSystem.getAuditLog();
+      
+      // Should be sorted with most recent first
+      expect(logs[0].tool).toBe('tool-b');
+      expect(logs[1].tool).toBe('tool-a');
+    });
+
+    it('throws error for non-existent tools', async () => {
+      await expect(
+        aiControlSystem.execute('non-existent', {})
+      ).rejects.toThrow('Tool non-existent not found');
     });
   });
 
-  describe('Process Management Tool', () => {
-    it('should spawn new processes', async () => {
-      const { processTool } = aiControlTools;
+  describe('Predefined AI Tools', () => {
+    it('has fileSystem tool with correct permissions', () => {
+      const fsTool = aiControlSystem.get('fs-control');
+      expect(fsTool).toBeDefined();
       
-      const result = await processTool.run(
-        { action: 'spawn', command: 'node', args: ['server.js'] },
-        { ...mockContext, isServer: true }
-      );
-      
-      expect(result.action).toBe('spawn');
-      expect(result.pid).toBeDefined();
-      expect(result.status).toBe('running');
+      const config = fsTool?.getConfig();
+      expect(config).toBeDefined();
     });
 
-    it('should list running processes', async () => {
-      const { processTool } = aiControlTools;
-      
-      const result = await processTool.run(
-        { action: 'list' },
-        { ...mockContext, isServer: true }
-      );
-      
-      expect(result.action).toBe('list');
-      expect(result.processes!).toHaveLength(2);
-      expect(result.processes![0]).toHaveProperty('pid');
-      expect(result.processes![0]).toHaveProperty('status');
+    it('has database tool with rate limiting', () => {
+      const dbTool = aiControlSystem.get('db-control');
+      expect(dbTool).toBeDefined();
     });
-  });
 
-  describe('Tool Integration', () => {
-    it('should work together for complex operations', async () => {
-      const { stateManagementTool, apiTool, dbTool } = aiControlTools;
-      
-      // 1. Make API call to get data
-      const apiResult = await apiTool.run(
-        { method: 'GET', endpoint: '/api/user' },
-        mockContext
-      );
-      
-      // 2. Store in state
-      await stateManagementTool.run(
-        { action: 'set', key: 'currentUser', value: apiResult.data },
-        mockContext
-      );
-      
-      // 3. Perform database operation
-      const dbResult = await dbTool.run(
-        { operation: 'insert', table: 'audit', data: { user: apiResult.data, timestamp: Date.now() } },
-        { ...mockContext, isServer: true }
-      );
-      
-      // Verify the flow worked
-      const state = await stateManagementTool.run(
-        { action: 'get', key: 'currentUser' },
-        mockContext
-      );
-      expect(state.value).toEqual(apiResult.data);
-      expect(dbResult.operation).toBe('insert');
-      expect(dbResult.data).toHaveProperty('user');
+    it('has UI manipulation tool for client-side', () => {
+      const uiTool = aiControlSystem.get('ui-control');
+      expect(uiTool).toBeDefined();
+    });
+
+    it('has API call tool with network permissions', () => {
+      const apiTool = aiControlSystem.get('api-control');
+      expect(apiTool).toBeDefined();
     });
   });
 });
