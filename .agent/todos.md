@@ -1,7 +1,7 @@
 # Todos
 
 ## High Priority
-1. [ ] Push 8 local commits to remote (requires GitHub auth - run `gh auth login`)
+1. [ ] Push 9 local commits to remote (requires manual GitHub auth - run `gh auth login`)
 
 ## Low Priority
 2. [ ] Consider refactoring test suite to properly clean up async operations
@@ -15,7 +15,9 @@
 - [x] Remove deprecated swcMinify from next.config.js
 - [x] Run all tests (143/143 passing)
 - [x] Run type checking (clean)
+- [x] Run linting (clean, note: `next lint` deprecated)
 - [x] Build application (successful with Next.js 15)
 - [x] Update .agent metadata files
 - [x] Perform general checkup
+- [x] Commit latest .agent metadata changes
 - [x] Attempted push to remote (auth required)
