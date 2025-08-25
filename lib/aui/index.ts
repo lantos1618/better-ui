@@ -35,12 +35,8 @@ export class AUI {
     };
   }
 
-  getTools(): AUITool[] {
-    return Array.from(this.tools.values());
-  }
-
   list(): AUITool[] {
-    return this.getTools();
+    return Array.from(this.tools.values());
   }
 
   getToolNames(): string[] {
@@ -60,11 +56,11 @@ export class AUI {
   }
   
   findByTag(tag: string): AUITool[] {
-    return this.getTools().filter(tool => tool.tags.includes(tag));
+    return this.list().filter(tool => tool.tags.includes(tag));
   }
   
   findByTags(...tags: string[]): AUITool[] {
-    return this.getTools().filter(tool => 
+    return this.list().filter(tool => 
       tags.every(tag => tool.tags.includes(tag))
     );
   }

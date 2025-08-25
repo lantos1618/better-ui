@@ -52,11 +52,14 @@ export class AUITool<TInput = any, TOutput = any> {
 
   async run(input: TInput, ctx?: AUIContext): Promise<TOutput> {
     const validated = this.config.inputSchema ? this.config.inputSchema.parse(input) : input;
-    
-    const context = ctx || this.createDefaultContext();
+    const context = ctx || {
+      cache: new Map(),
+      fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
+      isServer: typeof window === 'undefined',
+    };
     
     // Apply middleware if present
-    if (this.config.middleware && this.config.middleware.length > 0) {
+    if (this.config.middleware?.length) {
       let index = 0;
       const next = async (): Promise<TOutput> => {
         if (index >= this.config.middleware!.length) {
@@ -74,22 +77,14 @@ export class AUITool<TInput = any, TOutput = any> {
   private async executeCore(input: TInput, ctx: AUIContext): Promise<TOutput> {
     // Use clientHandler if it exists and we're on the client
     if (!ctx.isServer && this.config.clientHandler) {
-      return await Promise.resolve(this.config.clientHandler({ input, ctx }));
+      return this.config.clientHandler({ input, ctx });
     }
     
     if (!this.config.executeHandler) {
       throw new Error(`Tool ${this.config.name} has no execute handler`);
     }
     
-    return await Promise.resolve(this.config.executeHandler({ input, ctx }));
-  }
-  
-  private createDefaultContext(): AUIContext {
-    return {
-      cache: new Map(),
-      fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
-      isServer: typeof window === 'undefined',
-    };
+    return this.config.executeHandler({ input, ctx });
   }
   
   middleware(fn: (params: { input: TInput; ctx: AUIContext; next: () => Promise<TOutput> }) => Promise<TOutput>): this {
