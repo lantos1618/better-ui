@@ -1,19 +1,19 @@
-# AUI (Assistant-UI) Tool System
+# AUI (Assistant-UI) System
 
-A concise and elegant system for AI to control frontend and backend in Next.js/Vercel applications.
+A concise and elegant tool system for Next.js that enables AI assistants to control both frontend and backend through tool calls.
 
-## Quick Start
+## Core API
 
-### Simple Tool - Just 2 Methods
+### Simple Tool (2 methods)
 ```tsx
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
 ```
 
-### Complex Tool - Adds Client Optimization
+### Complex Tool (with client optimization)
 ```tsx
 const complexTool = aui
   .tool('search')
@@ -24,45 +24,57 @@ const complexTool = aui
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />);
+  .render(({ data }) => <SearchResults results={data} />)
 ```
 
-## API Reference
+## Features
 
-### Tool Builder
+- **Concise API**: Chain methods without `.build()` - tools are ready to use immediately
+- **Type Safety**: Full TypeScript support with Zod schemas
+- **Client/Server Execution**: Optimize for performance with separate execution paths
+- **React Rendering**: Built-in component rendering for tools
+- **Context System**: Share cache, fetch, and session data across tools
+- **No Build Step**: Tools return themselves, ready to use
 
-- `.tool(name)` - Create a new tool builder
-- `.input(schema)` - Define input validation with Zod
-- `.execute(handler)` - Server-side execution logic
-- `.clientExecute(handler)` - Optional client-side execution
-- `.render(component)` - React component for rendering results
-- Returns a built tool object ready to use (no build step needed)
+## Usage
 
-### React Components
+### Using the Hook
+```tsx
+import { useAUITool } from '@/lib/aui/components/ToolRenderer';
 
-```typescript
-import { ToolExecutorProvider, ToolRenderer, useToolExecutor } from '@/lib/aui/client';
-
-// Provider setup
-<ToolExecutorProvider tools={[weatherTool, searchTool]}>
-  <App />
-</ToolExecutorProvider>
-
-// Render a tool result
-<ToolRenderer toolCall={toolCall} tool={weatherTool} />
-
-// Hook usage
-const executor = useToolExecutor();
-const result = await executor.execute(toolCall);
+function MyComponent() {
+  const weather = useAUITool(weatherTool);
+  
+  return (
+    <div>
+      <button onClick={() => weather.execute({ city: 'NYC' })}>
+        Get Weather
+      </button>
+      {weather.data && weatherTool.renderer?.({ data: weather.data })}
+    </div>
+  );
+}
 ```
 
-## Architecture
+### Using the Renderer Component
+```tsx
+import { ToolRenderer } from '@/lib/aui/components/ToolRenderer';
 
+function MyComponent() {
+  return (
+    <ToolRenderer
+      tool={weatherTool}
+      input={{ city: 'San Francisco' }}
+      autoExecute={true}
+    />
+  );
+}
 ```
-lib/aui/
-├── core/          # Core builder and registry
-├── client/        # Client-side execution and React components
-├── server/        # Server-side execution
-├── tools/         # Example tool implementations
-└── types/         # TypeScript definitions
-```
+
+## Examples
+
+See `/lib/aui/examples/` for complete examples:
+- Weather tool (simple with render)
+- Search tool (with caching and render)
+- Calculator tool (with render)
+- Data fetcher (with deduplication)
