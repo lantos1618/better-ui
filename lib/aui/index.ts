@@ -232,6 +232,9 @@ export {
   type AIControlOptions 
 } from './ai-control';
 
+// Export all pre-built tools
+export * from './tools';
+
 // Server exports are in ./server - import them separately when needed
 
 export default aui;
