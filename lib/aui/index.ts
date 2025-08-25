@@ -118,16 +118,6 @@ export {
   type ToolMetadata
 } from './tool-registry';
 
-// Example tools
-export {
-  weatherTool,
-  searchTool,
-  dataVisualizationTool,
-  userInteractionTool,
-  workflowTool,
-  analyticsTrackingTool,
-  stateManagementTool,
-  allExampleTools
-} from './examples';
+// Example tools - exported separately to avoid circular dependencies
 
 export default aui;

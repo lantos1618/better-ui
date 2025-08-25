@@ -1,48 +1,36 @@
-# AUI System Global Memory
+# AUI System Implementation
 
 ## Overview
-AUI (Assistant-UI) is a concise and elegant tool system for Next.js/Vercel that enables AI to control both frontend and backend through tool calls.
+The AUI (Assistant-UI) system is a concise and powerful tool framework for enabling AI control of both frontend and backend in Next.js/Vercel applications.
 
-## Key Features
-- Clean, fluent API without .build() methods
-- Simple tools need only 2 methods: execute() and render()
-- Complex tools can add clientExecute() for client-side optimization
-- TypeScript and Zod schema integration
-- React component rendering
-- Middleware support for auth/logging
-- Context system for caching and state management
+## Key Design Principles
+- **Concise API**: No .build() methods, tools are ready immediately
+- **Fluent Interface**: Natural method chaining
+- **Type Safety**: Full TypeScript support with Zod validation
+- **Dual Execution**: Server (default) and client (optimized) modes
 
-## API Design
+## Implementation Status
+✅ Core API implemented in /lib/aui/core.ts
+✅ Main AUI class in /lib/aui/index.ts
+✅ React hooks in /lib/aui/hooks/
+✅ Comprehensive tests (10 passing)
+✅ Example demo in /examples/aui-demo.tsx
+✅ API routes in /app/api/tools/
 
-### Simple Tool (2 methods)
+## API Structure
 ```tsx
-const simpleTool = aui
-  .tool('weather')
-  .input(z.object({ city: z.string() }))
-  .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
+const tool = aui
+  .tool('name')           // Required
+  .input(zodSchema)       // Required for validation
+  .execute(handler)       // Required for server execution
+  .clientExecute(handler) // Optional for client optimization
+  .render(component)      // Optional for UI rendering
 ```
 
-### Complex Tool (with client optimization)
-```tsx
-const complexTool = aui
-  .tool('search')
-  .input(z.object({ query: z.string() }))
-  .execute(async ({ input }) => db.search(input.query))
-  .clientExecute(async ({ input, ctx }) => {
-    const cached = ctx.cache.get(input.query);
-    return cached || ctx.fetch('/api/tools/search', { body: input });
-  })
-  .render(({ data }) => <SearchResults results={data} />)
-```
-
-## File Structure
-- /lib/aui/ - Core AUI implementation
-- /lib/aui/index.ts - Main AUI class and tool builder
-- /lib/aui/examples/ - Example implementations
-- /lib/aui/hooks/ - React hooks for AUI
-- /lib/aui/ai-control.ts - AI control system
-- /app/aui-clean-demo/ - Clean demo page
-
-## Testing
-All tests passing (109 tests)
+## Files Structure
+- /lib/aui/ - Main implementation
+- /lib/aui/core.ts - Core AUITool class
+- /lib/aui/index.ts - Main AUI singleton
+- /lib/aui/hooks/ - React integration
+- /lib/aui/__tests__/ - Test suites
+- /examples/aui-demo.tsx - Usage demo
