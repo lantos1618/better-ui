@@ -346,7 +346,7 @@ export default function AUICompletePage() {
                 onClick={() => executeTool('search', { query: 'AI tools' })}
                 className="bg-green-500 text-white px-4 py-2 rounded w-full"
               >
-                Search for "AI tools"
+                Search for &quot;AI tools&quot;
               </button>
             </div>
           </section>

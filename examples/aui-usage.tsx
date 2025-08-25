@@ -3,6 +3,7 @@
  * Clean, concise API for AI-controlled tools in Next.js/Vercel
  */
 
+import React from 'react';
 import aui from '@/lib/aui';
 import { z } from 'zod';
 
@@ -143,7 +144,11 @@ async function directUsage() {
 import { useAUITool } from '@/lib/aui';
 
 function WeatherWidget() {
-  const { data, loading, error } = useAUITool(simpleTool, { city: 'Paris' });
+  const { data, loading, error, execute } = useAUITool(simpleTool);
+  
+  React.useEffect(() => {
+    execute({ city: 'Paris' });
+  }, [execute]);
   
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;

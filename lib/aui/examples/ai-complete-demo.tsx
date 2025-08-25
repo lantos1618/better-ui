@@ -246,7 +246,7 @@ export function AIControlDemo() {
     const lowerCommand = command.toLowerCase();
     
     try {
-      let result;
+      let result: any;
       
       if (lowerCommand.includes('weather')) {
         const city = command.match(/weather (?:in|for) (.+)/i)?.[1] || 'New York';
@@ -295,7 +295,7 @@ export function AIControlDemo() {
         <h3 className="font-semibold mb-2">Try these AI commands:</h3>
         <ul className="list-disc list-inside space-y-1">
           <li>Get weather in Tokyo</li>
-          <li>Search for "machine learning"</li>
+          <li>Search for &quot;machine learning&quot;</li>
           <li>Fill form with test data</li>
           <li>Query database users table</li>
           <li>Visualize metrics dashboard</li>

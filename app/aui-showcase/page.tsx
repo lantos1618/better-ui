@@ -109,7 +109,7 @@ const uiControlTool = aui
   })
   .render(({ data }) => (
     <div className="text-green-600 p-2 bg-green-50 rounded">
-      ✓ {data.action} performed on {data.count} element(s) matching "{data.selector}"
+      ✓ {data.action} performed on {data.count} element(s) matching &quot;{data.selector}&quot;
     </div>
   ));
 

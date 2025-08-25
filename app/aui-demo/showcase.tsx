@@ -31,7 +31,7 @@ const searchTool = aui
   .execute(async ({ input }) => {
     // Server-side search logic
     await new Promise(r => setTimeout(r, 500)); // Simulate delay
-    return Array.from({ length: input.limit }, (_, i) => ({
+    return Array.from({ length: input.limit! }, (_, i) => ({
       id: i + 1,
       title: `Result ${i + 1} for "${input.query}"`,
       score: Math.random()
@@ -57,7 +57,7 @@ const searchTool = aui
   })
   .render(({ data, input }) => (
     <div className="space-y-2">
-      <h3 className="font-semibold">Results for "{input?.query}":</h3>
+      <h3 className="font-semibold">Results for &quot;{input?.query}&quot;:</h3>
       {data.map((item: any) => (
         <div key={item.id} className="p-3 bg-white border rounded-lg hover:shadow-md transition-shadow">
           <div className="flex justify-between">
