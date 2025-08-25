@@ -39,6 +39,10 @@ export class AUI {
     return Array.from(this.tools.values());
   }
 
+  getTools(): AUITool[] {
+    return this.list();
+  }
+
   getToolNames(): string[] {
     return Array.from(this.tools.keys());
   }

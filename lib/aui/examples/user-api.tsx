@@ -49,7 +49,7 @@ const complexTool = aui
   })
   .render(({ data }) => (
     <div className="space-y-2">
-      <h3 className="font-semibold">Search Results for "{data.query}"</h3>
+      <h3 className="font-semibold">Search Results for &quot;{data.query}&quot;</h3>
       <ul className="list-disc pl-5">
         {data.results.map((result, i) => (
           <li key={i}>{result}</li>
@@ -72,7 +72,7 @@ const protectedTool = aui
     return next();
   })
   .execute(async ({ input, ctx }) => ({
-    result: `Executed ${input.action} for user ${ctx.user?.name || 'unknown'}`
+    result: `Executed ${input.action} for user ${ctx?.user?.name || 'unknown'}`
   }))
   .render(({ data }) => <div className="text-green-600">{data.result}</div>);
 
@@ -114,7 +114,7 @@ export function UserAPIDemo() {
       setResults(prev => ({ ...prev, [toolName]: result }));
     } catch (error) {
       console.error(`Error running ${toolName}:`, error);
-      setResults(prev => ({ ...prev, [toolName]: { error: error.message } }));
+      setResults(prev => ({ ...prev, [toolName]: { error: error instanceof Error ? error.message : 'Unknown error' } }));
     } finally {
       setLoading(prev => ({ ...prev, [toolName]: false }));
     }

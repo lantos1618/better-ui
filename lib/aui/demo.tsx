@@ -78,7 +78,7 @@ export function WeatherWidget() {
 
 // AI Agent can discover and use tools
 export function getToolsForAI() {
-  return aui.getTools().map(tool => ({
+  return aui.getTools().map((tool: any) => ({
     name: tool.name,
     description: tool.description,
     schema: tool.schema,

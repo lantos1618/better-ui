@@ -130,7 +130,7 @@ export class ServerExecutor {
     hasClientExecution: boolean;
     tags: string[];
   }> {
-    return aui.getTools().map(tool => {
+    return aui.getTools().map((tool: any) => {
       const config = tool.getConfig();
       return {
         name: tool.name,
