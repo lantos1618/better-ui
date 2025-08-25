@@ -11,8 +11,9 @@ Successfully implemented a clean, concise AUI (Assistant-UI) system for AI-contr
 - ✅ Middleware support for authentication/authorization
 - ✅ React integration with hooks and provider
 - ✅ Caching and context management
-- ✅ Comprehensive test coverage (63 tests, all passing)
+- ✅ Comprehensive test coverage (72 tests, all passing)
 - ✅ AI-ready - designed for AI agents to discover and execute
+- ✅ No Lantos references anywhere in codebase
 
 ## API Design
 ```tsx
@@ -43,10 +44,14 @@ lib/aui/
 ├── server.ts                 - Server-side utilities
 ├── hooks/useAUITool.ts       - React hooks
 ├── examples/
-│   ├── ai-tools.tsx          - AI control examples (weather, search, database, UI control)
+│   ├── user-requested.tsx    - Examples matching user's exact API request
+│   ├── simple-demo.tsx       - Simple demo examples
+│   ├── ai-tools.tsx          - AI control examples
 │   ├── demo-tools.tsx        - Demo tools with caching and middleware
 │   └── [other examples]
-└── __tests__/                - Comprehensive test suite
+└── __tests__/
+    ├── user-requested.test.ts - Tests for requested API patterns (9 tests)
+    └── [other tests]          - Comprehensive test suite
 
 app/
 ├── api/tools/[tool]/route.ts - Dynamic API route for tool execution
@@ -68,8 +73,16 @@ app/
 4. Set up API routes for server execution
 5. Wrap app with AUIProvider for context
 
+## Latest Updates (2025-08-25)
+1. Created `user-requested.tsx` with exact API examples requested by user
+2. Added comprehensive test suite (`user-requested.test.ts`) with 9 passing tests
+3. Verified no Lantos references exist in codebase
+4. Updated demo page at `/app/aui/page.tsx` to showcase the requested API patterns
+5. All tests passing (72 total), linting warnings are minor
+
 ## Principles Applied
 - DRY (Don't Repeat Yourself)
 - KISS (Keep It Simple, Stupid)
 - Clean, elegant API design
 - Practical and intelligent implementation
+- 80% implementation, 20% testing
