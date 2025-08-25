@@ -118,6 +118,26 @@ export {
   type ToolMetadata
 } from './tool-registry';
 
+// Client executor for optimized client-side execution
+export {
+  ClientExecutor,
+  clientExecutor,
+  executeClientTool,
+  type ClientExecutorOptions,
+  type CacheStrategy
+} from './client-executor';
+
+// AI Assistant integration
+export {
+  AIAssistant,
+  createAIAssistant,
+  formatToolForLLM,
+  assistants,
+  type AIAssistantConfig,
+  type AIToolCall,
+  type AIConversationMessage
+} from './ai-assistant';
+
 // Example tools - exported separately to avoid circular dependencies
 
 export default aui;
