@@ -27,8 +27,9 @@ export const back = createAITool('navigate.back')
     steps: z.number().optional().default(1)
   }))
   .clientExecute(async ({ input }) => {
-    window.history.go(-input.steps);
-    return { back: input.steps };
+    const steps = input.steps || 1;
+    window.history.go(-steps);
+    return { back: steps };
   });
 
 export const forward = createAITool('navigate.forward')
@@ -38,8 +39,9 @@ export const forward = createAITool('navigate.forward')
     steps: z.number().optional().default(1)
   }))
   .clientExecute(async ({ input }) => {
-    window.history.go(input.steps);
-    return { forward: input.steps };
+    const steps = input.steps || 1;
+    window.history.go(steps);
+    return { forward: steps };
   });
 
 export const reload = createAITool('navigate.reload')

@@ -118,15 +118,18 @@ export const domWaitFor = createAITool('dom.waitFor')
   .clientExecute(async ({ input }) => {
     const startTime = Date.now();
     
-    while (Date.now() - startTime < input.timeout) {
+    const timeout = input.timeout || 5000;
+    const interval = input.interval || 100;
+    
+    while (Date.now() - startTime < timeout) {
       const element = document.querySelector(input.selector);
       if (element) {
         return { success: true, found: true, selector: input.selector };
       }
-      await new Promise(resolve => setTimeout(resolve, input.interval));
+      await new Promise(resolve => setTimeout(resolve, interval));
     }
     
-    throw new Error(`Element ${input.selector} not found after ${input.timeout}ms`);
+    throw new Error(`Element ${input.selector} not found after ${timeout}ms`);
   });
 
 export const domGetText = createAITool('dom.getText')

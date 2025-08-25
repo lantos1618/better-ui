@@ -1,6 +1,6 @@
 import { ReactElement } from 'react';
 import { z } from 'zod';
-import aui, { AUITool, AUIContext } from './index';
+import { AUITool, AUIContext } from './core';
 
 export interface AIControlOptions {
   permissions?: {

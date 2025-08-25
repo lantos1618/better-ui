@@ -120,7 +120,7 @@ export const notifyBadge = createAITool('notify.badge')
         min-width: 20px;
         text-align: center;
       `;
-      element.style.position = 'relative';
+      (element as HTMLElement).style.position = 'relative';
       element.appendChild(badge);
     }
     

@@ -112,7 +112,7 @@ export default function AUIDemo() {
 
   const runAIWorkflow = async (task: string) => {
     const result = await aiWorkflow.run({ task: task as any });
-    setResults(prev => ({ ...prev, [task]: result }));
+    setResults((prev: any) => ({ ...prev, [task]: result }));
   };
 
   const demos = {

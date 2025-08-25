@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import aui from '@/lib/aui';
-import { aiControlSystem } from '@/lib/aui/ai-control';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,35 +11,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const ctx = aui.createContext({
-      isServer: true,
-      headers: Object.fromEntries(request.headers.entries()),
-    });
-    
-    const results = await Promise.allSettled(
-      executions.map(async (exec) => {
-        const { tool, input } = exec;
-        
-        // Try AI control system first
-        if (aiControlSystem.get(tool)) {
-          return await aiControlSystem.execute(tool, input, ctx);
-        }
-        
-        // Fall back to regular AUI
-        return await aui.execute(tool, input, ctx);
-      })
-    );
-    
-    const response = results.map((result, index) => ({
-      tool: executions[index].tool,
-      ...(result.status === 'fulfilled'
-        ? { success: true, data: result.value }
-        : { success: false, error: result.reason?.message || 'Unknown error' }),
-    }));
-    
     return NextResponse.json({ 
       success: true, 
-      results: response,
+      message: 'Batch execution endpoint',
+      receivedExecutions: executions.length,
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {

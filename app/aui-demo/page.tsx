@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import aui from '@/lib/aui';
+import aui, { 
+  weatherTool,
+  searchTool,
+  clientTools,
+  globalToolRegistry,
+  toolDiscovery 
+} from '@/lib/aui';
 import { z } from 'zod';
 import { useAUITool } from '@/lib/aui/hooks/useAUITool';
 import { AUIProvider } from '@/lib/aui/provider';
@@ -110,6 +116,106 @@ function ComplexToolDemo() {
   );
 }
 
+function AIControlDemo() {
+  const [aiResults, setAIResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const runAIControl = async (action: string) => {
+    setLoading(true);
+    try {
+      let result;
+      
+      switch (action) {
+        case 'dom':
+          result = await clientTools.domManipulation.run({
+            operation: 'create',
+            element: 'div',
+            content: 'AI-controlled element created!',
+            selector: '#ai-container',
+            styles: { 
+              padding: '1rem', 
+              backgroundColor: '#e0f2fe',
+              borderRadius: '8px',
+              marginTop: '0.5rem'
+            }
+          });
+          break;
+        
+        case 'storage':
+          result = await clientTools.storageControl.run({
+            type: 'local',
+            operation: 'set',
+            key: 'aui-ai-demo',
+            value: { 
+              timestamp: new Date().toISOString(), 
+              controlled: true,
+              message: 'AI has control'
+            }
+          });
+          break;
+        
+        case 'discovery':
+          const tools = await toolDiscovery.discoverTools();
+          result = { 
+            discovered: tools.length, 
+            categories: globalToolRegistry.listByCategory(),
+            stats: globalToolRegistry.getStats()
+          };
+          break;
+        
+        default:
+          result = { error: 'Unknown action' };
+      }
+      
+      setAIResults(prev => [{ action, result, time: new Date().toISOString() }, ...prev.slice(0, 2)]);
+    } catch (error) {
+      setAIResults(prev => [{ action, error: error instanceof Error ? error.message : 'Unknown error', time: new Date().toISOString() }, ...prev.slice(0, 2)]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-bold">AI Control Tools</h2>
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => runAIControl('dom')}
+          disabled={loading}
+          className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
+        >
+          Control DOM
+        </button>
+        <button
+          onClick={() => runAIControl('storage')}
+          disabled={loading}
+          className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
+        >
+          Control Storage
+        </button>
+        <button
+          onClick={() => runAIControl('discovery')}
+          disabled={loading}
+          className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50"
+        >
+          Discover Tools
+        </button>
+      </div>
+      <div id="ai-container"></div>
+      {aiResults.length > 0 && (
+        <div className="space-y-2">
+          {aiResults.map((r, i) => (
+            <div key={i} className="p-3 bg-gray-100 rounded text-sm">
+              <div className="font-medium">{r.action}</div>
+              <pre className="text-xs overflow-auto">{JSON.stringify(r.result || r.error, null, 2)}</pre>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AUIDemo() {
   return (
     <AUIProvider>
@@ -147,6 +253,7 @@ const complexTool = aui
       <div className="space-y-8">
         <SimpleToolDemo />
         <ComplexToolDemo />
+        <AIControlDemo />
       </div>
       
       <div className="mt-8 p-6 bg-blue-50 rounded-lg">

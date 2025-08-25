@@ -1,6 +1,14 @@
 import { cookies, headers } from 'next/headers';
 import aui, { AUITool, AUIContext, z } from './index';
 
+// Server-only control system exports
+export { 
+  serverTools, 
+  serverControlSystem, 
+  createServerControlSystem,
+  type ServerControlContext 
+} from './server-control';
+
 export interface ServerToolOptions {
   requireAuth?: boolean;
   rateLimit?: {
