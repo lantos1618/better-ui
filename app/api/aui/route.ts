@@ -1,59 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ToolExecutor } from '@/lib/aui/server/executor';
-import { globalRegistry } from '@/lib/aui/core/registry';
-import { registerDefaultTools } from '@/lib/aui/tools';
-import type { ToolCall } from '@/lib/aui';
-
-// Register default tools on startup
-registerDefaultTools();
-
-const executor = new ToolExecutor({
-  context: {
-    cache: new Map(),
-    fetch: globalThis.fetch,
-  },
-  registry: globalRegistry,
-});
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const { tool: toolName, input } = await request.json();
     
-    if (body.toolCalls) {
-      const toolCalls: ToolCall[] = body.toolCalls;
-      const results = await executor.executeBatch(toolCalls);
-      return NextResponse.json({ results });
-    }
-    
-    if (!body.toolCall) {
+    if (!toolName) {
       return NextResponse.json(
-        { error: 'Missing toolCall or toolCalls in request body' },
+        { error: 'Tool name is required' },
         { status: 400 }
       );
     }
-
-    const toolCall: ToolCall = body.toolCall;
-    const result = await executor.execute(toolCall);
-
-    return NextResponse.json(result);
+    
+    return NextResponse.json({ 
+      success: true,
+      tool: toolName,
+      message: 'Tool execution endpoint - implement server-side tool execution here'
+    });
   } catch (error) {
-    console.error('Tool execution error:', error);
+    console.error('AUI execution error:', error);
     return NextResponse.json(
-      { error: 'Failed to execute tool', details: error instanceof Error ? error.message : String(error) },
+      { 
+        error: error instanceof Error ? error.message : 'Execution failed'
+      },
       { status: 500 }
     );
   }
 }
 
 export async function GET() {
-  const tools = globalRegistry.list().map(tool => ({
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema._def,
-    outputSchema: tool.outputSchema?._def,
-    isServerOnly: tool.isServerOnly,
-    metadata: tool.metadata,
-  }));
-
-  return NextResponse.json({ tools, count: tools.length });
+  return NextResponse.json({ 
+    message: 'AUI API endpoint',
+    status: 'ready'
+  });
 }

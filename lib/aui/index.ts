@@ -1,237 +1,152 @@
-import { createToolBuilder, tool as toolBuilder } from './core/builder';
-import { globalRegistry } from './core/registry';
-import type { ToolDefinition, ToolRegistry, ToolBuilder, ToolContext } from './types/index';
-import { z } from 'zod';
-import { ReactElement } from 'react';
+import { AUITool, AUIContext, ToolConfig } from './core';
 
-export * from './types/index';
-export { createRegistry } from './core/registry';
-export { ClientToolExecutor } from './client/executor';
+export { AUITool } from './core';
+export type { AUIContext, ToolConfig } from './core';
 
-class AUI {
-  private registry: ToolRegistry;
+export class AUI {
+  private tools = new Map<string, AUITool>();
+
+  tool(name: string): AUITool {
+    const t = new AUITool(name);
+    this.tools.set(name, t);
+    return t;
+  }
+
+  get(name: string): AUITool | undefined {
+    return this.tools.get(name);
+  }
+
+  async execute<TInput = any, TOutput = any>(
+    name: string,
+    input: TInput,
+    ctx?: AUIContext
+  ): Promise<TOutput> {
+    const tool = this.get(name);
+    if (!tool) throw new Error(`Tool "${name}" not found`);
+    return await tool.run(input, ctx || this.createContext());
+  }
+
+  createContext(additions?: Partial<AUIContext>): AUIContext {
+    return {
+      cache: new Map(),
+      fetch: globalThis.fetch?.bind(globalThis) || (() => Promise.reject(new Error('Fetch not available'))),
+      isServer: typeof window === 'undefined',
+      ...additions,
+    };
+  }
+
+  list(): AUITool[] {
+    return Array.from(this.tools.values());
+  }
+
+  getTools(): AUITool[] {
+    return this.list();
+  }
+
+  getToolNames(): string[] {
+    return Array.from(this.tools.keys());
+  }
+
+  has(name: string): boolean {
+    return this.tools.has(name);
+  }
+
+  clear(): void {
+    this.tools.clear();
+  }
+
+  remove(name: string): boolean {
+    return this.tools.delete(name);
+  }
   
-  z = z;
-
-  constructor(registry?: ToolRegistry) {
-    this.registry = registry || globalRegistry;
+  findByTag(tag: string): AUITool[] {
+    return this.list().filter(tool => tool.tags.includes(tag));
   }
-
-  // Ultra-concise chainable API
-  t(name: string) {
-    return createToolBuilder(name);
+  
+  findByTags(...tags: string[]): AUITool[] {
+    return this.list().filter(tool => 
+      tags.every(tag => tool.tags.includes(tag))
+    );
   }
-
-  tool(name: string) {
-    return createToolBuilder(name);
-  }
-
-  // Ultra-concise: create and auto-register a simple tool
-  simple<TInput, TOutput>(
-    name: string,
-    inputSchema: z.ZodType<TInput>,
-    handler: (input: TInput) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(inputSchema)
-      .execute(handler as any);
-    
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
-  }
-
-  // One-liner tool creation with automatic registration
-  create<TInput, TOutput>(
-    name: string,
-    config: {
-      input: z.ZodType<TInput>;
-      execute: (input: TInput) => Promise<TOutput> | TOutput;
-      render?: (data: TOutput) => ReactElement;
-      client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-    }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(config.input)
-      .execute(config.execute as any);
-    
-    if (config.client) {
-      tool.clientExecute(config.client as any);
-    }
-    
-    if (config.render) {
-      tool.render(config.render as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
-  }
-
-  // Quick mode: auto-build after execute and render
-  quick(name: string) {
-    return createToolBuilder(name).quick();
-  }
-
-  // Create a tool with full context support
-  contextual<TInput, TOutput>(
-    name: string,
-    inputSchema: z.ZodType<TInput>,
-    handler: (params: { input: TInput; ctx: any }) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(inputSchema)
-      .execute(handler as any);
-    
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
-  }
-
-  // Create a server-only tool (no client execution)
-  server<TInput, TOutput>(
-    name: string,
-    inputSchema: z.ZodType<TInput>,
-    handler: (input: TInput) => Promise<TOutput> | TOutput,
-    renderer?: (data: TOutput) => ReactElement
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name)
-      .input(inputSchema)
-      .serverOnly()
-      .execute(handler as any);
-    
-    if (renderer) {
-      tool.render(renderer as any);
-    }
-    
-    const built = tool.build();
-    this.register(built);
-    return built;
-  }
-
-  // Define multiple tools at once
-  defineTools(tools: Record<string, {
-    input: z.ZodType<any>;
-    execute: (input: any) => Promise<any> | any;
-    render?: (data: any) => ReactElement;
-    client?: (input: any, ctx: ToolContext) => Promise<any> | any;
-  }>): Record<string, ToolDefinition> {
-    const definitions: Record<string, ToolDefinition> = {};
-    
-    for (const [name, config] of Object.entries(tools)) {
-      definitions[name] = this.create(name, config);
-    }
-    
-    return definitions;
-  }
-
-  register(tool: ToolDefinition) {
-    this.registry.register(tool);
-    return this;
-  }
-
-  getTools() {
-    return this.registry.list();
-  }
-
-  getTool(name: string) {
-    return this.registry.get(name);
-  }
-
-  // Ultra-concise: create tool with just a function
-  do<TInput = any, TOutput = any>(
-    name: string,
-    handler: ((input: TInput) => Promise<TOutput> | TOutput) |
-             {
-               input?: z.ZodType<TInput>;
-               execute: (input: TInput) => Promise<TOutput> | TOutput;
-               render?: (data: TOutput) => ReactElement;
-               client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-             }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name).do(handler);
-    this.register(tool);
-    return tool;
-  }
-
-  // AI-optimized tool creation with built-in reliability
-  ai<TInput = any, TOutput = any>(
-    name: string,
-    config: {
-      input?: z.ZodType<TInput>;
-      execute: (input: TInput) => Promise<TOutput> | TOutput;
-      client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-      render?: (data: TOutput) => ReactElement;
-      retry?: number;
-      timeout?: number;
-      cache?: boolean;
-    }
-  ): ToolDefinition<TInput, TOutput> {
-    const tool = this.tool(name).ai(config);
-    this.register(tool);
-    return tool;
-  }
-
-  // Batch AI tool creation
-  aiTools(tools: Record<string, {
-    input?: z.ZodType<any>;
-    execute: (input: any) => Promise<any> | any;
-    client?: (input: any, ctx: ToolContext) => Promise<any> | any;
-    render?: (data: any) => ReactElement;
-    retry?: number;
-    timeout?: number;
-    cache?: boolean;
-  }>): Record<string, ToolDefinition> {
-    const definitions: Record<string, ToolDefinition> = {};
-    
-    for (const [name, config] of Object.entries(tools)) {
-      definitions[name] = this.ai(name, config);
-    }
-    
-    return definitions;
-  }
-
-  // Enable/disable AI optimizations globally
-  setAIMode(enabled: boolean, options?: { retry?: number; timeout?: number; cache?: boolean }) {
-    this.aiModeEnabled = enabled;
-    this.aiOptions = options || {};
-    return this;
-  }
-
-  private aiModeEnabled = false;
-  private aiOptions: { retry?: number; timeout?: number; cache?: boolean } = {};
 }
 
-// Create the global AUI instance
-const aui = new AUI();
+const aui: AUI = new AUI();
 
-// Export everything
-export { aui, z, toolBuilder };
+export type InferToolInput<T> = T extends AUITool<infer I, any> ? I : never;
+export type InferToolOutput<T> = T extends AUITool<any, infer O> ? O : never;
+
+export type ToolDefinition<TInput = any, TOutput = any> = {
+  tool: AUITool<TInput, TOutput>;
+  input: TInput;
+  output: TOutput;
+};
+
+export type ExtractTools<T> = T extends { [K in keyof T]: AUITool<infer I, infer O> }
+  ? { [K in keyof T]: ToolDefinition<InferToolInput<T[K]>, InferToolOutput<T[K]>> }
+  : never;
+
+// Re-export everything for convenience
+export { z } from 'zod';
+export { useAUITool, useAUI } from './hooks/useAUITool';
+export { useAUITools } from './hooks/useAUITools';
+export { AUIProvider, useAUIContext, useAUIInstance } from './provider';
+export { 
+  createAITool, 
+  AIControlledTool, 
+  aiControlSystem,
+  aiTools,
+  type AIControlOptions 
+} from './ai-control';
+
+// Export all pre-built tools
+export * from './tools';
+
+// Client control exports
+export { 
+  clientTools, 
+  clientControlSystem, 
+  createClientControlSystem,
+  type ClientControlContext 
+} from './client-control';
+
+// Tool registry and discovery
+export { 
+  ToolRegistry,
+  ToolDiscovery,
+  globalToolRegistry,
+  toolDiscovery,
+  type ToolMetadata
+} from './tool-registry';
+
+// Client executor for optimized client-side execution
+export {
+  ClientExecutor,
+  clientExecutor,
+  executeClientTool,
+  type ClientExecutorOptions,
+  type CacheStrategy
+} from './client-executor';
+
+// AI Assistant integration
+export {
+  AIAssistant,
+  createAIAssistant,
+  formatToolForLLM,
+  assistants,
+  type AIAssistantConfig,
+  type AIToolCall,
+  type AIConversationMessage
+} from './ai-assistant';
+
+// Vercel AI SDK integration
+export {
+  convertToVercelTool,
+  createVercelTools,
+  createAUIToolFromVercel,
+  executeToolWithStreaming,
+  vercelAIIntegration
+} from './vercel-ai';
+
+// Example tools - exported separately to avoid circular dependencies
+
 export default aui;
-
-// Export convenience functions for ultra-concise usage
-export const defineTool = <TInput, TOutput>(
-  name: string,
-  config: {
-    input: z.ZodType<TInput>;
-    execute: (input: TInput) => Promise<TOutput> | TOutput;
-    render?: (data: TOutput) => ReactElement;
-    client?: (input: TInput, ctx: ToolContext) => Promise<TOutput> | TOutput;
-  }
-) => aui.create(name, config);
-
-export const t = (name: string) => aui.t(name);
-
-// Export type helpers for better DX
-export type Input<T> = T extends ToolDefinition<infer I, any> ? I : never;
-export type Output<T> = T extends ToolDefinition<any, infer O> ? O : never;

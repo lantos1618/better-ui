@@ -1,44 +1,47 @@
 import { z } from 'zod';
-import { ReactNode } from 'react';
+import { ReactElement } from 'react';
 
 export interface AUIContext {
   cache: Map<string, any>;
-  fetch: (url: string, options?: RequestInit) => Promise<any>;
+  fetch: typeof fetch;
   user?: any;
   session?: any;
+  env?: Record<string, string>;
+  headers?: HeadersInit;
+  cookies?: Record<string, string>;
+  isServer?: boolean;
 }
 
-export type ExecuteFunction<TInput, TOutput> = (args: {
+export type ExecuteFunction<TInput, TOutput> = (params: {
+  input: TInput;
+  ctx?: AUIContext;
+}) => Promise<TOutput> | TOutput;
+
+export type ClientExecuteFunction<TInput, TOutput> = (params: {
   input: TInput;
   ctx: AUIContext;
-}) => Promise<TOutput>;
+}) => Promise<TOutput> | TOutput;
 
-export type ClientExecuteFunction<TInput, TOutput> = (args: {
-  input: TInput;
-  ctx: AUIContext;
-}) => Promise<TOutput>;
-
-export type RenderFunction<TOutput> = (args: {
+export type RenderFunction<TInput, TOutput> = (props: {
   data: TOutput;
+  input?: TInput;
   loading?: boolean;
   error?: Error;
-}) => ReactNode;
+}) => ReactElement;
 
-export interface AUITool<TInput = any, TOutput = any> {
+export type MiddlewareFunction<TInput, TOutput> = (params: {
+  input: TInput;
+  ctx: AUIContext;
+  next: () => Promise<TOutput>;
+}) => Promise<TOutput>;
+
+export interface ToolConfig<TInput, TOutput> {
   name: string;
+  inputSchema?: z.ZodType<TInput>;
+  executeHandler?: ExecuteFunction<TInput, TOutput>;
+  clientHandler?: ClientExecuteFunction<TInput, TOutput>;
+  renderHandler?: RenderFunction<TInput, TOutput>;
+  middleware?: Array<MiddlewareFunction<TInput, TOutput>>;
   description?: string;
-  inputSchema?: z.ZodSchema<TInput>;
-  execute: ExecuteFunction<TInput, TOutput>;
-  clientExecute?: ClientExecuteFunction<TInput, TOutput>;
-  render?: RenderFunction<TOutput>;
-}
-
-export interface AUIToolBuilder<TInput = any, TOutput = any> {
-  tool: (name: string) => AUIToolBuilder<TInput, TOutput>;
-  description: (desc: string) => AUIToolBuilder<TInput, TOutput>;
-  input: <T>(schema: z.ZodSchema<T>) => AUIToolBuilder<T, TOutput>;
-  execute: <O>(fn: ExecuteFunction<TInput, O>) => AUIToolBuilder<TInput, O>;
-  clientExecute: (fn: ClientExecuteFunction<TInput, TOutput>) => AUIToolBuilder<TInput, TOutput>;
-  render: (fn: RenderFunction<TOutput>) => AUIToolBuilder<TInput, TOutput>;
-  build: () => AUITool<TInput, TOutput>;
+  tags?: string[];
 }

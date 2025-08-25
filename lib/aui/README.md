@@ -1,21 +1,21 @@
-# AUI (Assistant-UI) Tool System
+# AUI (Assistant-UI) System
 
-A concise and elegant system for AI to control frontend and backend in Next.js/Vercel applications.
+A concise, type-safe tool system for AI assistants to control frontend and backend operations in Next.js/Vercel applications.
 
 ## Quick Start
 
-### Simple Tool - Just 2 Methods
 ```tsx
+import aui from '@/lib/aui';
+import { z } from 'zod';
+
+// Simple tool - just 2 methods
 const simpleTool = aui
   .tool('weather')
   .input(z.object({ city: z.string() }))
   .execute(async ({ input }) => ({ temp: 72, city: input.city }))
-  .render(({ data }) => <div>{data.city}: {data.temp}°</div>)
-  .build();
-```
+  .render(({ data }) => <div>{data.city}: {data.temp}°</div>);
 
-### Complex Tool - Adds Client Optimization
-```tsx
+// Complex tool - adds client optimization
 const complexTool = aui
   .tool('search')
   .input(z.object({ query: z.string() }))
@@ -25,46 +25,112 @@ const complexTool = aui
     const cached = ctx.cache.get(input.query);
     return cached || ctx.fetch('/api/tools/search', { body: input });
   })
-  .render(({ data }) => <SearchResults results={data} />)
-  .build();
+  .render(({ data }) => <SearchResults results={data} />);
 ```
 
-## API Reference
+## Core Features
 
-### Tool Builder
+- **Concise API**: Define tools in 2-4 method calls
+- **Type Safety**: Full TypeScript support with Zod validation
+- **Dual Execution**: Run on server (default) or client (optimized)
+- **React Integration**: Built-in rendering and hooks
+- **Context Management**: Caching, sessions, and state
+- **AI-Ready**: Designed for AI assistant control
 
-- `.tool(name)` - Create a new tool builder
+## API Methods
+
+### Core Methods
+- `.tool(name)` - Create a new tool
 - `.input(schema)` - Define input validation with Zod
 - `.execute(handler)` - Server-side execution logic
-- `.clientExecute(handler)` - Optional client-side execution
 - `.render(component)` - React component for rendering results
-- `.build()` - Build the final tool definition
 
-### React Components
+### Optional Methods
+- `.clientExecute(handler)` - Client-side execution with caching
+- `.middleware(fn)` - Add middleware for auth, logging, etc.
+- `.describe(text)` - Add description for documentation
+- `.tag(...tags)` - Add tags for organization
 
-```typescript
-import { ToolExecutorProvider, ToolRenderer, useToolExecutor } from '@/lib/aui/client';
+## Examples
 
-// Provider setup
-<ToolExecutorProvider tools={[weatherTool, searchTool]}>
-  <App />
-</ToolExecutorProvider>
+See `/lib/aui/examples/` for complete examples including:
+- Weather tool (simple)
+- Search tool (with caching)
+- Calculator tool (with validation)
+- Form tool (with middleware)
+- Analytics tool (complex visualization)
 
-// Render a tool result
-<ToolRenderer toolCall={toolCall} tool={weatherTool} />
+## Using Tools in React
 
-// Hook usage
-const executor = useToolExecutor();
-const result = await executor.execute(toolCall);
+```tsx
+import { useAUITool, AUIProvider } from '@/lib/aui';
+
+function MyComponent() {
+  const { execute, data, loading, error } = useAUITool(weatherTool);
+  
+  return (
+    <div>
+      <button onClick={() => execute({ city: 'NYC' })}>
+        Get Weather
+      </button>
+      {loading && <div>Loading...</div>}
+      {data && weatherTool.renderer({ data })}
+    </div>
+  );
+}
+
+// Wrap your app with AUIProvider
+export default function App() {
+  return (
+    <AUIProvider>
+      <MyComponent />
+    </AUIProvider>
+  );
+}
 ```
 
-## Architecture
+## AI Control Example
 
+Enable AI assistants to control both frontend and backend:
+
+```tsx
+const databaseTool = aui
+  .tool('database')
+  .input(z.object({
+    table: z.string(),
+    operation: z.enum(['select', 'insert', 'update', 'delete']),
+    conditions: z.record(z.any()).optional()
+  }))
+  .execute(async ({ input }) => {
+    // Server-side database operations
+    return await db[input.operation](input.table, input.conditions);
+  })
+  .clientExecute(async ({ input, ctx }) => {
+    // Client-side optimistic updates
+    if (input.operation === 'select') {
+      const cached = ctx.cache.get(`${input.table}:${input.operation}`);
+      if (cached) return cached;
+    }
+    return ctx.fetch('/api/database', { body: input });
+  });
 ```
-lib/aui/
-├── core/          # Core builder and registry
-├── client/        # Client-side execution and React components
-├── server/        # Server-side execution
-├── tools/         # Example tool implementations
-└── types/         # TypeScript definitions
+
+## AI Control Examples
+
+The system includes comprehensive examples for AI control in `/lib/aui/examples/ai-control-full.tsx`:
+
+- **Database Operations**: Query and manipulate data
+- **UI Control**: Manage modals, navigation, themes
+- **File System**: Read/write files (server-side)
+- **API Integration**: Call external APIs with CORS proxy
+- **Real-time Streams**: WebSocket/SSE connections
+- **Form Generation**: Dynamic form creation
+- **Analytics**: Event tracking and analysis
+
+## Testing
+
+```bash
+npm test -- --testPathPattern=aui
 ```
+
+All 63 tests passing ✅

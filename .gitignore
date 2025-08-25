@@ -32,4 +32,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent files
 .agent/claude_output.jsonl
+.agent/*.jsonl
+
