@@ -1,42 +1,48 @@
 # Global Memory - Better UI Project
 
 ## Project Overview
-A Next.js application with AUI (Assistant-UI) system for AI control of frontend and backend.
+- **Name**: better-ui
+- **Version**: 0.1.0
+- **Type**: Next.js application with AI-powered UI components (AUI framework)
+- **Last Updated**: 2025-08-26
+
+## Repository Status
+- **Branch**: main
+- **Remote**: https://github.com/lantos1618/better-ui.git
+- **Status**: 49 commits ahead of origin/main (authentication required for push)
+- **Working Tree**: Clean
+
+## Tech Stack
+- Next.js 15.5.0
+- React 18.3.0
+- TypeScript 5.9.2
+- AI SDK (OpenAI) 2.0.20
+- Vercel AI SDK 5.0.23
+- Jest for testing
+
+## Project Structure
+- `/app` - Next.js application routes and pages
+- `/lib/aui` - Core AUI framework implementation
+- `/examples` - Usage examples
+- `/agent` - Agent-related scripts and documentation
+- `/__tests__` - Test files
+
+## Recent Work
+- Multiple commits updating .agent metadata
+- All tests passing (143 tests across 10 test suites)
+- TypeScript type checking passes
+- ESLint linting passes with no warnings or errors
 
 ## Key Features
-- Concise API: `aui.tool().input().execute().render()`
-- No `.build()` methods required
-- Client-side optimization with `clientExecute()`
-- Full TypeScript and Zod validation
-- React integration with hooks and providers
-- AI control system with permissions
+- AI-powered UI components with tool integration
+- Server and client executors for AI operations
+- Comprehensive test coverage
+- Tool registry system for extensible functionality
+- Multiple demo pages showcasing AUI capabilities
 
-## Recent Activity (2025-08-26 UTC - Latest General Checkup)
-- Repository status: main branch with 48 commits awaiting push
-- Working directory: Clean (no uncommitted changes)  
-- Branch: main (48 commits ahead of origin/main)
-- Remote sync: Already up to date with origin/main (pull completed)
-- All tests passing: 143/143 tests pass (100% pass rate, 0.885s)
-- Type checking: Zero TypeScript compilation errors
-- Linting: No ESLint warnings or errors (deprecation warning for `next lint`)
-- Build: Successful production build (23 pages, 1662ms)
-- Push status: Authentication required (needs manual `gh auth login`)
-- GitHub CLI: Authentication required for PR/issue access
-- Repository health: A+ (Exceptional) - Production-ready
-- Large file cleaned: .agent/claude_output.jsonl (was 3.2MB)
-- Note: To push changes, run `gh auth login` then `git push origin main`
-
-## Repository Structure
-```
-/app           - Next.js pages and API routes
-/lib/aui       - Core AUI system implementation
-/components    - React components
-/.agent        - Meta information for AI assistant
-```
-
-## Test Commands
-- `npm test` - Run all tests
-- `npm run build` - Build the application
-- `npm run dev` - Start development server
-- `npm run lint` - Run linting
-- `npm run type-check` - Run TypeScript type checking
+## Code Principles
+- DRY (Don't Repeat Yourself)
+- KISS (Keep It Simple, Stupid)
+- Simplicity, elegance, practicality, and intelligence
+- Frequent commits and pushes
+- 80% implementation, 20% testing heuristic
