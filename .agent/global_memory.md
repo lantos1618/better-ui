@@ -1,54 +1,31 @@
 # Global Memory - Better UI Project
 
 ## Project Overview
-- **Name**: better-ui
-- **Version**: 0.1.0
-- **Type**: Next.js application with AI-powered UI components (AUI framework)
-- **Last Updated**: 2025-08-26
+- Name: better-ui
+- Type: Next.js application with TypeScript
+- Version: 0.1.0
+- Repository: https://github.com/lantos1618/better-ui.git
 
-## Repository Status
-- **Branch**: main
-- **Remote**: https://github.com/lantos1618/better-ui.git
-- **Status**: 62 commits ahead of origin/main (authentication required for push)
-- **Working Tree**: Clean
-- **Last Health Check**: 2025-08-26 - All systems operational ✅
+## Key Components
+1. **AUI (AI UI) System**: Core AI-powered UI components and tools
+2. **Testing Suite**: Comprehensive test coverage with Jest
+3. **API Routes**: Multiple tool endpoints for various functionalities
+4. **Demo Pages**: Multiple showcase and example pages
 
-## Tech Stack
-- Next.js 15.5.0
-- React 18.3.0
-- TypeScript 5.9.2
-- AI SDK (OpenAI) 2.0.20
-- Vercel AI SDK 5.0.23
-- Jest for testing
+## Recent Activity
+- Last checkup: 2025-08-26
+- Branch: main
+- Status: 63 commits ahead of origin/main (authentication required to push)
+- Tests: All 143 tests passing across 10 test suites
+- Type checking: Passing without errors
 
-## Project Structure
-- `/app` - Next.js application routes and pages
-- `/lib/aui` - Core AUI framework implementation
-- `/examples` - Usage examples
-- `/agent` - Agent-related scripts and documentation
-- `/__tests__` - Test files
-
-## Recent Work
-- Multiple commits updating .agent metadata (62 pending push - requires authentication)
-- All tests passing (143 tests across 10 test suites) ✅
-- TypeScript type checking passes ✅
-- ESLint linting passes with no warnings or errors ✅
-- Test coverage: 20.35% statements, 9.88% branches
-- General health check completed successfully
-- Note: GitHub authentication required for pushing changes to remote (gh auth login needed)
-- Latest checkup: 2025-08-26 - All tests passing, type checking successful, linting clean
-- Pulled latest from origin/main - already up to date
-
-## Key Features
-- AI-powered UI components with tool integration
-- Server and client executors for AI operations
-- Comprehensive test coverage
-- Tool registry system for extensible functionality
-- Multiple demo pages showcasing AUI capabilities
-
-## Code Principles
-- DRY (Don't Repeat Yourself)
-- KISS (Keep It Simple, Stupid)
-- Simplicity, elegance, practicality, and intelligence
+## Development Standards
+- Testing framework: Jest with TypeScript
+- Code principles: DRY & KISS
 - Frequent commits and pushes
-- 80% implementation, 20% testing heuristic
+- Simplicity, elegance, practicality, and intelligence
+
+## Notes
+- Authentication required for GitHub push operations
+- Clean working directory maintained
+- All tests and type checks passing
