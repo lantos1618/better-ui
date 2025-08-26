@@ -1,10 +1,8 @@
 # Current TODOs
 
 ## Pending
-- ⏸️ **AUTH REQUIRED**: Push 17 pending commits to remote
+- ⏸️ **AUTH REQUIRED**: Push 18 pending commits to remote
   - Need to run: `gh auth login` for authentication
-  - Authentication code: 242C-2EB2
-  - Visit: https://github.com/login/device
   - Then run: `git push origin main`
   - All commits ready, repository clean
 
