@@ -1,12 +1,11 @@
 # Current TODOs
 
 ## Pending
-- ⏸️ Push 85 pending commits to remote (GitHub authentication required)
-  - Authentication code: 4346-0A4F
-  - Visit: https://github.com/login/device
+- ⏸️ Push 86 pending commits to remote (GitHub authentication required)
+  - Run: `gh auth login` to authenticate
   - Then run: `git push origin main`
 
-## Completed (2025-08-26 10:37 UTC checkup)
+## Completed (2025-08-26 10:41 UTC checkup)
 - ✅ Check current git status and branch (85 commits ahead)
 - ✅ Review .agent folder for context and meta information
 - ✅ Pull latest changes from remote main (already up to date)
