@@ -1,8 +1,9 @@
 # Current TODOs
 
 ## Pending
-- ⏸️ Push 81 pending commits to remote (GitHub authentication required)
-  - User needs to run: `gh auth login` to authenticate
+- ⏸️ Push 82 pending commits to remote (GitHub authentication required)
+  - Authentication code: 037F-7201
+  - Visit: https://github.com/login/device
   - Then run: `git push origin main`
 
 ## Completed (2025-08-26 current checkup)
