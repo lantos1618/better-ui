@@ -3,9 +3,9 @@
 ## Immediate Actions
 1. **Authentication Setup** (BLOCKED)
    - Need to configure GitHub authentication
-   - Required to push 130 pending commits
-   - Auth code: B739-5E53
-   - Visit: https://github.com/login/device
+   - Required to push 10 pending commits
+   - Run: `gh auth login` for authentication
+   - Then: `git push origin main`
 
 ## Completed Tasks
 1. ✅ Repository synchronization check
