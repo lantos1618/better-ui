@@ -1,4 +1,11 @@
-please merge this into to main, look at pushing and pulling everthing and also just general check up please
+please validate better-ui 
+then try to make an example a chat app with stocks in the chat, using this project, with ai, 
+
+make sure to ignore the right files/folders form the root dir because this is a framework project. (can git have subfolder .gitignores)
+
+
+gemmini_api=AIzaSyCGCPgt4Dw635kw6MDgVTepwGvHPM_HqYE
+
 
 notes from Lyndon
 - read the .agent folder to help you
