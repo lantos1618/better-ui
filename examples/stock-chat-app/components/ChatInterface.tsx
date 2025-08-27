@@ -205,7 +205,7 @@ export default function ChatInterface() {
               </button>
             </div>
             <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-              Try: "Show me AAPL stock price", "Add GOOGL to my portfolio", "Get news for TSLA", "Show market overview"
+              Try: &quot;Show me AAPL stock price&quot;, &quot;Add GOOGL to my portfolio&quot;, &quot;Get news for TSLA&quot;, &quot;Show market overview&quot;
             </div>
           </form>
         </div>
