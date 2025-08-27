@@ -23,5 +23,5 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules", "examples.backup", "*.backup"]
+  "exclude": ["node_modules", "examples.backup", "*.backup", "examples/stock-chat-app"]
 }
