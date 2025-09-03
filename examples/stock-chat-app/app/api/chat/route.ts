@@ -2,9 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { RateLimiter } from '@/lib/rate-limiter';
 
-// Initialize rate limiter
+// Initialize rate limiter with higher limits for better UX
 const rateLimiter = new RateLimiter(
-  parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '10'),
+  parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '20'),
   parseInt(process.env.NEXT_PUBLIC_API_RATE_WINDOW || '60000')
 );
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     
     const { messages, tools } = await req.json();
     
-    // Get the Gemini model
+    // Get the Gemini model (function calling will be added in future version)
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-1.5-flash',
       generationConfig: {
@@ -85,16 +85,19 @@ You are a helpful financial assistant with access to these tools:
 When users ask about stocks, suggest using these tools by including the tool commands in your response.
 ` : '';
     
-    // Send message with tool context
-    const result = await chat.sendMessage(toolContext + lastMessage.content);
-    const response = await result.response;
+    // Send message with context
+    const contextMessage = toolContext + lastMessage.content;
+    const result = await chat.sendMessage(contextMessage);
+    const response = result.response;
     const text = response.text();
     
-    // Parse for tool calls (simple pattern matching for demo)
+    // Parse tool calls from response text using pattern matching
     const toolCalls = [];
     
-    if (text.toLowerCase().includes('stock price') || text.toLowerCase().includes('price of')) {
-      const symbolMatch = text.match(/\b[A-Z]{1,5}\b/);
+    // Check for stock price requests
+    const priceMatches = text.match(/(?:price|quote|value|cost).*?\b([A-Z]{1,5})\b/gi);
+    if (priceMatches) {
+      const symbolMatch = priceMatches[0].match(/\b([A-Z]{1,5})\b/);
       if (symbolMatch) {
         toolCalls.push({
           tool: 'stock-price',
@@ -103,16 +106,17 @@ When users ask about stocks, suggest using these tools by including the tool com
       }
     }
     
+    // Check for portfolio requests
     if (text.toLowerCase().includes('portfolio')) {
       const addMatch = text.match(/add\s+(\w+)/i);
       const removeMatch = text.match(/remove\s+(\w+)/i);
       
-      if (addMatch) {
+      if (addMatch && addMatch[1].length <= 5) {
         toolCalls.push({
           tool: 'portfolio',
           input: { action: 'add', symbol: addMatch[1].toUpperCase(), shares: 100 }
         });
-      } else if (removeMatch) {
+      } else if (removeMatch && removeMatch[1].length <= 5) {
         toolCalls.push({
           tool: 'portfolio',
           input: { action: 'remove', symbol: removeMatch[1].toUpperCase() }
@@ -125,17 +129,17 @@ When users ask about stocks, suggest using these tools by including the tool com
       }
     }
     
-    if (text.toLowerCase().includes('news')) {
-      const symbolMatch = text.match(/news\s+(?:for\s+)?(\w+)/i);
-      if (symbolMatch && symbolMatch[1].length <= 5) {
-        toolCalls.push({
-          tool: 'stock-news',
-          input: { symbol: symbolMatch[1].toUpperCase() }
-        });
-      }
+    // Check for news requests
+    const newsMatch = text.match(/news.*?\b([A-Z]{1,5})\b/i);
+    if (newsMatch && newsMatch[1]) {
+      toolCalls.push({
+        tool: 'stock-news',
+        input: { symbol: newsMatch[1].toUpperCase(), limit: 3 }
+      });
     }
     
-    if (text.toLowerCase().includes('market overview')) {
+    // Check for market overview
+    if (text.toLowerCase().includes('market overview') || text.toLowerCase().includes('market summary')) {
       toolCalls.push({
         tool: 'market-overview',
         input: {}

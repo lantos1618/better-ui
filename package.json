@@ -1,6 +1,6 @@
 {
   "name": "@lantos1618/better-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A modern UI framework for building AI-powered applications",
   "main": "lib/aui/index.ts",
   "types": "lib/aui/index.ts",

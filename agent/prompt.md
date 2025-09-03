@@ -1,15 +1,8 @@
 please validate better-ui 
 then try to make an example a chat app with stocks in the chat, using this project, with ai, 
+we just like made a chat app in the  examples/stock-chat-app 
 
-make sure to ignore the right files/folders form the root dir because this is a framework project. (can git have subfolder .gitignores)
-
-we also want to run and host it
-
-Stock Chat App
-The app is working!
-
-
-we now want to have a chat as the landing no? we want to demo the better-ui
+but the chat ui is so bad we want to make thiss much much better like make a propper chat and that interacts with gemini that also does the tool call to better-ui and has the tool registrations. 
 
 
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
