@@ -1,5 +1,5 @@
-import EnhancedChatInterface from '@/components/EnhancedChatInterface';
+import UltraModernChat from '@/components/UltraModernChat';
 
 export default function HomePage() {
-  return <EnhancedChatInterface />;
+  return <UltraModernChat />;
 }

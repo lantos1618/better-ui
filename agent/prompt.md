@@ -1,10 +1,12 @@
-please validate better-ui 
-then try to make an example a chat app with stocks in the chat, using this project, with ai, 
-we just like made a chat app in the  examples/stock-chat-app 
+we leaked a secret [REDACTED]
 
-but the chat ui is so bad we want to make thiss much much better like make a propper chat and that interacts with gemini that also does the tool call to better-ui and has the tool registrations. 
+we need to clean this up now!
+
+you git pushed it to prod
 
 
+
+---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
 
 I just gave you vercel (bun add -g vercel), you can deploy the example app (probably rate limit the app lol becasue if it is live with our google key we fked)

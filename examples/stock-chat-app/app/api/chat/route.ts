@@ -58,11 +58,30 @@ export async function POST(req: Request) {
       }
     });
     
-    // Format messages for Gemini
-    const history = messages.slice(0, -1).map((msg: any) => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }]
-    }));
+    // Format messages for Gemini - filter out system messages and ensure alternating roles
+    const filteredMessages = messages.slice(0, -1).filter((msg: any) => msg.role !== 'system');
+    const history: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    
+    // Ensure history starts with a user message and alternates properly
+    for (let i = 0; i < filteredMessages.length; i++) {
+      const msg = filteredMessages[i];
+      const role = msg.role === 'user' ? 'user' : 'model';
+      
+      // Skip if we have consecutive messages from the same role
+      if (history.length > 0 && history[history.length - 1].role === role) {
+        continue;
+      }
+      
+      history.push({
+        role,
+        parts: [{ text: msg.content }]
+      });
+    }
+    
+    // Ensure history starts with 'user' role if it exists
+    if (history.length > 0 && history[0].role === 'model') {
+      history.shift(); // Remove the first model message if it starts the conversation
+    }
     
     const lastMessage = messages[messages.length - 1];
     
@@ -95,14 +114,22 @@ When users ask about stocks, suggest using these tools by including the tool com
     const toolCalls = [];
     
     // Check for stock price requests
-    const priceMatches = text.match(/(?:price|quote|value|cost).*?\b([A-Z]{1,5})\b/gi);
-    if (priceMatches) {
-      const symbolMatch = priceMatches[0].match(/\b([A-Z]{1,5})\b/);
-      if (symbolMatch) {
-        toolCalls.push({
-          tool: 'stock-price',
-          input: { symbol: symbolMatch[0], showChart: false }
-        });
+    const pricePatterns = [
+      /(?:price|quote|value|cost|show|get).*?\b([A-Z]{1,5})\b/gi,
+      /\b([A-Z]{1,5})\b.*?(?:price|quote|stock)/gi
+    ];
+    
+    for (const pattern of pricePatterns) {
+      const matches = text.match(pattern);
+      if (matches) {
+        const symbolMatch = matches[0].match(/\b([A-Z]{1,5})\b/);
+        if (symbolMatch) {
+          toolCalls.push({
+            tool: 'getStockPrice',
+            input: { symbol: symbolMatch[0], showChart: true }
+          });
+          break;
+        }
       }
     }
     
@@ -113,18 +140,18 @@ When users ask about stocks, suggest using these tools by including the tool com
       
       if (addMatch && addMatch[1].length <= 5) {
         toolCalls.push({
-          tool: 'portfolio',
-          input: { action: 'add', symbol: addMatch[1].toUpperCase(), shares: 100 }
+          tool: 'addToPortfolio',
+          input: { symbol: addMatch[1].toUpperCase(), shares: 100 }
         });
       } else if (removeMatch && removeMatch[1].length <= 5) {
         toolCalls.push({
-          tool: 'portfolio',
-          input: { action: 'remove', symbol: removeMatch[1].toUpperCase() }
+          tool: 'removeFromPortfolio',
+          input: { symbol: removeMatch[1].toUpperCase() }
         });
       } else {
         toolCalls.push({
-          tool: 'portfolio',
-          input: { action: 'view' }
+          tool: 'getPortfolio',
+          input: {}
         });
       }
     }
@@ -133,15 +160,15 @@ When users ask about stocks, suggest using these tools by including the tool com
     const newsMatch = text.match(/news.*?\b([A-Z]{1,5})\b/i);
     if (newsMatch && newsMatch[1]) {
       toolCalls.push({
-        tool: 'stock-news',
-        input: { symbol: newsMatch[1].toUpperCase(), limit: 3 }
+        tool: 'getStockNews',
+        input: { symbol: newsMatch[1].toUpperCase(), limit: 5 }
       });
     }
     
     // Check for market overview
-    if (text.toLowerCase().includes('market overview') || text.toLowerCase().includes('market summary')) {
+    if (text.toLowerCase().includes('market') && (text.toLowerCase().includes('overview') || text.toLowerCase().includes('summary'))) {
       toolCalls.push({
-        tool: 'market-overview',
+        tool: 'getMarketOverview',
         input: {}
       });
     }

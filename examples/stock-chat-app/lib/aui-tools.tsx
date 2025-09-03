@@ -29,25 +29,25 @@ export const stockPriceTool = {
       showChart: input.showChart || false
     };
   },
-  render: ({ data }: { data: any }) => (
+  render: ({ result }: { result: any }) => (
     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 my-2">
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-bold text-lg">{data.symbol}</h3>
+          <h3 className="font-bold text-lg">{result.symbol}</h3>
           <p className="text-2xl font-semibold">
-            ${data.price} {data.currency}
+            ${result.price} {result.currency}
           </p>
           <p className={`text-sm ${
-            parseFloat(data.change) >= 0 ? 'text-green-600' : 'text-red-600'
+            parseFloat(result.change) >= 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {parseFloat(data.change) >= 0 ? '+' : ''}{data.change} ({data.changePercent}%)
+            {parseFloat(result.change) >= 0 ? '+' : ''}{result.change} ({result.changePercent}%)
           </p>
         </div>
         <div className="text-sm text-gray-500">
-          {data.marketState}
+          {result.marketState}
         </div>
       </div>
-      {data.showChart && (
+      {result.showChart && (
         <div className="mt-4 p-4 bg-white dark:bg-gray-700 rounded">
           <p className="text-sm text-gray-500">Chart visualization would go here</p>
         </div>
@@ -86,14 +86,14 @@ export const portfolioTool = {
     
     return portfolioData;
   },
-  render: ({ data }: { data: any }) => (
+  render: ({ result }: { result: any }) => (
     <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-2">Portfolio</h3>
-      {data.length === 0 ? (
+      {result.length === 0 ? (
         <p className="text-gray-500">No stocks in portfolio</p>
       ) : (
         <div className="space-y-2">
-          {data.map((stock: any) => (
+          {result.map((stock: any) => (
             <div key={stock.symbol} className="flex justify-between">
               <span className="font-medium">{stock.symbol}</span>
               <span>{stock.shares} shares</span>
@@ -136,11 +136,11 @@ export const stockNewsTool = {
       news: mockNews.slice(0, input.limit || 3)
     };
   },
-  render: ({ data }: { data: any }) => (
+  render: ({ result }: { result: any }) => (
     <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 my-2">
-      <h3 className="font-bold text-lg mb-2">{data.symbol} News</h3>
+      <h3 className="font-bold text-lg mb-2">{result.symbol} News</h3>
       <div className="space-y-3">
-        {data.news.map((item: any, index: number) => (
+        {result.news.map((item: any, index: number) => (
           <div key={index} className="border-l-2 border-yellow-400 pl-3">
             <h4 className="font-medium">{item.title}</h4>
             <p className="text-sm text-gray-600 dark:text-gray-300">{item.summary}</p>
@@ -167,11 +167,11 @@ export const marketOverviewTool = {
       timestamp: new Date().toISOString()
     };
   },
-  render: ({ data }: { data: any }) => (
+  render: ({ result }: { result: any }) => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-3">Market Overview</h3>
       <div className="grid grid-cols-2 gap-3">
-        {data.indices.map((index: any) => (
+        {result.indices.map((index: any) => (
           <div key={index.name} className="bg-white dark:bg-gray-800 rounded p-2">
             <p className="font-medium text-sm">{index.name}</p>
             <p className="text-lg">{index.value.toLocaleString()}</p>
