@@ -3,5 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "env": {
+    "NEXT_PUBLIC_API_RATE_LIMIT": "5",
+    "NEXT_PUBLIC_API_RATE_WINDOW": "60000"
+  }
 }

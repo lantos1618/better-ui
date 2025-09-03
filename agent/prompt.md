@@ -5,6 +5,15 @@ make sure to ignore the right files/folders form the root dir because this is a 
 
 we also want to run and host it
 
+Stock Chat App
+The app is working!
+
+
+we now want to have a chat as the landing no? we want to demo the better-ui
+
+
+I just gave you npm publish access you can now publish thish (NPM_TOKEN)
+
 I just gave you vercel (bun add -g vercel), you can deploy the example app (probably rate limit the app lol becasue if it is live with our google key we fked)
 
 
@@ -13,6 +22,7 @@ email lyndon when needed
     - from: agent@lambda.run
     - use sendgrid api key in the env
     - use curl in cli
+
 
 
 
@@ -28,3 +38,4 @@ notes from Lyndon
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
 - git commit frequently, sync changes, push to remote
 - code principles DRY & KISS
+- if you modify this prompt.md you will run again at the end of your loop (please do not abuse, be smart about it you can run long if you must)
