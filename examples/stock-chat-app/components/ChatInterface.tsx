@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { stockTools } from '@/lib/aui-tools';
-// Using relative imports for the framework
-import { AUIProvider } from '../../../lib/aui/provider';
-import { ServerExecutor } from '../../../lib/aui/server-executor';
-import { ClientExecutor } from '../../../lib/aui/client-executor';
+// Using path mapping for the framework
+import { AUIProvider } from '@/lib/aui/provider';
+import { ServerExecutor } from '@/lib/aui/server-executor';
+import { ClientExecutor } from '@/lib/aui/client-executor';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -40,8 +40,11 @@ export default function ChatInterface() {
     if (!tool) return null;
 
     try {
-      // Try client execution first if available
-      if (tool.clientExecute) {
+      // Check if tool has client execution capability
+      const toolConfig = (tool as any).config;
+      
+      if (toolConfig?.clientHandler) {
+        // Try client execution first if available
         const result = await clientExecutor.execute(tool.name, toolCall.input, {
           cache: new Map(),
           fetch: window.fetch.bind(window),

@@ -37,3 +37,11 @@ next-env.d.ts
 .agent/claude_output.jsonl
 .agent/*.jsonl
 
+# example apps
+examples/*/node_modules
+examples/*/.next
+examples/*/build
+examples/*/out
+examples/*/.env
+examples/*/.env.local
+

@@ -3,9 +3,13 @@ then try to make an example a chat app with stocks in the chat, using this proje
 
 make sure to ignore the right files/folders form the root dir because this is a framework project. (can git have subfolder .gitignores)
 
+we also want to run and host it
 
-gemmini_api=AIzaSyCGCPgt4Dw635kw6MDgVTepwGvHPM_HqYE
-
+email lyndon when needed
+    - to: l.leong1618@gmail.com
+    - from: agent@lambda.run
+    - use sendgrid api key in the env
+    - use curl in cli
 
 notes from Lyndon
 - read the .agent folder to help you
