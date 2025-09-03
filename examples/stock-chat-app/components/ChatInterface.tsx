@@ -2,10 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { stockTools } from '@/lib/aui-tools';
-// Using path mapping for the framework
-import { AUIProvider } from '@/lib/aui/provider';
-import { ServerExecutor } from '@/lib/aui/server-executor';
-import { ClientExecutor } from '@/lib/aui/client-executor';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -24,8 +20,6 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const serverExecutor = new ServerExecutor();
-  const clientExecutor = new ClientExecutor();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,25 +34,8 @@ export default function ChatInterface() {
     if (!tool) return null;
 
     try {
-      // Check if tool has client execution capability
-      const toolConfig = (tool as any).config;
-      
-      if (toolConfig?.clientHandler) {
-        // Try client execution first if available
-        const result = await clientExecutor.execute(tool.name, toolCall.input, {
-          cache: new Map(),
-          fetch: window.fetch.bind(window),
-          isServer: false
-        });
-        return { tool: tool.name, result, renderer: tool.render };
-      }
-      
-      // Fall back to server execution
-      const result = await serverExecutor.execute(tool.name, toolCall.input, {
-        cache: new Map(),
-        fetch: window.fetch.bind(window),
-        isServer: true
-      });
+      // Execute the tool handler directly
+      const result = await tool.execute(toolCall.input);
       return { tool: tool.name, result, renderer: tool.render };
     } catch (error) {
       console.error('Tool execution error:', error);
@@ -122,8 +99,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <AUIProvider>
-      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 shadow-sm px-6 py-4">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
@@ -212,7 +188,6 @@ export default function ChatInterface() {
             </div>
           </form>
         </div>
-      </div>
-    </AUIProvider>
+    </div>
   );
 }

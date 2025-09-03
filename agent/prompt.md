@@ -5,11 +5,16 @@ make sure to ignore the right files/folders form the root dir because this is a 
 
 we also want to run and host it
 
+I just gave you vercel (bun add -g vercel), you can deploy the example app (probably rate limit the app lol becasue if it is live with our google key we fked)
+
+
 email lyndon when needed
     - to: l.leong1618@gmail.com
     - from: agent@lambda.run
     - use sendgrid api key in the env
     - use curl in cli
+
+
 
 notes from Lyndon
 - read the .agent folder to help you
@@ -21,5 +26,5 @@ notes from Lyndon
 - A good heuristic is to spend 80% of your time on the actual porting, and 20% on the testing.
 - simplicity, elegance, praticality and intelegence
 - you work better at around 40% context window (100K-140k) we can either prime or cull the ctx window
-- use frequent git commits and pushes 
+- git commit frequently, sync changes, push to remote
 - code principles DRY & KISS

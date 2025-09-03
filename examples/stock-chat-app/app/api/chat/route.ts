@@ -1,11 +1,52 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
+import { RateLimiter } from '@/lib/rate-limiter';
 
-// Initialize Gemini with the provided API key
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyCGCPgt4Dw635kw6MDgVTepwGvHPM_HqYE');
+// Initialize rate limiter
+const rateLimiter = new RateLimiter(
+  parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '10'),
+  parseInt(process.env.NEXT_PUBLIC_API_RATE_WINDOW || '60000')
+);
+
+// Initialize Gemini with environment variable API key
+if (!process.env.GEMINI_API_KEY) {
+  console.error('GEMINI_API_KEY is not set in environment variables');
+}
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: Request) {
   try {
+    // Rate limiting based on IP
+    const forwardedFor = req.headers.get('x-forwarded-for');
+    const ip = forwardedFor ? forwardedFor.split(',')[0] : 'unknown';
+    
+    const rateLimitResult = rateLimiter.check(ip);
+    
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { 
+          error: 'Rate limit exceeded. Please try again later.',
+          resetTime: rateLimitResult.resetTime 
+        },
+        { 
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': process.env.NEXT_PUBLIC_API_RATE_LIMIT || '10',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+          }
+        }
+      );
+    }
+    
+    // Check if API key is configured
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json(
+        { error: 'API key not configured. Please set GEMINI_API_KEY environment variable.' },
+        { status: 500 }
+      );
+    }
+    
     const { messages, tools } = await req.json();
     
     // Get the Gemini model
@@ -101,10 +142,19 @@ When users ask about stocks, suggest using these tools by including the tool com
       });
     }
     
-    return NextResponse.json({
-      content: text,
-      toolCalls
-    });
+    return NextResponse.json(
+      {
+        content: text,
+        toolCalls
+      },
+      {
+        headers: {
+          'X-RateLimit-Limit': process.env.NEXT_PUBLIC_API_RATE_LIMIT || '10',
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+        }
+      }
+    );
   } catch (error) {
     console.error('Chat API error:', error);
     return NextResponse.json(

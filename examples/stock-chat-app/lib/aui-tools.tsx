@@ -1,71 +1,35 @@
 import React from 'react';
-import aui from '../../../lib/aui';
-import { z } from 'zod';
 
-// Stock price tool - fetches real-time stock data
-export const stockPriceTool = aui
-  .tool('stock-price')
-  .input(z.object({ 
-    symbol: z.string().describe('Stock ticker symbol (e.g., AAPL, GOOGL)'),
-    showChart: z.boolean().optional().describe('Whether to show price chart')
-  }))
-  .describe('Get real-time stock price information')
-  .execute(async ({ input }) => {
-    // Using a free API that doesn't require authentication
-    // In production, you'd use a proper financial API
-    try {
-      const response = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${input.symbol}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch stock data for ${input.symbol}`);
-      }
-      
-      const data = await response.json();
-      const quote = data.chart.result[0];
-      const meta = quote.meta;
-      const price = meta.regularMarketPrice;
-      const previousClose = meta.previousClose;
-      const change = price - previousClose;
-      const changePercent = (change / previousClose) * 100;
-      
-      return {
-        symbol: input.symbol.toUpperCase(),
-        price: price.toFixed(2),
-        change: change.toFixed(2),
-        changePercent: changePercent.toFixed(2),
-        currency: meta.currency,
-        marketState: meta.marketState,
-        showChart: input.showChart || false
-      };
-    } catch (error) {
-      // Fallback to mock data for demo purposes
-      const mockPrices: Record<string, any> = {
-        'AAPL': { price: 195.89, change: 2.34, changePercent: 1.21 },
-        'GOOGL': { price: 178.23, change: -1.45, changePercent: -0.81 },
-        'MSFT': { price: 453.92, change: 5.67, changePercent: 1.26 },
-        'TSLA': { price: 178.79, change: -3.21, changePercent: -1.76 },
-      };
-      
-      const mock = mockPrices[input.symbol.toUpperCase()] || {
-        price: 100.00,
-        change: 0.50,
-        changePercent: 0.50
-      };
-      
-      return {
-        symbol: input.symbol.toUpperCase(),
-        price: mock.price.toFixed(2),
-        change: mock.change.toFixed(2),
-        changePercent: mock.changePercent.toFixed(2),
-        currency: 'USD',
-        marketState: 'REGULAR',
-        showChart: input.showChart || false
-      };
-    }
-  })
-  .render(({ data }) => (
+// Stock price tool
+export const stockPriceTool = {
+  name: 'stock-price',
+  description: 'Get real-time stock price information',
+  execute: async (input: { symbol: string; showChart?: boolean }) => {
+    // Using mock data for demo purposes
+    const mockPrices: Record<string, any> = {
+      'AAPL': { price: 195.89, change: 2.34, changePercent: 1.21 },
+      'GOOGL': { price: 178.23, change: -1.45, changePercent: -0.81 },
+      'MSFT': { price: 453.92, change: 5.67, changePercent: 1.26 },
+      'TSLA': { price: 178.79, change: -3.21, changePercent: -1.76 },
+    };
+    
+    const mock = mockPrices[input.symbol.toUpperCase()] || {
+      price: 100.00,
+      change: 0.50,
+      changePercent: 0.50
+    };
+    
+    return {
+      symbol: input.symbol.toUpperCase(),
+      price: mock.price.toFixed(2),
+      change: mock.change.toFixed(2),
+      changePercent: mock.changePercent.toFixed(2),
+      currency: 'USD',
+      marketState: 'REGULAR',
+      showChart: input.showChart || false
+    };
+  },
+  render: ({ data }: { data: any }) => (
     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 my-2">
       <div className="flex justify-between items-start">
         <div>
@@ -89,46 +53,40 @@ export const stockPriceTool = aui
         </div>
       )}
     </div>
-  ));
+  )
+};
 
-// Stock portfolio tool - manages a portfolio of stocks
-export const portfolioTool = aui
-  .tool('portfolio')
-  .input(z.object({
-    action: z.enum(['view', 'add', 'remove']),
-    symbol: z.string().optional(),
-    shares: z.number().optional()
-  }))
-  .describe('Manage stock portfolio')
-  .clientExecute(async ({ input, ctx }) => {
-    const portfolio = ctx.cache.get('portfolio') || [];
-    
+// Portfolio management tool
+const portfolioData: any[] = [];
+
+export const portfolioTool = {
+  name: 'portfolio',
+  description: 'Manage stock portfolio',
+  execute: async (input: { action: 'view' | 'add' | 'remove'; symbol?: string; shares?: number }) => {
     switch (input.action) {
       case 'add':
         if (input.symbol && input.shares) {
-          const existing = portfolio.find((s: any) => s.symbol === input.symbol);
+          const existing = portfolioData.find(s => s.symbol === input.symbol);
           if (existing) {
             existing.shares += input.shares;
           } else {
-            portfolio.push({ symbol: input.symbol, shares: input.shares });
+            portfolioData.push({ symbol: input.symbol, shares: input.shares });
           }
-          ctx.cache.set('portfolio', portfolio);
         }
         break;
       case 'remove':
         if (input.symbol) {
-          const index = portfolio.findIndex((s: any) => s.symbol === input.symbol);
+          const index = portfolioData.findIndex(s => s.symbol === input.symbol);
           if (index > -1) {
-            portfolio.splice(index, 1);
-            ctx.cache.set('portfolio', portfolio);
+            portfolioData.splice(index, 1);
           }
         }
         break;
     }
     
-    return portfolio;
-  })
-  .render(({ data }) => (
+    return portfolioData;
+  },
+  render: ({ data }: { data: any }) => (
     <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-2">Portfolio</h3>
       {data.length === 0 ? (
@@ -144,18 +102,14 @@ export const portfolioTool = aui
         </div>
       )}
     </div>
-  ));
+  )
+};
 
-// Stock news tool - fetches latest news for a stock
-export const stockNewsTool = aui
-  .tool('stock-news')
-  .input(z.object({
-    symbol: z.string().describe('Stock ticker symbol'),
-    limit: z.number().optional().default(3).describe('Number of news items')
-  }))
-  .describe('Get latest news for a stock')
-  .execute(async ({ input }) => {
-    // Mock news data for demo
+// Stock news tool
+export const stockNewsTool = {
+  name: 'stock-news',
+  description: 'Get latest news for a stock',
+  execute: async (input: { symbol: string; limit?: number }) => {
     const mockNews = [
       {
         title: `${input.symbol} Reports Strong Q4 Earnings`,
@@ -179,10 +133,10 @@ export const stockNewsTool = aui
     
     return {
       symbol: input.symbol.toUpperCase(),
-      news: mockNews.slice(0, input.limit)
+      news: mockNews.slice(0, input.limit || 3)
     };
-  })
-  .render(({ data }) => (
+  },
+  render: ({ data }: { data: any }) => (
     <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-2">{data.symbol} News</h3>
       <div className="space-y-3">
@@ -195,14 +149,14 @@ export const stockNewsTool = aui
         ))}
       </div>
     </div>
-  ));
+  )
+};
 
 // Market overview tool
-export const marketOverviewTool = aui
-  .tool('market-overview')
-  .input(z.object({}))
-  .describe('Get market overview with major indices')
-  .execute(async () => {
+export const marketOverviewTool = {
+  name: 'market-overview',
+  description: 'Get market overview with major indices',
+  execute: async () => {
     return {
       indices: [
         { name: 'S&P 500', value: 5970.85, change: 0.73 },
@@ -212,8 +166,8 @@ export const marketOverviewTool = aui
       ],
       timestamp: new Date().toISOString()
     };
-  })
-  .render(({ data }) => (
+  },
+  render: ({ data }: { data: any }) => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-3">Market Overview</h3>
       <div className="grid grid-cols-2 gap-3">
@@ -230,7 +184,8 @@ export const marketOverviewTool = aui
         ))}
       </div>
     </div>
-  ));
+  )
+};
 
 // Export all tools
 export const stockTools = [

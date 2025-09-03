@@ -3,9 +3,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "env": {
-    "GEMINI_API_KEY": "@gemini-api-key",
-    "SENDGRID_API_KEY": "@sendgrid-api-key"
-  }
+  "installCommand": "npm install"
 }
