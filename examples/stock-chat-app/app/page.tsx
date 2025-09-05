@@ -1,5 +1,5 @@
-import UltraModernChat from '@/components/UltraModernChat';
+import BetterStockChat from '@/components/BetterStockChat';
 
 export default function HomePage() {
-  return <UltraModernChat />;
+  return <BetterStockChat />;
 }

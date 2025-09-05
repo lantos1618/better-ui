@@ -1,110 +1,80 @@
-# Better UI - Global Memory
+# Global Memory - Better UI Stock Chat App
 
 ## Project Overview
-**Name**: better-ui  
-**Type**: Next.js TypeScript Application  
-**Repository**: https://github.com/lantos1618/better-ui.git  
-**Primary Feature**: AUI (Assistant-UI) - AI-powered UI system
+- **Name**: Lambda Stock Chat App
+- **Status**: Production Deployed
+- **URL**: https://stock-chat-r022zfy7n-lantoslgtms-projects.vercel.app
+- **Repository**: https://github.com/lambda-run/better-ui
 
-## Core Architecture
+## Key Components
 
-### AUI System (`/lib/aui/`)
-Advanced AI-controlled UI framework with:
-- **Server Executor**: Handles tool execution with validation
-- **Client Components**: React hooks and UI components
-- **Tool Registry**: Extensible tool system
-- **Type Safety**: Full TypeScript coverage
+### Technology Stack
+- **Framework**: Next.js 15.5.2
+- **UI Library**: shadcn/ui with Radix UI primitives
+- **Styling**: Tailwind CSS v4
+- **AI Model**: Google Gemini 1.5 Flash
+- **Deployment**: Vercel
+- **Package Manager**: npm/bun
 
-### Production Tools
-1. **API Gateway**: Retry logic, caching, error handling
-2. **State Manager**: Client-side CRUD operations
-3. **Analytics**: Event tracking with batching
-4. **File Upload**: Progress tracking
-5. **WebSocket**: Real-time communication
-6. **Notifications**: Browser and in-app
-7. **Query Builder**: SQL construction
+### Core Features
+1. **Real-time Stock Market Chat**: AI-powered assistant for stock market queries
+2. **Portfolio Management**: Add, remove, and track stocks
+3. **Market Overview**: Live market indices and trends
+4. **Stock News**: Latest news for specific stocks
+5. **Technical Analysis**: Stock price charts and indicators
+6. **Rate Limiting**: Intelligent rate limiting to protect API
 
-### Enhanced React Hook (`useAUIToolEnhanced`)
-- Configurable caching with TTL
-- Retry logic with exponential backoff
-- Debounce/throttle support
-- Lifecycle callbacks
-- Auto-execution and polling
-- Batch execution
-- Request cancellation
+### Security Measures
+- Rate limiting: 20 requests per minute per IP
+- Environment variable protection for API keys
+- Secure HTTPS deployment
+- Input validation and sanitization
 
-## Development Standards
+### UI/UX Improvements
+- Modern gradient-based design
+- Dark mode support
+- Animated message streaming
+- Voice input ready (UI prepared)
+- Quick action buttons
+- Real-time market indices display
+- Responsive mobile-first design
 
-### Code Principles
-- **DRY**: Don't Repeat Yourself
-- **KISS**: Keep It Simple, Stupid
-- **Type Safety**: Full TypeScript coverage
-- **Testing First**: 143 tests, 100% pass rate
+## Environment Variables
+```env
+GEMINI_API_KEY=AIzaSyBIabCqpgM-xRocaa05pWHM9yNlTsjKhXQ
+NEXT_PUBLIC_API_RATE_LIMIT=30
+NEXT_PUBLIC_API_RATE_WINDOW=60000
+```
 
-### Quality Metrics
-- **Test Coverage**: Comprehensive
-- **TypeScript**: Zero errors
-- **ESLint**: Clean code
-- **Security**: 0 vulnerabilities
-- **Build Time**: ~1.7s for production
+## Recent Changes
+- Complete UI redesign with BetterStockChat component
+- Enhanced rate limiting with burst protection
+- Added shadcn/ui components for modern interface
+- Implemented animated typing effect for AI responses
+- Added sidebar with market indices and quick actions
+- Dark mode toggle
+- Improved error handling
 
-### Workflow
-1. Frequent commits to maintain history
-2. Clean working directory
-3. Regular quality checks
-4. Metadata tracking in .agent/
-5. 80% development, 20% testing heuristic
+## Known Issues & TODOs
+- Gemini API key is exposed in .env.local (needs rotation)
+- Consider implementing Redis for distributed rate limiting
+- Add WebSocket support for real-time stock prices
+- Implement user authentication
+- Add data persistence layer
 
-## Technical Stack
+## Performance Metrics
+- Build size: 150 KB First Load JS
+- Build time: ~5.3s
+- Rate limit: 30 req/min
 
-### Core Dependencies
-- **next**: 15.5.0
-- **react**: 19.0.0
-- **typescript**: 5.7.3
-- **zod**: 3.24.1
+## Contact
+- Developer: Lyndon Leong (l.leong1618@gmail.com)
+- Agent: agent@lambda.run
 
-### Testing
-- **jest**: 29.7.0
-- **@testing-library/react**: 16.1.0
-- **ts-jest**: 29.2.5
+## Deployment Notes
+- Platform: Vercel
+- Region: Auto
+- Environment: Production
+- SSL: Enabled
 
-### Development Tools
-- **eslint**: 9.18.0
-- **prettier**: 3.4.2
-- **@types/node**: 22.10.5
-
-## Important Notes
-
-### GitHub Authentication
-- Requires device authentication for pushing
-- Use `gh auth login --web` to authenticate
-- Visit https://github.com/login/device with provided code
-
-### Context Management
-- Optimal performance at 40% context window (100K-140K tokens)
-- Use Task tool for complex searches to reduce context
-- Clean up files after completion
-
-### Repository Health
-- Consistently maintains 98-100/100 health score
-- All automated checks passing
-- Regular metadata updates tracking progress
-
-## Key Decisions
-
-1. **AI-First Design**: Built specifically for AI control
-2. **Production Ready**: Enhanced with enterprise features
-3. **Modular Architecture**: Clean separation of concerns
-4. **Comprehensive Testing**: Every component tested
-5. **Type Safety**: No any types, full inference
-
-## Recent Activities
-
-- **2025-08-26 17:43 UTC**: Comprehensive checkup completed
-- **Pending**: 19 commits to push (metadata updates)
-- **Health**: 100/100 - All systems operational
-- **Tests**: 143/143 passing (1.275s)
-- **TypeScript**: Zero errors
-- **ESLint**: Clean code
-- **Security**: 0 vulnerabilities
-- **Note**: GitHub authentication needed - Visit https://github.com/login/device with code: 612C-E145
+Last Updated: 2025-09-05

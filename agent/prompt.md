@@ -1,10 +1,6 @@
-we leaked a secret [REDACTED]
+just re do the ui in `examples/stock-chat-app` its so bad we want to have a chat using shadcn, and the better-ui we deployed this to
 
-we need to clean this up now!
-
-you git pushed it to prod
-
-
+make this BETTER!!!
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
