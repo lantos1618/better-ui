@@ -1,6 +1,8 @@
-just re do the ui in `examples/stock-chat-app` its so bad we want to have a chat using shadcn, and the better-ui we deployed this to
+just re do the ui in `examples/stock-chat-app` its so bad we want to have a chat using shadcn, and the better-ui we deployed this to vercel
 
-make this BETTER!!!
+use the `/home/ubuntu/better-ui/example-delete/magicpath-project` temporary project to help you make the  stock app better infer the style and layout from that. also we need to make sure that the stock-chat-app is actually using the better-ui not clever tricks.
+
+we also want to delete the `/home/ubuntu/better-ui/example-delete` folder after successfully infering its layout and theme to the stock app
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
@@ -13,8 +15,6 @@ email lyndon when needed
     - from: agent@lambda.run
     - use sendgrid api key in the env
     - use curl in cli
-
-
 
 
 notes from Lyndon
