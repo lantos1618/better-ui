@@ -3,8 +3,11 @@
 ## Project Overview
 - **Name**: Lambda Stock Chat App
 - **Status**: Production Deployed (Redesigned)
-- **URL**: https://stock-chat-c2ozpujij-lantoslgtms-projects.vercel.app
-- **Repository**: https://github.com/lambda-run/better-ui
+- **URL**: https://stock-chat-app.vercel.app
+- **Alternative URLs**: 
+  - https://stock-chat-app-lantoslgtms-projects.vercel.app
+  - https://stock-chat-h81qfe6y1-lantoslgtms-projects.vercel.app
+- **Repository**: https://github.com/lantos1618/better-ui
 - **NPM Package**: @lantos1618/better-ui@0.2.1
 
 ## Key Components
@@ -27,10 +30,11 @@
 6. **Rate Limiting**: Intelligent rate limiting to protect API
 
 ### Security Measures
-- Rate limiting: 20 requests per minute per IP
+- Rate limiting: 10 requests per minute per IP (production)
 - Environment variable protection for API keys
 - Secure HTTPS deployment
 - Input validation and sanitization
+- Updated Gemini API key (2025-09-10)
 
 ### UI/UX Improvements
 - Modern gradient-based design
@@ -43,12 +47,18 @@
 
 ## Environment Variables
 ```env
-GEMINI_API_KEY=AIzaSyBIabCqpgM-xRocaa05pWHM9yNlTsjKhXQ
-NEXT_PUBLIC_API_RATE_LIMIT=30
+GEMINI_API_KEY=[Updated 2025-09-10 - Secured]
+NEXT_PUBLIC_API_RATE_LIMIT=10
 NEXT_PUBLIC_API_RATE_WINDOW=60000
 ```
 
-## Recent Changes (2025-09-09)
+## Recent Changes (2025-09-10)
+- Updated Gemini API key for production deployment
+- Configured stricter rate limiting (10 req/min) for production
+- Deployed to new Vercel production URL: https://stock-chat-app.vercel.app
+- Email notification sent to Lyndon about deployment
+
+## Previous Changes (2025-09-09)
 - Complete UI redesign with shadcn/ui and framer-motion
 - New sidebar component with market indices display
 - Modern chat interface with animations
@@ -56,19 +66,18 @@ NEXT_PUBLIC_API_RATE_WINDOW=60000
 - Better-ui library integration (partial)
 - Removed temporary project folder
 - Published @lantos1618/better-ui@0.2.1 to npm
-- Deployed to Vercel production
 
 ## Known Issues & TODOs
-- Gemini API key is exposed in .env.local (needs rotation)
 - Consider implementing Redis for distributed rate limiting
 - Add WebSocket support for real-time stock prices
 - Implement user authentication
 - Add data persistence layer
+- Monitor API usage to ensure rate limits are sufficient
 
 ## Performance Metrics
 - Build size: 150 KB First Load JS
-- Build time: ~5.3s
-- Rate limit: 30 req/min
+- Build time: ~38s (Vercel)
+- Rate limit: 10 req/min (production)
 
 ## Contact
 - Developer: Lyndon Leong (l.leong1618@gmail.com)
@@ -80,4 +89,4 @@ NEXT_PUBLIC_API_RATE_WINDOW=60000
 - Environment: Production
 - SSL: Enabled
 
-Last Updated: 2025-09-09 02:08 UTC
+Last Updated: 2025-09-10 00:08 UTC
