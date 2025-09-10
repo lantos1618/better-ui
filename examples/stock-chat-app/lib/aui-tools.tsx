@@ -1,40 +1,57 @@
 import React from 'react';
+import { getStockQuote, getMarketIndices, getStockNews } from './yahoo-finance-client';
 
 // Stock price tool
 export const stockPriceTool = {
   name: 'stock-price',
   description: 'Get real-time stock price information',
   execute: async (input: { symbol: string; showChart?: boolean }) => {
-    // Using mock data for demo purposes
-    const mockPrices: Record<string, any> = {
-      'AAPL': { price: 195.89, change: 2.34, changePercent: 1.21 },
-      'GOOGL': { price: 178.23, change: -1.45, changePercent: -0.81 },
-      'MSFT': { price: 453.92, change: 5.67, changePercent: 1.26 },
-      'TSLA': { price: 178.79, change: -3.21, changePercent: -1.76 },
-    };
-    
-    const mock = mockPrices[input.symbol.toUpperCase()] || {
-      price: 100.00,
-      change: 0.50,
-      changePercent: 0.50
-    };
-    
-    return {
-      symbol: input.symbol.toUpperCase(),
-      price: mock.price.toFixed(2),
-      change: mock.change.toFixed(2),
-      changePercent: mock.changePercent.toFixed(2),
-      currency: 'USD',
-      marketState: 'REGULAR',
-      showChart: input.showChart || false
-    };
+    try {
+      // Fetch live data from Yahoo Finance
+      const quote = await getStockQuote(input.symbol);
+      
+      return {
+        symbol: quote.symbol,
+        price: quote.price.toFixed(2),
+        change: quote.change.toFixed(2),
+        changePercent: quote.changePercent.toFixed(2),
+        currency: quote.currency,
+        marketState: quote.marketState,
+        shortName: quote.shortName,
+        previousClose: quote.previousClose,
+        dayLow: quote.dayLow,
+        dayHigh: quote.dayHigh,
+        volume: quote.volume,
+        marketCap: quote.marketCap,
+        showChart: input.showChart || false
+      };
+    } catch (error) {
+      console.error('Error fetching stock price:', error);
+      // Fallback to basic response
+      return {
+        symbol: input.symbol.toUpperCase(),
+        price: '0.00',
+        change: '0.00',
+        changePercent: '0.00',
+        currency: 'USD',
+        marketState: 'UNKNOWN',
+        showChart: input.showChart || false,
+        error: 'Unable to fetch live data'
+      };
+    }
   },
   render: ({ result }: { result: any }) => (
     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 my-2">
+      {result.error && (
+        <div className="text-red-500 text-sm mb-2">{result.error}</div>
+      )}
       <div className="flex justify-between items-start">
         <div>
           <h3 className="font-bold text-lg">{result.symbol}</h3>
-          <p className="text-2xl font-semibold">
+          {result.shortName && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{result.shortName}</p>
+          )}
+          <p className="text-2xl font-semibold mt-1">
             ${result.price} {result.currency}
           </p>
           <p className={`text-sm ${
@@ -47,9 +64,35 @@ export const stockPriceTool = {
           {result.marketState}
         </div>
       </div>
+      {(result.dayLow || result.dayHigh || result.volume) && (
+        <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            {result.previousClose && (
+              <div>
+                <span className="text-gray-500">Prev Close:</span> ${result.previousClose?.toFixed(2)}
+              </div>
+            )}
+            {result.dayLow && result.dayHigh && (
+              <div>
+                <span className="text-gray-500">Day Range:</span> ${result.dayLow?.toFixed(2)} - ${result.dayHigh?.toFixed(2)}
+              </div>
+            )}
+            {result.volume && (
+              <div>
+                <span className="text-gray-500">Volume:</span> {(result.volume / 1000000).toFixed(2)}M
+              </div>
+            )}
+            {result.marketCap && (
+              <div>
+                <span className="text-gray-500">Market Cap:</span> ${(result.marketCap / 1000000000).toFixed(2)}B
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {result.showChart && (
         <div className="mt-4 p-4 bg-white dark:bg-gray-700 rounded">
-          <p className="text-sm text-gray-500">Chart visualization would go here</p>
+          <p className="text-sm text-gray-500">Chart visualization coming soon</p>
         </div>
       )}
     </div>
@@ -110,31 +153,33 @@ export const stockNewsTool = {
   name: 'stock-news',
   description: 'Get latest news for a stock',
   execute: async (input: { symbol: string; limit?: number }) => {
-    const mockNews = [
-      {
-        title: `${input.symbol} Reports Strong Q4 Earnings`,
-        summary: 'Company beats analyst expectations with record revenue',
-        timestamp: new Date().toISOString(),
-        source: 'Financial Times'
-      },
-      {
-        title: `Analysts Upgrade ${input.symbol} to Buy`,
-        summary: 'Multiple firms raise price targets citing growth potential',
-        timestamp: new Date().toISOString(),
-        source: 'Bloomberg'
-      },
-      {
-        title: `${input.symbol} Announces New Product Launch`,
-        summary: 'Innovation expected to drive market share gains',
-        timestamp: new Date().toISOString(),
-        source: 'Reuters'
-      }
-    ];
-    
-    return {
-      symbol: input.symbol.toUpperCase(),
-      news: mockNews.slice(0, input.limit || 3)
-    };
+    try {
+      const news = await getStockNews(input.symbol, input.limit || 3);
+      
+      return {
+        symbol: input.symbol.toUpperCase(),
+        news: news.map(item => ({
+          title: item.title,
+          summary: item.summary,
+          timestamp: item.providerPublishTime.toISOString(),
+          source: item.publisher
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      // Fallback to mock news
+      return {
+        symbol: input.symbol.toUpperCase(),
+        news: [
+          {
+            title: `${input.symbol} Market Update`,
+            summary: 'Stay tuned for the latest market developments',
+            timestamp: new Date().toISOString(),
+            source: 'Market Watch'
+          }
+        ]
+      };
+    }
   },
   render: ({ result }: { result: any }) => (
     <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 my-2">
@@ -157,15 +202,31 @@ export const marketOverviewTool = {
   name: 'market-overview',
   description: 'Get market overview with major indices',
   execute: async () => {
-    return {
-      indices: [
-        { name: 'S&P 500', value: 5970.85, change: 0.73 },
-        { name: 'Dow Jones', value: 43870.35, change: 0.32 },
-        { name: 'NASDAQ', value: 21779.93, change: 1.28 },
-        { name: 'Russell 2000', value: 2318.47, change: -0.18 }
-      ],
-      timestamp: new Date().toISOString()
-    };
+    try {
+      const indices = await getMarketIndices();
+      
+      return {
+        indices: indices.map(index => ({
+          name: index.name,
+          value: index.value,
+          change: index.changePercent
+        })),
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error fetching market indices:', error);
+      // Fallback to mock data
+      return {
+        indices: [
+          { name: 'S&P 500', value: 0, change: 0 },
+          { name: 'Dow Jones', value: 0, change: 0 },
+          { name: 'NASDAQ', value: 0, change: 0 },
+          { name: 'Russell 2000', value: 0, change: 0 }
+        ],
+        timestamp: new Date().toISOString(),
+        error: 'Unable to fetch live market data'
+      };
+    }
   },
   render: ({ result }: { result: any }) => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-4 my-2">

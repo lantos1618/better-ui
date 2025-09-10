@@ -1,6 +1,7 @@
 fix `/home/ubuntu/better-ui/examples/stock-chat-app`
 
-redploy it you leaked a key...
+to use live yahoo data `yahoo-finance2`
+
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
