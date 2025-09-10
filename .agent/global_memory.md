@@ -53,12 +53,13 @@ NEXT_PUBLIC_API_RATE_WINDOW=60000
 ```
 
 ## Recent Changes (2025-09-10)
-- Fixed hydration errors by stabilizing SSR/client state
-- Updated Gemini API key for production deployment  
-- Configured stricter rate limiting (10 req/min) for production
-- Deployed to new Vercel production URL: https://stock-chat-app.vercel.app
-- Fixed dark mode hydration mismatch with localStorage persistence
-- Email notification sent to Lyndon about deployment
+- **CRITICAL SECURITY UPDATE**: Removed exposed API key from source control
+- Implemented ultra-strict rate limiting (3 req/min) for public deployment
+- Secured environment variables in Vercel dashboard only
+- Updated `.gitignore` to exclude `.env.local`
+- Deployed secure version without exposed keys
+- **ACTION REQUIRED**: Need new Gemini API key (previous one compromised)
+- Latest deployment: https://stock-chat-iwxdpphrb-lantoslgtms-projects.vercel.app
 
 ## Previous Changes (2025-09-09)
 - Complete UI redesign with shadcn/ui and framer-motion

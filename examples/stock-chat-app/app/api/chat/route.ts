@@ -2,9 +2,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { RateLimiter } from '@/lib/rate-limiter';
 
-// Initialize rate limiter with conservative limits for public deployment
+// Initialize rate limiter with very strict limits for public deployment
 const rateLimiter = new RateLimiter(
-  parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '10'), // Reduced from 20 to 10 for public
+  parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '3'), // Strict limit: 3 requests per minute
   parseInt(process.env.NEXT_PUBLIC_API_RATE_WINDOW || '60000')
 );
 
