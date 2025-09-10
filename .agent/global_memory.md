@@ -2,15 +2,17 @@
 
 ## Project Overview
 - **Name**: Lambda Stock Chat App
-- **Status**: Production Deployed
-- **URL**: https://stock-chat-r022zfy7n-lantoslgtms-projects.vercel.app
+- **Status**: Production Deployed (Redesigned)
+- **URL**: https://stock-chat-c2ozpujij-lantoslgtms-projects.vercel.app
 - **Repository**: https://github.com/lambda-run/better-ui
+- **NPM Package**: @lantos1618/better-ui@0.2.1
 
 ## Key Components
 
 ### Technology Stack
 - **Framework**: Next.js 15.5.2
 - **UI Library**: shadcn/ui with Radix UI primitives
+- **Animation**: Framer Motion
 - **Styling**: Tailwind CSS v4
 - **AI Model**: Google Gemini 1.5 Flash
 - **Deployment**: Vercel
@@ -46,14 +48,15 @@ NEXT_PUBLIC_API_RATE_LIMIT=30
 NEXT_PUBLIC_API_RATE_WINDOW=60000
 ```
 
-## Recent Changes
-- Complete UI redesign with BetterStockChat component
-- Enhanced rate limiting with burst protection
-- Added shadcn/ui components for modern interface
-- Implemented animated typing effect for AI responses
-- Added sidebar with market indices and quick actions
-- Dark mode toggle
-- Improved error handling
+## Recent Changes (2025-09-09)
+- Complete UI redesign with shadcn/ui and framer-motion
+- New sidebar component with market indices display
+- Modern chat interface with animations
+- Dark mode implementation with toggle
+- Better-ui library integration (partial)
+- Removed temporary project folder
+- Published @lantos1618/better-ui@0.2.1 to npm
+- Deployed to Vercel production
 
 ## Known Issues & TODOs
 - Gemini API key is exposed in .env.local (needs rotation)
@@ -77,4 +80,4 @@ NEXT_PUBLIC_API_RATE_WINDOW=60000
 - Environment: Production
 - SSL: Enabled
 
-Last Updated: 2025-09-05
+Last Updated: 2025-09-09 02:08 UTC

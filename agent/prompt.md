@@ -1,8 +1,10 @@
-just re do the ui in `examples/stock-chat-app` its so bad we want to have a chat using shadcn, and the better-ui we deployed this to vercel
+deploy the `/home/ubuntu/better-ui/examples/stock-chat-app`
 
-use the `/home/ubuntu/better-ui/example-delete/magicpath-project` temporary project to help you make the  stock app better infer the style and layout from that. also we need to make sure that the stock-chat-app is actually using the better-ui not clever tricks.
+please also can you 
 
-we also want to delete the `/home/ubuntu/better-ui/example-delete` folder after successfully infering its layout and theme to the stock app
+update the gemni api key to AIzaSyALGPs6nBkSNgkb2EmxUTV-j7EZcHHXcxs 
+
+DO NOT LEAK IT PLEASE
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
