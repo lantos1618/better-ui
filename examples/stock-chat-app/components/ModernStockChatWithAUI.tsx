@@ -56,7 +56,7 @@ const ModernStockChatWithAUI = () => {
       id: '1',
       role: 'assistant',
       content: 'Welcome to your AI-powered Stock Market Assistant! I can help you with real-time stock quotes, market analysis, portfolio tracking, and financial insights. What would you like to know about the markets today?',
-      timestamp: new Date(),
+      timestamp: new Date('2024-01-01T00:00:00.000Z'), // Fixed timestamp for SSR
     }
   ]);
   
@@ -65,19 +65,19 @@ const ModernStockChatWithAUI = () => {
       id: '1',
       title: 'Market Analysis',
       lastMessage: 'Tell me about AAPL',
-      timestamp: '2 min ago'
+      timestamp: 'Recent'
     },
     {
       id: '2',
       title: 'Portfolio Review',
       lastMessage: 'How is my tech portfolio doing?',
-      timestamp: '1 hour ago'
+      timestamp: 'Recent'
     },
     {
       id: '3',
       title: 'Earnings Report',
       lastMessage: 'NVDA earnings analysis',
-      timestamp: 'Yesterday'
+      timestamp: 'Recent'
     }
   ]);
   
@@ -85,6 +85,7 @@ const ModernStockChatWithAUI = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [rateLimitInfo, setRateLimitInfo] = useState({ remaining: 30, reset: Date.now() + 60000 });
   
@@ -93,13 +94,25 @@ const ModernStockChatWithAUI = () => {
   const isExecuting = false;
   
   useEffect(() => {
+    setIsHydrated(true);
+    // Check for stored dark mode preference
+    const stored = localStorage.getItem('darkMode');
+    if (stored) {
+      setIsDarkMode(stored === 'true');
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (!isHydrated) return;
     // Apply dark mode class to document
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      localStorage.setItem('darkMode', 'true');
     } else {
       document.documentElement.classList.remove('dark');
+      localStorage.setItem('darkMode', 'false');
     }
-  }, [isDarkMode]);
+  }, [isDarkMode, isHydrated]);
   
   // Rate limiting check
   const checkRateLimit = useCallback(() => {
@@ -176,7 +189,7 @@ const ModernStockChatWithAUI = () => {
       if (messages.length <= 2) {
         setChats(prev => prev.map(chat => 
           chat.id === currentChatId 
-            ? { ...chat, lastMessage: content.substring(0, 50), timestamp: 'Just now' }
+            ? { ...chat, lastMessage: content.substring(0, 50), timestamp: 'Recent' }
             : chat
         ));
       }
@@ -200,7 +213,7 @@ const ModernStockChatWithAUI = () => {
       id: newChatId,
       title: 'New Chat',
       lastMessage: 'Start a conversation...',
-      timestamp: 'Just now'
+      timestamp: 'Recent'
     };
     setChats(prev => [newChat, ...prev]);
     setCurrentChatId(newChatId);
@@ -272,17 +285,19 @@ const ModernStockChatWithAUI = () => {
           </div>
           
           {/* Desktop Dark Mode Toggle */}
-          <div className="hidden lg:block absolute top-4 right-4 z-10">
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-2 shadow-sm border border-gray-200 dark:border-gray-800">
-              <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <Switch
-                checked={isDarkMode}
-                onCheckedChange={setIsDarkMode}
-                className="data-[state=checked]:bg-blue-600"
-              />
-              <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+          {isHydrated && (
+            <div className="hidden lg:block absolute top-4 right-4 z-10">
+              <div className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg p-2 shadow-sm border border-gray-200 dark:border-gray-800">
+                <Sun className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <Switch
+                  checked={isDarkMode}
+                  onCheckedChange={setIsDarkMode}
+                  className="data-[state=checked]:bg-blue-600"
+                />
+                <Moon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Chat Area */}
           <StockMainChatArea
