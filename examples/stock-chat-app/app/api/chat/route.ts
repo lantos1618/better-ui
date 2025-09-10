@@ -2,6 +2,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
 import { RateLimiter } from '@/lib/rate-limiter';
 
+// Type definitions
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+interface ToolCall {
+  tool: string;
+  input: Record<string, unknown>;
+}
+
+interface ChatRequest {
+  messages: ChatMessage[];
+  tools?: boolean;
+}
+
 // Initialize rate limiter with very strict limits for public deployment
 const rateLimiter = new RateLimiter(
   parseInt(process.env.NEXT_PUBLIC_API_RATE_LIMIT || '3'), // Strict limit: 3 requests per minute
@@ -47,7 +63,7 @@ export async function POST(req: Request) {
       );
     }
     
-    const { messages, tools } = await req.json();
+    const { messages, tools }: ChatRequest = await req.json();
     
     // Get the Gemini model (function calling will be added in future version)
     const model = genAI.getGenerativeModel({ 
@@ -59,7 +75,7 @@ export async function POST(req: Request) {
     });
     
     // Format messages for Gemini - filter out system messages and ensure alternating roles
-    const filteredMessages = messages.slice(0, -1).filter((msg: any) => msg.role !== 'system');
+    const filteredMessages = messages.slice(0, -1).filter((msg) => msg.role !== 'system');
     const history: Array<{ role: string; parts: Array<{ text: string }> }> = [];
     
     // Ensure history starts with a user message and alternates properly
@@ -111,7 +127,7 @@ When users ask about stocks, suggest using these tools by including the tool com
     const text = response.text();
     
     // Parse tool calls from response text using pattern matching
-    const toolCalls = [];
+    const toolCalls: ToolCall[] = [];
     
     // Check for stock price requests
     const pricePatterns = [

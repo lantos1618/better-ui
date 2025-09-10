@@ -38,8 +38,11 @@ export interface StockNews {
   providerPublishTime: Date;
 }
 
+// Type for Yahoo Finance quote result  
+type YahooQuote = Awaited<ReturnType<typeof yahooFinance.quote>>;
+
 // Cache for stock quotes to reduce API calls
-const quoteCache = new Map<string, { data: any; timestamp: number }>();
+const quoteCache = new Map<string, { data: YahooQuote; timestamp: number }>();
 const CACHE_DURATION = 60000; // 1 minute cache
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
@@ -75,7 +78,7 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
   }
 }
 
-function formatQuoteData(quote: any): StockQuote {
+function formatQuoteData(quote: YahooQuote): StockQuote {
   return {
     symbol: quote.symbol,
     price: quote.regularMarketPrice || 0,

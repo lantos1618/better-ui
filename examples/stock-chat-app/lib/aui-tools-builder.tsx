@@ -1,8 +1,17 @@
 import React from 'react';
-import { getStockQuote, getMarketIndices, getStockNews } from './yahoo-finance-client';
+import { z } from 'zod';
+import { AUITool } from '@lantos1618/better-ui/lib/aui/core';
+import { getStockQuote, getMarketIndices, getStockNews, StockQuote, MarketIndex, StockNews } from './yahoo-finance-client';
 
-// Type definitions
-interface StockPriceResult {
+// Stock Price Tool Input/Output Types
+const stockPriceInputSchema = z.object({
+  symbol: z.string().min(1).max(5).toUpperCase(),
+  showChart: z.boolean().optional().default(false)
+});
+
+type StockPriceInput = z.infer<typeof stockPriceInputSchema>;
+
+interface StockPriceOutput {
   symbol: string;
   price: string;
   change: string;
@@ -19,42 +28,60 @@ interface StockPriceResult {
   error?: string;
 }
 
-interface PortfolioStock {
+// Portfolio Tool Types
+const portfolioActionSchema = z.enum(['view', 'add', 'remove']);
+
+const portfolioInputSchema = z.object({
+  action: portfolioActionSchema,
+  symbol: z.string().min(1).max(5).toUpperCase().optional(),
+  shares: z.number().positive().optional()
+});
+
+type PortfolioInput = z.infer<typeof portfolioInputSchema>;
+
+interface PortfolioItem {
   symbol: string;
   shares: number;
 }
 
-interface NewsItem {
-  title: string;
-  summary: string;
-  timestamp: string;
-  source: string;
-}
+// Stock News Tool Types
+const stockNewsInputSchema = z.object({
+  symbol: z.string().min(1).max(5).toUpperCase(),
+  limit: z.number().min(1).max(10).optional().default(3)
+});
 
-interface StockNewsResult {
+type StockNewsInput = z.infer<typeof stockNewsInputSchema>;
+
+interface StockNewsOutput {
   symbol: string;
-  news: NewsItem[];
+  news: Array<{
+    title: string;
+    summary: string;
+    timestamp: string;
+    source: string;
+  }>;
 }
 
-interface MarketIndexData {
-  name: string;
-  value: number;
-  change: number;
-}
-
-interface MarketOverviewResult {
-  indices: MarketIndexData[];
+// Market Overview Tool Types
+interface MarketOverviewOutput {
+  indices: Array<{
+    name: string;
+    value: number;
+    change: number;
+  }>;
   timestamp: string;
   error?: string;
 }
 
-// Stock price tool
-export const stockPriceTool = {
-  name: 'stock-price',
-  description: 'Get real-time stock price information',
-  execute: async (input: { symbol: string; showChart?: boolean }): Promise<StockPriceResult> => {
+// Portfolio storage (in-memory for demo)
+const portfolioData: PortfolioItem[] = [];
+
+// Stock Price Tool with Builder Pattern
+export const stockPriceTool = new AUITool<StockPriceInput, StockPriceOutput>('stock-price')
+  .describe('Get real-time stock price information')
+  .input(stockPriceInputSchema)
+  .execute(async ({ input }) => {
     try {
-      // Fetch live data from Yahoo Finance
       const quote = await getStockQuote(input.symbol);
       
       return {
@@ -70,89 +97,85 @@ export const stockPriceTool = {
         dayHigh: quote.dayHigh,
         volume: quote.volume,
         marketCap: quote.marketCap,
-        showChart: input.showChart || false
+        showChart: input.showChart
       };
     } catch (error) {
       console.error('Error fetching stock price:', error);
-      // Fallback to basic response
       return {
-        symbol: input.symbol.toUpperCase(),
+        symbol: input.symbol,
         price: '0.00',
         change: '0.00',
         changePercent: '0.00',
         currency: 'USD',
         marketState: 'UNKNOWN',
-        showChart: input.showChart || false,
+        showChart: input.showChart,
         error: 'Unable to fetch live data'
       };
     }
-  },
-  render: ({ result }: { result: StockPriceResult }) => (
+  })
+  .render(({ data }) => (
     <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 my-2">
-      {result.error && (
-        <div className="text-red-500 text-sm mb-2">{result.error}</div>
+      {data.error && (
+        <div className="text-red-500 text-sm mb-2">{data.error}</div>
       )}
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-bold text-lg">{result.symbol}</h3>
-          {result.shortName && (
-            <p className="text-sm text-gray-600 dark:text-gray-400">{result.shortName}</p>
+          <h3 className="font-bold text-lg">{data.symbol}</h3>
+          {data.shortName && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{data.shortName}</p>
           )}
           <p className="text-2xl font-semibold mt-1">
-            ${result.price} {result.currency}
+            ${data.price} {data.currency}
           </p>
           <p className={`text-sm ${
-            parseFloat(result.change) >= 0 ? 'text-green-600' : 'text-red-600'
+            parseFloat(data.change) >= 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {parseFloat(result.change) >= 0 ? '+' : ''}{result.change} ({result.changePercent}%)
+            {parseFloat(data.change) >= 0 ? '+' : ''}{data.change} ({data.changePercent}%)
           </p>
         </div>
         <div className="text-sm text-gray-500">
-          {result.marketState}
+          {data.marketState}
         </div>
       </div>
-      {(result.dayLow || result.dayHigh || result.volume) && (
+      {(data.dayLow || data.dayHigh || data.volume) && (
         <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
           <div className="grid grid-cols-2 gap-2 text-sm">
-            {result.previousClose && (
+            {data.previousClose && (
               <div>
-                <span className="text-gray-500">Prev Close:</span> ${result.previousClose?.toFixed(2)}
+                <span className="text-gray-500">Prev Close:</span> ${data.previousClose.toFixed(2)}
               </div>
             )}
-            {result.dayLow && result.dayHigh && (
+            {data.dayLow && data.dayHigh && (
               <div>
-                <span className="text-gray-500">Day Range:</span> ${result.dayLow?.toFixed(2)} - ${result.dayHigh?.toFixed(2)}
+                <span className="text-gray-500">Day Range:</span> ${data.dayLow.toFixed(2)} - ${data.dayHigh.toFixed(2)}
               </div>
             )}
-            {result.volume && (
+            {data.volume && (
               <div>
-                <span className="text-gray-500">Volume:</span> {(result.volume / 1000000).toFixed(2)}M
+                <span className="text-gray-500">Volume:</span> {(data.volume / 1000000).toFixed(2)}M
               </div>
             )}
-            {result.marketCap && (
+            {data.marketCap && (
               <div>
-                <span className="text-gray-500">Market Cap:</span> ${(result.marketCap / 1000000000).toFixed(2)}B
+                <span className="text-gray-500">Market Cap:</span> ${(data.marketCap / 1000000000).toFixed(2)}B
               </div>
             )}
           </div>
         </div>
       )}
-      {result.showChart && (
+      {data.showChart && (
         <div className="mt-4 p-4 bg-white dark:bg-gray-700 rounded">
           <p className="text-sm text-gray-500">Chart visualization coming soon</p>
         </div>
       )}
     </div>
-  )
-};
+  ));
 
-// Portfolio management tool
-const portfolioData: PortfolioStock[] = [];
-
-export const portfolioTool = {
-  name: 'portfolio',
-  description: 'Manage stock portfolio',
-  execute: async (input: { action: 'view' | 'add' | 'remove'; symbol?: string; shares?: number }): Promise<PortfolioStock[]> => {
+// Portfolio Tool with Builder Pattern
+export const portfolioTool = new AUITool<PortfolioInput, PortfolioItem[]>('portfolio')
+  .describe('Manage stock portfolio')
+  .input(portfolioInputSchema)
+  .execute(async ({ input }) => {
     switch (input.action) {
       case 'add':
         if (input.symbol && input.shares) {
@@ -174,16 +197,16 @@ export const portfolioTool = {
         break;
     }
     
-    return portfolioData;
-  },
-  render: ({ result }: { result: PortfolioStock[] }) => (
+    return [...portfolioData];
+  })
+  .render(({ data }) => (
     <div className="bg-blue-50 dark:bg-blue-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-2">Portfolio</h3>
-      {result.length === 0 ? (
+      {data.length === 0 ? (
         <p className="text-gray-500">No stocks in portfolio</p>
       ) : (
         <div className="space-y-2">
-          {result.map((stock) => (
+          {data.map((stock) => (
             <div key={stock.symbol} className="flex justify-between">
               <span className="font-medium">{stock.symbol}</span>
               <span>{stock.shares} shares</span>
@@ -192,19 +215,18 @@ export const portfolioTool = {
         </div>
       )}
     </div>
-  )
-};
+  ));
 
-// Stock news tool
-export const stockNewsTool = {
-  name: 'stock-news',
-  description: 'Get latest news for a stock',
-  execute: async (input: { symbol: string; limit?: number }): Promise<StockNewsResult> => {
+// Stock News Tool with Builder Pattern
+export const stockNewsTool = new AUITool<StockNewsInput, StockNewsOutput>('stock-news')
+  .describe('Get latest news for a stock')
+  .input(stockNewsInputSchema)
+  .execute(async ({ input }) => {
     try {
-      const news = await getStockNews(input.symbol, input.limit || 3);
+      const news = await getStockNews(input.symbol, input.limit);
       
       return {
-        symbol: input.symbol.toUpperCase(),
+        symbol: input.symbol,
         news: news.map(item => ({
           title: item.title,
           summary: item.summary,
@@ -214,9 +236,8 @@ export const stockNewsTool = {
       };
     } catch (error) {
       console.error('Error fetching news:', error);
-      // Fallback to mock news
       return {
-        symbol: input.symbol.toUpperCase(),
+        symbol: input.symbol,
         news: [
           {
             title: `${input.symbol} Market Update`,
@@ -227,12 +248,12 @@ export const stockNewsTool = {
         ]
       };
     }
-  },
-  render: ({ result }: { result: StockNewsResult }) => (
+  })
+  .render(({ data }) => (
     <div className="bg-yellow-50 dark:bg-yellow-900 rounded-lg p-4 my-2">
-      <h3 className="font-bold text-lg mb-2">{result.symbol} News</h3>
+      <h3 className="font-bold text-lg mb-2">{data.symbol} News</h3>
       <div className="space-y-3">
-        {result.news.map((item, index) => (
+        {data.news.map((item, index) => (
           <div key={index} className="border-l-2 border-yellow-400 pl-3">
             <h4 className="font-medium">{item.title}</h4>
             <p className="text-sm text-gray-600 dark:text-gray-300">{item.summary}</p>
@@ -241,14 +262,12 @@ export const stockNewsTool = {
         ))}
       </div>
     </div>
-  )
-};
+  ));
 
-// Market overview tool
-export const marketOverviewTool = {
-  name: 'market-overview',
-  description: 'Get market overview with major indices',
-  execute: async (): Promise<MarketOverviewResult> => {
+// Market Overview Tool with Builder Pattern
+export const marketOverviewTool = new AUITool<void, MarketOverviewOutput>('market-overview')
+  .describe('Get market overview with major indices')
+  .execute(async () => {
     try {
       const indices = await getMarketIndices();
       
@@ -262,7 +281,6 @@ export const marketOverviewTool = {
       };
     } catch (error) {
       console.error('Error fetching market indices:', error);
-      // Fallback to mock data
       return {
         indices: [
           { name: 'S&P 500', value: 0, change: 0 },
@@ -274,12 +292,12 @@ export const marketOverviewTool = {
         error: 'Unable to fetch live market data'
       };
     }
-  },
-  render: ({ result }: { result: MarketOverviewResult }) => (
+  })
+  .render(({ data }) => (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-4 my-2">
       <h3 className="font-bold text-lg mb-3">Market Overview</h3>
       <div className="grid grid-cols-2 gap-3">
-        {result.indices.map((index) => (
+        {data.indices.map((index) => (
           <div key={index.name} className="bg-white dark:bg-gray-800 rounded p-2">
             <p className="font-medium text-sm">{index.name}</p>
             <p className="text-lg">{index.value.toLocaleString()}</p>
@@ -292,13 +310,32 @@ export const marketOverviewTool = {
         ))}
       </div>
     </div>
-  )
-};
+  ));
 
-// Export all tools
+// Export all tools as an array
 export const stockTools = [
   stockPriceTool,
   portfolioTool,
   stockNewsTool,
   marketOverviewTool
 ];
+
+// Export tool configuration for AI integration
+export const stockToolsConfig = {
+  'stock-price': {
+    description: 'Get real-time stock prices',
+    parameters: stockPriceInputSchema
+  },
+  'portfolio': {
+    description: 'Manage stock portfolio',
+    parameters: portfolioInputSchema
+  },
+  'stock-news': {
+    description: 'Get latest stock news',
+    parameters: stockNewsInputSchema
+  },
+  'market-overview': {
+    description: 'Get market overview',
+    parameters: z.void()
+  }
+};
