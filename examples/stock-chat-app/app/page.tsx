@@ -1,5 +1,5 @@
-import EnhancedStockChat from '@/components/EnhancedStockChat';
+import ImprovedStockChat from '@/components/ImprovedStockChat';
 
 export default function HomePage() {
-  return <EnhancedStockChat />;
+  return <ImprovedStockChat />;
 }

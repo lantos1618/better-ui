@@ -1,0 +1,30 @@
+# Build outputs
+dist/
+build/
+out/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+
+# Cache
+.eslintcache
+.cache/
+
+# Coverage
+coverage/
+
+# Misc
+.DS_Store
+.env*
+!.env.example
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
