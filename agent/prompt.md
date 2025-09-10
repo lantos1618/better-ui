@@ -1,7 +1,10 @@
-fix `/home/ubuntu/better-ui/examples/stock-chat-app`
+here is the app example location `/home/ubuntu/better-ui/examples/stock-chat-app`
 
-to use live yahoo data `yahoo-finance2`
+use the `/home/ubuntu/better-ui/examples/chat-app` 
 
+to make our `/home/ubuntu/better-ui/examples/stock-chat-app/components`  and `/home/ubuntu/better-ui/examples/stock-chat-app/lib`  and `/home/ubuntu/better-ui/examples/stock-chat-app/app`
+
+better focus on style, animation and layout
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)

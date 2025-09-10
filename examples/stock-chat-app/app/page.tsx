@@ -1,5 +1,5 @@
-import ModernStockChatWithAUI from '@/components/ModernStockChatWithAUI';
+import EnhancedStockChat from '@/components/EnhancedStockChat';
 
 export default function HomePage() {
-  return <ModernStockChatWithAUI />;
+  return <EnhancedStockChat />;
 }
