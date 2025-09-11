@@ -1,0 +1,53 @@
+{
+  "functions": {
+    "app/api/aui/execute/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/tools/*/route.ts": {
+      "maxDuration": 10
+    },
+    "app/api/chat/route.ts": {
+      "maxDuration": 30
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-RateLimit-Limit",
+          "value": "20"
+        },
+        {
+          "key": "X-RateLimit-Window",
+          "value": "60"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "RATE_LIMIT_REQUESTS_PER_MINUTE": "20",
+    "NEXT_PUBLIC_API_RATE_LIMIT": "20",
+    "NEXT_PUBLIC_API_RATE_WINDOW": "60"
+  },
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "regions": ["iad1"]
+}

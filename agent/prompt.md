@@ -1,6 +1,8 @@
-remove this `/home/ubuntu/better-ui/examples/stock-chat-app`
+please review our project and then update the read me 
 
-we will have to put this somewhere else 
+also please show how we could use this in ai-sdk  in a chat 
+
+
 
 ---------------
 I just gave you npm publish access you can now publish thish (NPM_TOKEN)
@@ -28,3 +30,4 @@ notes from Lyndon
 - git commit frequently, sync changes, push to remote
 - code principles DRY & KISS
 - if you modify this prompt.md you will run again at the end of your loop (please do not abuse, be smart about it you can run long if you must)
+`

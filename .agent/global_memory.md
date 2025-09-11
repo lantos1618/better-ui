@@ -1,14 +1,11 @@
 # Global Memory - Better UI Stock Chat App
 
 ## Project Overview
-- **Name**: Lambda Stock Chat App
-- **Status**: Production Deployed (Redesigned)
-- **URL**: https://stock-chat-app.vercel.app
-- **Alternative URLs**: 
-  - https://stock-chat-app-lantoslgtms-projects.vercel.app
-  - https://stock-chat-h81qfe6y1-lantoslgtms-projects.vercel.app
+- **Name**: Better-UI Framework
+- **Status**: Published to NPM
 - **Repository**: https://github.com/lantos1618/better-ui
-- **NPM Package**: @lantos1618/better-ui@0.2.1
+- **NPM Package**: @lantos1618/better-ui@0.2.2
+- **Stock Chat App**: REMOVED - Needs relocation and separate deployment
 
 ## Key Components
 
@@ -52,7 +49,14 @@ NEXT_PUBLIC_API_RATE_LIMIT=10
 NEXT_PUBLIC_API_RATE_WINDOW=60000
 ```
 
-## Recent Changes (2025-09-10 - UI Enhancement Update)
+## Recent Changes (2025-09-10 21:50 UTC - Package Cleanup)
+- **REMOVED**: examples/stock-chat-app directory for relocation
+- **PUBLISHED**: @lantos1618/better-ui@0.2.2 to npm registry
+- **UPDATED**: .agent metadata files with current status
+- **EMAILED**: Lyndon with status update via SendGrid
+- **COMMITTED**: All changes to git repository
+
+## Previous Changes (2025-09-10 - UI Enhancement Update)
 - **MAJOR UI OVERHAUL**: Ported advanced animations and styling from chat-app
 - Created new enhanced components: EnhancedStockChat, EnhancedSidebar, EnhancedMainChat
 - Implemented smooth Framer Motion animations throughout the interface
@@ -113,4 +117,4 @@ NEXT_PUBLIC_API_RATE_WINDOW=60000
 - Environment: Production
 - SSL: Enabled
 
-Last Updated: 2025-09-10 14:30 UTC
+Last Updated: 2025-09-10 21:52 UTC
