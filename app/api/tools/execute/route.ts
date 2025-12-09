@@ -1,4 +1,5 @@
 import { tools } from '@/lib/tools';
+import { rateLimiter } from '@/lib/rate-limiter';
 
 /**
  * Direct tool execution endpoint
@@ -8,32 +9,31 @@ import { tools } from '@/lib/tools';
  * - Only registered tools can be executed
  * - Server handlers run here, ensuring secrets stay server-side
  * - Input is validated by the tool's Zod schema
+ * - Rate limiting prevents abuse
  *
  * PRODUCTION CONSIDERATIONS:
- * - Add rate limiting to prevent abuse (e.g., using upstash/ratelimit)
+ * - Rate limiting is implemented with in-memory storage (configurable via env vars)
+ * - For production with multiple instances, consider using Upstash/Redis
  * - Add authentication if tools should be user-specific
  * - Consider adding request logging for audit trails
- *
- * Example rate limiting with Upstash:
- * ```
- * import { Ratelimit } from '@upstash/ratelimit';
- * import { Redis } from '@upstash/redis';
- *
- * const ratelimit = new Ratelimit({
- *   redis: Redis.fromEnv(),
- *   limiter: Ratelimit.slidingWindow(10, '10 s'), // 10 requests per 10 seconds
- * });
- *
- * // In POST handler:
- * const ip = req.headers.get('x-forwarded-for') ?? 'anonymous';
- * const { success } = await ratelimit.limit(ip);
- * if (!success) return Response.json({ error: 'Rate limited' }, { status: 429 });
- * ```
  */
 
 const toolMap = tools;
 
 export async function POST(req: Request) {
+  // Rate limiting: extract IP from headers
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0]?.trim() || 
+             req.headers.get('x-real-ip') || 
+             'anonymous';
+
+  if (!rateLimiter.check(ip)) {
+    return Response.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await req.json();
     const { tool: toolName, input } = body;
