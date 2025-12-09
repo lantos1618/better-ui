@@ -157,12 +157,14 @@ export default function ChatDemo() {
                     const hasResult = state === 'output-available';
                     const isToolLoading = !!loadingTools[toolCallId];
 
+                    // Pass onAction to all tools - the view decides whether to use it
+                    // This enables any tool to be interactive without code changes here
                     return (
                       <div key={toolCallId}>
                         <toolDef.View
                           data={output as any}
                           loading={!hasResult || isToolLoading}
-                          onAction={toolName === 'counter' ? getOnAction(toolCallId, toolName) : undefined}
+                          onAction={getOnAction(toolCallId, toolName)}
                         />
                       </div>
                     );

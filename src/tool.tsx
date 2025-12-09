@@ -12,23 +12,49 @@ import React, { ReactElement, memo } from 'react';
 // Types
 // ============================================
 
+/**
+ * Context passed to tool handlers
+ *
+ * SECURITY NOTE:
+ * - Server-only fields (env, headers, cookies, user, session) are automatically
+ *   stripped when running on the client to prevent accidental leakage.
+ * - Server handlers NEVER run on the client - they auto-fetch via API instead.
+ * - Never store secrets in tool output - it gets sent to the client.
+ */
 export interface ToolContext {
+  /** Shared cache for deduplication */
   cache: Map<string, any>;
+  /** Fetch function (can be customized for auth headers, etc.) */
   fetch: typeof fetch;
-  // Server-only
-  env?: Record<string, string>;
-  headers?: Headers;
-  cookies?: Record<string, string>;
-  user?: any;
-  session?: any;
+  /** Whether running on server */
   isServer: boolean;
-  // Client-only
+
+  // === Server-only fields (stripped on client) ===
+  /** Environment variables - NEVER available on client */
+  env?: Record<string, string>;
+  /** Request headers - NEVER available on client */
+  headers?: Headers;
+  /** Cookies - NEVER available on client */
+  cookies?: Record<string, string>;
+  /** Authenticated user - NEVER available on client */
+  user?: any;
+  /** Session data - NEVER available on client */
+  session?: any;
+
+  // === Client-only fields ===
+  /** Optimistic update function */
   optimistic?: <T>(data: Partial<T>) => void;
 }
 
 export interface CacheConfig<TInput> {
   ttl: number;
   key?: (input: TInput) => string;
+}
+
+/** Configuration for auto-fetch behavior when no client handler is defined */
+export interface ClientFetchConfig {
+  /** API endpoint for tool execution (default: '/api/tools/execute') */
+  endpoint?: string;
 }
 
 export interface ToolConfig<TInput, TOutput> {
@@ -38,6 +64,8 @@ export interface ToolConfig<TInput, TOutput> {
   output?: z.ZodType<TOutput>;
   tags?: string[];
   cache?: CacheConfig<TInput>;
+  /** Configure auto-fetch behavior for client-side execution */
+  clientFetch?: ClientFetchConfig;
 }
 
 export type ServerHandler<TInput, TOutput> = (
@@ -72,6 +100,7 @@ export class Tool<TInput = any, TOutput = any> {
   readonly outputSchema?: z.ZodType<TOutput>;
   readonly tags: string[];
   readonly cacheConfig?: CacheConfig<TInput>;
+  readonly clientFetchConfig?: ClientFetchConfig;
 
   private _server?: ServerHandler<TInput, TOutput>;
   private _client?: ClientHandler<TInput, TOutput>;
@@ -84,6 +113,7 @@ export class Tool<TInput = any, TOutput = any> {
     this.outputSchema = config.output;
     this.tags = config.tags || [];
     this.cacheConfig = config.cache;
+    this.clientFetchConfig = config.clientFetch;
     // Initialize View with default behavior
     this._initView();
   }
@@ -120,17 +150,32 @@ export class Tool<TInput = any, TOutput = any> {
   /**
    * Execute the tool
    * Automatically uses server or client handler based on environment
+   *
+   * SECURITY: Server handlers only run on server. Client automatically
+   * fetches from /api/tools/execute if no client handler is defined.
    */
   async run(input: TInput, ctx?: Partial<ToolContext>): Promise<TOutput> {
     // Validate input
     const validated = this.inputSchema.parse(input);
 
-    // Create context with defaults
+    const isServer = ctx?.isServer ?? (typeof window === 'undefined');
+
+    // Create context with defaults - SECURITY: strip server-only fields on client
     const context: ToolContext = {
       cache: ctx?.cache || new Map(),
       fetch: ctx?.fetch || globalThis.fetch?.bind(globalThis),
-      isServer: ctx?.isServer ?? (typeof window === 'undefined'),
-      ...ctx,
+      isServer,
+      // Only include server-sensitive fields when actually on server
+      ...(isServer ? {
+        env: ctx?.env,
+        headers: ctx?.headers,
+        cookies: ctx?.cookies,
+        user: ctx?.user,
+        session: ctx?.session,
+      } : {
+        // Client-only fields
+        optimistic: ctx?.optimistic,
+      }),
     };
 
     // Check cache if configured
@@ -154,14 +199,13 @@ export class Tool<TInput = any, TOutput = any> {
       }
       result = await this._server(validated, context);
     } else {
-      // Client execution
+      // Client execution - SECURITY: never run server handler on client
       if (this._client) {
         result = await this._client(validated, context);
       } else if (this._server) {
-        // Run server handler directly on client if no client handler defined
-        // This works for tools with simulated/local data
-        // For real server-only logic, define a .client() that fetches from API
-        result = await this._server(validated, context);
+        // Auto-fetch from API endpoint instead of running server code on client
+        // This ensures server secrets/logic stay on server
+        result = await this._defaultClientFetch(validated, context);
       } else {
         throw new Error(`Tool "${this.name}" has no implementation`);
       }
@@ -196,12 +240,17 @@ export class Tool<TInput = any, TOutput = any> {
 
   /**
    * Default client fetch when no .client() is defined
+   *
+   * SECURITY: This ensures server handlers never run on the client.
+   * The server-side /api/tools/execute endpoint handles execution safely.
    */
   private async _defaultClientFetch(
     input: TInput,
     ctx: ToolContext
   ): Promise<TOutput> {
-    const response = await ctx.fetch('/api/tools/execute', {
+    const endpoint = this.clientFetchConfig?.endpoint || '/api/tools/execute';
+
+    const response = await ctx.fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ tool: this.name, input }),
@@ -209,7 +258,7 @@ export class Tool<TInput = any, TOutput = any> {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `Tool execution failed: ${response.statusText}`);
+      throw new Error(error.message || error.error || `Tool execution failed: ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -301,6 +350,9 @@ export class Tool<TInput = any, TOutput = any> {
 
   /**
    * Convert to plain object (for serialization)
+   *
+   * SECURITY: This intentionally excludes handlers and schemas to prevent
+   * accidental exposure of server logic or validation details.
    */
   toJSON() {
     return {
@@ -311,6 +363,7 @@ export class Tool<TInput = any, TOutput = any> {
       hasClient: this.hasClient,
       hasView: this.hasView,
       hasCache: !!this.cacheConfig,
+      // Intentionally NOT included: handlers, schemas, clientFetchConfig
     };
   }
 
@@ -383,6 +436,7 @@ class ToolBuilder<TInput = any, TOutput = any> {
   private _output?: z.ZodType<TOutput>;
   private _tags: string[] = [];
   private _cache?: CacheConfig<TInput>;
+  private _clientFetch?: ClientFetchConfig;
   private _serverHandler?: ServerHandler<TInput, TOutput>;
   private _clientHandler?: ClientHandler<TInput, TOutput>;
   private _viewComponent?: ViewComponent<TOutput>;
@@ -396,14 +450,25 @@ class ToolBuilder<TInput = any, TOutput = any> {
     return this;
   }
 
+  /**
+   * Define input schema - enables type inference for handlers
+   *
+   * NOTE: Uses type assertion internally. This is safe because:
+   * 1. The schema is stored and used correctly at runtime
+   * 2. The return type correctly reflects the new generic parameter
+   * 3. TypeScript doesn't support "this type mutation" in fluent builders
+   */
   input<T>(schema: z.ZodType<T>): ToolBuilder<T, TOutput> {
-    this._input = schema as any;
-    return this as any;
+    this._input = schema as z.ZodType<any>;
+    return this as unknown as ToolBuilder<T, TOutput>;
   }
 
+  /**
+   * Define output schema - enables type inference for results
+   */
   output<O>(schema: z.ZodType<O>): ToolBuilder<TInput, O> {
-    this._output = schema as any;
-    return this as any;
+    this._output = schema as z.ZodType<any>;
+    return this as unknown as ToolBuilder<TInput, O>;
   }
 
   tags(...tags: string[]): this {
@@ -413,6 +478,12 @@ class ToolBuilder<TInput = any, TOutput = any> {
 
   cache(config: CacheConfig<TInput>): this {
     this._cache = config;
+    return this;
+  }
+
+  /** Configure auto-fetch endpoint for client-side execution */
+  clientFetch(config: ClientFetchConfig): this {
+    this._clientFetch = config;
     return this;
   }
 
@@ -446,6 +517,7 @@ class ToolBuilder<TInput = any, TOutput = any> {
       output: this._output,
       tags: this._tags,
       cache: this._cache,
+      clientFetch: this._clientFetch,
     });
 
     if (this._serverHandler) t.server(this._serverHandler);

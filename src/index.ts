@@ -17,6 +17,7 @@ export type {
   ClientHandler,
   ViewComponent,
   CacheConfig,
+  ClientFetchConfig,
 } from './tool';
 
 // ============================================
