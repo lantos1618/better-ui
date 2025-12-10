@@ -260,6 +260,458 @@ describe('useTools', () => {
   });
 });
 
+describe('useTool advanced', () => {
+  it('calls onSuccess callback after successful execution', async () => {
+    const testTool = createTestTool('successCallback', (x) => ({ y: x * 2 }));
+    const onSuccess = jest.fn();
+    const onError = jest.fn();
+
+    function TestComponent() {
+      const { execute } = useTool(testTool, undefined, { onSuccess, onError });
+      return (
+        <button data-testid="execute" onClick={() => execute({ x: 5 })}>
+          Execute
+        </button>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith({ y: 10 });
+    });
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('calls onError callback after failed execution', async () => {
+    const errorTool = tool({
+      name: 'errorCallback',
+      input: z.object({ x: z.number() }),
+    });
+    errorTool.client(() => {
+      throw new Error('Expected error');
+    });
+
+    const onSuccess = jest.fn();
+    const onError = jest.fn();
+
+    function TestComponent() {
+      const { execute } = useTool(errorTool, undefined, { onSuccess, onError });
+      return (
+        <button data-testid="execute" onClick={() => execute({ x: 5 })}>
+          Execute
+        </button>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalled();
+      expect(onError.mock.calls[0][0].message).toBe('Expected error');
+    });
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('auto-executes when auto option is true', async () => {
+    const testTool = createTestTool('autoExec', (x) => ({ y: x * 3 }));
+
+    function TestComponent({ value }: { value: number }) {
+      const { data, loading } = useTool(testTool, { x: value }, { auto: true });
+      return (
+        <div>
+          <div data-testid="loading">{loading ? 'loading' : 'idle'}</div>
+          <div data-testid="data">{data ? JSON.stringify(data) : 'null'}</div>
+        </div>
+      );
+    }
+
+    render(<TestComponent value={7} />);
+
+    // Should auto-execute
+    await waitFor(() => {
+      expect(screen.getByTestId('data')).toHaveTextContent('{"y":21}');
+    });
+  });
+
+  it('sets error when no input provided', async () => {
+    const testTool = createTestTool('noInput', (x) => ({ y: x }));
+
+    function TestComponent() {
+      const { error, execute } = useTool(testTool);
+      return (
+        <div>
+          <div data-testid="error">{error ? error.message : 'null'}</div>
+          <button data-testid="execute" onClick={() => execute()}>
+            Execute
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    expect(screen.getByTestId('error')).toHaveTextContent(
+      'No input provided to tool'
+    );
+  });
+
+  it('converts non-Error throws to Error objects', async () => {
+    const stringThrowTool = tool({
+      name: 'stringThrow',
+      input: z.object({ x: z.number() }),
+    });
+    stringThrowTool.client(() => {
+      throw 'String error message';
+    });
+
+    function TestComponent() {
+      const { error, execute } = useTool(stringThrowTool);
+      return (
+        <div>
+          <div data-testid="error">{error ? error.message : 'null'}</div>
+          <button data-testid="execute" onClick={() => execute({ x: 5 })}>
+            Execute
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error')).toHaveTextContent(
+        'String error message'
+      );
+    });
+  });
+
+  it('returns null from execute on error', async () => {
+    const errorTool = tool({
+      name: 'returnNull',
+      input: z.object({ x: z.number() }),
+    });
+    errorTool.client(() => {
+      throw new Error('Fail');
+    });
+
+    let executeResult: any = 'not-set';
+
+    function TestComponent() {
+      const { execute } = useTool(errorTool);
+      return (
+        <button
+          data-testid="execute"
+          onClick={async () => {
+            executeResult = await execute({ x: 5 });
+          }}
+        >
+          Execute
+        </button>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(executeResult).toBeNull();
+    });
+  });
+
+  it('returns result from execute on success', async () => {
+    const testTool = createTestTool('returnResult', (x) => ({ y: x * 4 }));
+
+    let executeResult: any = null;
+
+    function TestComponent() {
+      const { execute } = useTool(testTool);
+      return (
+        <button
+          data-testid="execute"
+          onClick={async () => {
+            executeResult = await execute({ x: 3 });
+          }}
+        >
+          Execute
+        </button>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(executeResult).toEqual({ y: 12 });
+    });
+  });
+
+  it('handles rapid successive executions', async () => {
+    let callCount = 0;
+    const slowTool = tool({
+      name: 'rapid',
+      input: z.object({ x: z.number() }),
+      output: z.object({ y: z.number() }),
+    });
+    slowTool.client(async ({ x }) => {
+      callCount++;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      return { y: x };
+    });
+
+    function TestComponent() {
+      const { data, execute } = useTool(slowTool);
+      return (
+        <div>
+          <div data-testid="data">{data ? JSON.stringify(data) : 'null'}</div>
+          <button data-testid="exec1" onClick={() => execute({ x: 1 })}>
+            Exec 1
+          </button>
+          <button data-testid="exec2" onClick={() => execute({ x: 2 })}>
+            Exec 2
+          </button>
+          <button data-testid="exec3" onClick={() => execute({ x: 3 })}>
+            Exec 3
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    // Rapid fire executions
+    act(() => {
+      screen.getByTestId('exec1').click();
+      screen.getByTestId('exec2').click();
+      screen.getByTestId('exec3').click();
+    });
+
+    // Wait for all to complete
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('data')).not.toHaveTextContent('null');
+      },
+      { timeout: 500 }
+    );
+
+    // All three should have been called
+    expect(callCount).toBe(3);
+  });
+
+  it('clears error on successful execution after failure', async () => {
+    let shouldFail = true;
+    const conditionalTool = tool({
+      name: 'conditional',
+      input: z.object({ x: z.number() }),
+    });
+    conditionalTool.client(({ x }) => {
+      if (shouldFail) {
+        throw new Error('Intentional failure');
+      }
+      return { y: x * 2 };
+    });
+
+    function TestComponent() {
+      const { data, error, execute } = useTool(conditionalTool);
+      return (
+        <div>
+          <div data-testid="data">{data ? JSON.stringify(data) : 'null'}</div>
+          <div data-testid="error">{error ? error.message : 'null'}</div>
+          <button data-testid="execute" onClick={() => execute({ x: 5 })}>
+            Execute
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    // First execution - fails
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error')).toHaveTextContent('Intentional failure');
+    });
+
+    // Second execution - succeeds
+    shouldFail = false;
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('data')).toHaveTextContent('{"y":10}');
+      expect(screen.getByTestId('error')).toHaveTextContent('null');
+    });
+  });
+});
+
+describe('useTools advanced', () => {
+  it('handles errors independently per tool', async () => {
+    const successTool = createTestTool('success', (x) => ({ y: x * 2 }));
+    const failTool = tool({
+      name: 'fail',
+      input: z.object({ x: z.number() }),
+      output: z.object({ y: z.number() }),
+    });
+    failTool.client(() => {
+      throw new Error('Tool failed');
+    });
+
+    function TestComponent() {
+      const tools = useTools({ success: successTool, fail: failTool });
+      return (
+        <div>
+          <div data-testid="success-data">
+            {tools.success.data ? JSON.stringify(tools.success.data) : 'null'}
+          </div>
+          <div data-testid="success-error">
+            {tools.success.error ? tools.success.error.message : 'null'}
+          </div>
+          <div data-testid="fail-data">
+            {tools.fail.data ? JSON.stringify(tools.fail.data) : 'null'}
+          </div>
+          <div data-testid="fail-error">
+            {tools.fail.error ? tools.fail.error.message : 'null'}
+          </div>
+          <button
+            data-testid="exec-success"
+            onClick={() => tools.success.execute({ x: 5 })}
+          >
+            Exec Success
+          </button>
+          <button
+            data-testid="exec-fail"
+            onClick={() => tools.fail.execute({ x: 5 })}
+          >
+            Exec Fail
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    // Execute both
+    await act(async () => {
+      screen.getByTestId('exec-success').click();
+      screen.getByTestId('exec-fail').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('success-data')).toHaveTextContent('{"y":10}');
+      expect(screen.getByTestId('success-error')).toHaveTextContent('null');
+      expect(screen.getByTestId('fail-data')).toHaveTextContent('null');
+      expect(screen.getByTestId('fail-error')).toHaveTextContent('Tool failed');
+    });
+  });
+
+  it('provides reset function per tool', async () => {
+    const tools = {
+      a: createTestTool('a', (x) => ({ y: x })),
+      b: createTestTool('b', (x) => ({ y: x * 2 })),
+    };
+
+    function TestComponent() {
+      const result = useTools(tools);
+      return (
+        <div>
+          <div data-testid="a-data">
+            {result.a.data ? JSON.stringify(result.a.data) : 'null'}
+          </div>
+          <div data-testid="b-data">
+            {result.b.data ? JSON.stringify(result.b.data) : 'null'}
+          </div>
+          <button data-testid="exec-a" onClick={() => result.a.execute({ x: 1 })}>
+            Exec A
+          </button>
+          <button data-testid="exec-b" onClick={() => result.b.execute({ x: 1 })}>
+            Exec B
+          </button>
+          <button data-testid="reset-a" onClick={() => result.a.reset()}>
+            Reset A
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    // Execute both
+    await act(async () => {
+      screen.getByTestId('exec-a').click();
+      screen.getByTestId('exec-b').click();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('a-data')).toHaveTextContent('{"y":1}');
+      expect(screen.getByTestId('b-data')).toHaveTextContent('{"y":2}');
+    });
+
+    // Reset only A
+    await act(async () => {
+      screen.getByTestId('reset-a').click();
+    });
+
+    expect(screen.getByTestId('a-data')).toHaveTextContent('null');
+    expect(screen.getByTestId('b-data')).toHaveTextContent('{"y":2}');
+  });
+
+  it('handles no input error in useTools', async () => {
+    const testTool = createTestTool('noInputMulti', (x) => ({ y: x }));
+    const onError = jest.fn();
+
+    function TestComponent() {
+      const tools = useTools({ test: testTool }, { onError });
+      return (
+        <div>
+          <div data-testid="error">
+            {tools.test.error ? tools.test.error.message : 'null'}
+          </div>
+          <button data-testid="execute" onClick={() => tools.test.execute()}>
+            Execute
+          </button>
+        </div>
+      );
+    }
+
+    render(<TestComponent />);
+
+    await act(async () => {
+      screen.getByTestId('execute').click();
+    });
+
+    expect(screen.getByTestId('error')).toHaveTextContent(
+      'No input provided to tool'
+    );
+    expect(onError).toHaveBeenCalled();
+  });
+});
+
 describe('Tool.View', () => {
   it('renders view component with data', () => {
     const viewTool = tool({

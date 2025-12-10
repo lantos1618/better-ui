@@ -421,4 +421,462 @@ describe('Tool', () => {
       expect(result).toEqual({ y: 10 });
     });
   });
+
+  describe('cache expiration', () => {
+    it('expires cache after TTL', async () => {
+      let callCount = 0;
+
+      const myTool = tool({
+        name: 'expiring',
+        input: z.object({ x: z.number() }),
+        cache: { ttl: 100 }, // 100ms TTL
+      });
+
+      myTool.server(({ x }) => {
+        callCount++;
+        return { y: x * 2 };
+      });
+
+      const cache = new Map();
+      const ctx = { isServer: true, cache };
+
+      // First call
+      await myTool.run({ x: 5 }, ctx);
+      expect(callCount).toBe(1);
+
+      // Immediate second call - cached
+      await myTool.run({ x: 5 }, ctx);
+      expect(callCount).toBe(1);
+
+      // Wait for TTL to expire
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Third call - cache expired
+      await myTool.run({ x: 5 }, ctx);
+      expect(callCount).toBe(2);
+    });
+  });
+
+  describe('concurrent execution', () => {
+    it('handles multiple concurrent runs', async () => {
+      let callCount = 0;
+
+      const myTool = tool({
+        name: 'concurrent',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.server(async ({ x }) => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return { y: x * 2 };
+      });
+
+      // Run 5 concurrent calls
+      const promises = [1, 2, 3, 4, 5].map((x) =>
+        myTool.run({ x }, { isServer: true })
+      );
+
+      const results = await Promise.all(promises);
+
+      expect(callCount).toBe(5);
+      expect(results).toEqual([
+        { y: 2 },
+        { y: 4 },
+        { y: 6 },
+        { y: 8 },
+        { y: 10 },
+      ]);
+    });
+
+    it('handles concurrent runs with shared cache', async () => {
+      let callCount = 0;
+
+      const myTool = tool({
+        name: 'concurrentCached',
+        input: z.object({ x: z.number() }),
+        cache: { ttl: 10000 },
+      });
+
+      myTool.server(async ({ x }) => {
+        callCount++;
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        return { y: x * 2 };
+      });
+
+      const cache = new Map();
+
+      // Run concurrent calls with same input
+      const promises = [5, 5, 5].map((x) =>
+        myTool.run({ x }, { isServer: true, cache })
+      );
+
+      const results = await Promise.all(promises);
+
+      // First call runs, others may or may not be cached depending on timing
+      // But all results should be correct
+      expect(results.every((r) => r.y === 10)).toBe(true);
+    });
+  });
+
+  describe('async error handling', () => {
+    it('handles async server errors', async () => {
+      const myTool = tool({
+        name: 'asyncError',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.server(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error('Async error');
+      });
+
+      await expect(myTool.run({ x: 5 }, { isServer: true })).rejects.toThrow(
+        'Async error'
+      );
+    });
+
+    it('handles async client errors', async () => {
+      const myTool = tool({
+        name: 'asyncClientError',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.client(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error('Async client error');
+      });
+
+      await expect(myTool.run({ x: 5 }, { isServer: false })).rejects.toThrow(
+        'Async client error'
+      );
+    });
+  });
+
+  describe('edge cases', () => {
+    it('handles empty input object', async () => {
+      const myTool = tool({
+        name: 'emptyInput',
+        input: z.object({}),
+      });
+
+      myTool.server(() => ({ result: 'success' }));
+
+      const result = await myTool.run({}, { isServer: true });
+      expect(result).toEqual({ result: 'success' });
+    });
+
+    it('handles deeply nested input validation', async () => {
+      const myTool = tool({
+        name: 'nestedInput',
+        input: z.object({
+          user: z.object({
+            profile: z.object({
+              settings: z.object({
+                theme: z.enum(['light', 'dark']),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      myTool.server((input) => input);
+
+      const validInput = {
+        user: { profile: { settings: { theme: 'dark' as const } } },
+      };
+
+      const result = await myTool.run(validInput, { isServer: true });
+      expect(result).toEqual(validInput);
+
+      // Invalid deep nesting
+      const invalidInput = {
+        user: { profile: { settings: { theme: 'invalid' } } },
+      };
+
+      await expect(
+        myTool.run(invalidInput as any, { isServer: true })
+      ).rejects.toThrow();
+    });
+
+    it('handles array inputs', async () => {
+      const myTool = tool({
+        name: 'arrayInput',
+        input: z.object({
+          items: z.array(z.number()).min(1).max(10),
+        }),
+      });
+
+      myTool.server(({ items }) => ({ sum: items.reduce((a, b) => a + b, 0) }));
+
+      const result = await myTool.run({ items: [1, 2, 3] }, { isServer: true });
+      expect(result).toEqual({ sum: 6 });
+
+      // Empty array should fail
+      await expect(
+        myTool.run({ items: [] }, { isServer: true })
+      ).rejects.toThrow();
+
+      // Too many items should fail
+      await expect(
+        myTool.run({ items: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }, { isServer: true })
+      ).rejects.toThrow();
+    });
+
+    it('handles optional fields', async () => {
+      const myTool = tool({
+        name: 'optionalFields',
+        input: z.object({
+          required: z.string(),
+          optional: z.string().optional(),
+          defaulted: z.number().default(42),
+        }),
+      });
+
+      myTool.server((input) => input);
+
+      // Without optional
+      const result1 = await myTool.run(
+        { required: 'test' },
+        { isServer: true }
+      );
+      expect(result1).toEqual({ required: 'test', defaulted: 42 });
+
+      // With optional
+      const result2 = await myTool.run(
+        { required: 'test', optional: 'present' },
+        { isServer: true }
+      );
+      expect(result2).toEqual({
+        required: 'test',
+        optional: 'present',
+        defaulted: 42,
+      });
+    });
+
+    it('throws when running on client without implementation', async () => {
+      const myTool = tool({
+        name: 'noImpl',
+        input: z.object({ x: z.number() }),
+      });
+
+      await expect(myTool.run({ x: 5 }, { isServer: false })).rejects.toThrow(
+        'Tool "noImpl" has no implementation'
+      );
+    });
+  });
+
+  describe('fetch error scenarios', () => {
+    it('handles network failure in _defaultClientFetch', async () => {
+      const myTool = tool({
+        name: 'networkFail',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.server(() => ({ y: 1 }));
+
+      const mockFetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        myTool.run({ x: 5 }, { isServer: false, fetch: mockFetch as any })
+      ).rejects.toThrow('Network error');
+    });
+
+    it('handles non-JSON error response', async () => {
+      const myTool = tool({
+        name: 'nonJsonError',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.server(() => ({ y: 1 }));
+
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: false,
+        statusText: 'Internal Server Error',
+        json: () => Promise.reject(new Error('Not JSON')),
+      });
+
+      await expect(
+        myTool.run({ x: 5 }, { isServer: false, fetch: mockFetch as any })
+      ).rejects.toThrow('Tool execution failed: Internal Server Error');
+    });
+
+    it('handles various response data formats', async () => {
+      const myTool = tool({
+        name: 'formats',
+        input: z.object({ x: z.number() }),
+      });
+
+      myTool.server(() => ({ y: 1 }));
+
+      // Format: { result: ... }
+      const mockFetch1 = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ result: { y: 42 } }),
+      });
+      const result1 = await myTool.run(
+        { x: 5 },
+        { isServer: false, fetch: mockFetch1 as any }
+      );
+      expect(result1).toEqual({ y: 42 });
+
+      // Format: { data: ... }
+      const mockFetch2 = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { y: 43 } }),
+      });
+      const result2 = await myTool.run(
+        { x: 5 },
+        { isServer: false, fetch: mockFetch2 as any }
+      );
+      expect(result2).toEqual({ y: 43 });
+
+      // Format: direct data
+      const mockFetch3 = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ y: 44 }),
+      });
+      const result3 = await myTool.run(
+        { x: 5 },
+        { isServer: false, fetch: mockFetch3 as any }
+      );
+      expect(result3).toEqual({ y: 44 });
+    });
+  });
+});
+
+describe('ToolBuilder', () => {
+  describe('fluent API edge cases', () => {
+    it('allows chaining in any order', () => {
+      const t1 = tool('test1')
+        .description('desc')
+        .input(z.object({ x: z.number() }))
+        .tags('a', 'b')
+        .build();
+
+      const t2 = tool('test2')
+        .input(z.object({ x: z.number() }))
+        .description('desc')
+        .tags('a', 'b')
+        .build();
+
+      expect(t1.description).toBe('desc');
+      expect(t2.description).toBe('desc');
+    });
+
+    it('preserves handlers through build()', () => {
+      let serverCalled = false;
+      let clientCalled = false;
+
+      const myTool = tool('test')
+        .input(z.object({ x: z.number() }))
+        .server(() => {
+          serverCalled = true;
+          return { y: 1 };
+        })
+        .client(() => {
+          clientCalled = true;
+          return { y: 2 };
+        })
+        .build();
+
+      expect(myTool.hasServer).toBe(true);
+      expect(myTool.hasClient).toBe(true);
+    });
+
+    it('supports view in builder', () => {
+      const myTool = tool('viewBuilder')
+        .input(z.object({ x: z.number() }))
+        .view((data) => null) // Simple view for testing
+        .build();
+
+      expect(myTool.hasView).toBe(true);
+    });
+
+    it('auto-builds when calling run()', async () => {
+      const builder = tool('autoBuild')
+        .input(z.object({ x: z.number() }))
+        .server(({ x }) => ({ y: x * 2 }));
+
+      // Calling run() on builder should auto-build
+      const result = await builder.run({ x: 5 }, { isServer: true });
+      expect(result).toEqual({ y: 10 });
+    });
+
+    it('auto-builds when accessing View', () => {
+      const builder = tool('autoBuildView')
+        .input(z.object({ x: z.number() }))
+        .view((data) => null); // Simple view for testing
+
+      // Accessing View should auto-build
+      const View = builder.View;
+      expect(View).toBeDefined();
+    });
+
+    it('auto-builds when calling toJSON()', () => {
+      const builder = tool('autoBuildJson')
+        .input(z.object({ x: z.number() }))
+        .description('test');
+
+      const json = builder.toJSON();
+      expect(json.name).toBe('autoBuildJson');
+      expect(json.description).toBe('test');
+    });
+
+    it('auto-builds when calling toAITool()', () => {
+      const builder = tool('autoBuildAI')
+        .input(z.object({ x: z.number() }))
+        .description('AI tool');
+
+      const aiTool = builder.toAITool();
+      expect(aiTool.description).toBe('AI tool');
+    });
+
+    it('supports clientFetch config', async () => {
+      const myTool = tool('customEndpoint')
+        .input(z.object({ x: z.number() }))
+        .clientFetch({ endpoint: '/api/custom' })
+        .server(() => ({ y: 1 }))
+        .build();
+
+      const mockFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ result: { y: 99 } }),
+      });
+
+      await myTool.run({ x: 5 }, { isServer: false, fetch: mockFetch as any });
+
+      expect(mockFetch).toHaveBeenCalledWith('/api/custom', expect.anything());
+    });
+
+    it('supports cache config in builder', async () => {
+      let callCount = 0;
+
+      const myTool = tool('builderCache')
+        .input(z.object({ x: z.number() }))
+        .cache({ ttl: 10000 })
+        .server(({ x }) => {
+          callCount++;
+          return { y: x };
+        })
+        .build();
+
+      const cache = new Map();
+      await myTool.run({ x: 5 }, { isServer: true, cache });
+      await myTool.run({ x: 5 }, { isServer: true, cache });
+
+      expect(callCount).toBe(1);
+    });
+
+    it('allows multiple tags() calls', () => {
+      const myTool = tool('multiTags')
+        .input(z.object({ x: z.number() }))
+        .tags('a')
+        .tags('b', 'c')
+        .tags('d')
+        .build();
+
+      expect(myTool.tags).toEqual(['a', 'b', 'c', 'd']);
+    });
+  });
 });
