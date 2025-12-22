@@ -1,12 +1,14 @@
 /**
- * Simple in-memory rate limiter
- * Uses sliding window algorithm to track requests per identifier
+ * Pluggable rate limiting system for Better UI
+ * Supports multiple backends: in-memory, Redis, custom implementations
  */
 
-interface RateLimitEntry {
-  timestamps: number[];
-  lastCleanup: number;
-}
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
+declare function require(id: string): any;
+
 
 export interface RateLimitConfig {
   /** Maximum number of requests allowed */
@@ -15,6 +17,45 @@ export interface RateLimitConfig {
   windowMs: number;
   /** Cleanup interval in milliseconds (default: 5x window) */
   cleanupIntervalMs?: number;
+  /** If true, allow requests when Redis is unavailable. Default: false (secure) */
+  failOpen?: boolean;
+}
+
+/**
+ * Rate limiter interface that all implementations must follow
+ * Supports both sync and async implementations
+ */
+export interface RateLimiter {
+  /**
+   * Check if a request should be allowed
+   * @param identifier - Unique identifier (e.g., IP address, user ID)
+   * @returns true if allowed, false if rate limited
+   */
+  check(identifier: string): boolean | Promise<boolean>;
+
+  /**
+   * Get remaining requests for an identifier
+   */
+  getRemaining(identifier: string): number | Promise<number>;
+
+  /**
+   * Reset rate limit for an identifier
+   */
+  reset(identifier: string): void | Promise<void>;
+
+  /**
+   * Clear all rate limit data
+   */
+  clear(): void | Promise<void>;
+}
+
+/**
+ * In-memory rate limiter using sliding window algorithm
+ * Perfect for development, single-instance deployments, or testing
+ */
+interface RateLimitEntry {
+  timestamps: number[];
+  lastCleanup: number;
 }
 
 const DEFAULT_CONFIG: RateLimitConfig = {
@@ -26,7 +67,7 @@ const DEFAULT_CONFIG: RateLimitConfig = {
 export class InMemoryRateLimiter {
   private store: Map<string, RateLimitEntry> = new Map();
   private config: RateLimitConfig;
-  private cleanupTimer?: NodeJS.Timeout;
+  private cleanupTimer?: ReturnType<typeof setInterval> & { unref?: () => void };
 
   constructor(config: Partial<RateLimitConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -133,9 +174,117 @@ export class InMemoryRateLimiter {
   }
 }
 
+/**
+ * Redis-based rate limiter for production deployments
+ * Uses Redis INCR and EXPIRE for atomic distributed rate limiting
+ */
+export class RedisRateLimiter implements RateLimiter {
+  private config: RateLimitConfig;
+  private redis: any; // Redis client (any to avoid dependency on specific Redis library)
+
+  constructor(redis: any, config: Partial<RateLimitConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.redis = redis;
+  }
+
+  async check(identifier: string): Promise<boolean> {
+    const key = `rate-limit:${identifier}`;
+    const now = Date.now();
+    const windowStart = now - this.config.windowMs;
+
+    try {
+      // Use Redis pipeline for atomic operations
+      const pipeline = this.redis.pipeline();
+      
+      // Remove old entries
+      pipeline.zremrangebyscore(key, 0, windowStart);
+      
+      // Count current requests
+      pipeline.zcard(key);
+      
+      // Add current request
+      pipeline.zadd(key, now, `${now}-${Math.random()}`);
+      
+      // Set expiration
+      pipeline.expire(key, Math.ceil(this.config.windowMs / 1000));
+      
+      const results = await pipeline.exec();
+      const currentCount = results?.[1]?.[1] || 0;
+      
+      return currentCount < this.config.maxRequests;
+    } catch (error) {
+      console.error('Redis rate limiter error:', error);
+      return this.config.failOpen ?? false;
+    }
+  }
+
+  async getRemaining(identifier: string): Promise<number> {
+    const key = `rate-limit:${identifier}`;
+    const now = Date.now();
+    const windowStart = now - this.config.windowMs;
+
+    try {
+      const pipeline = this.redis.pipeline();
+      pipeline.zremrangebyscore(key, 0, windowStart);
+      pipeline.zcard(key);
+      
+      const results = await pipeline.exec();
+      const currentCount = results?.[1]?.[1] || 0;
+      
+      return Math.max(0, this.config.maxRequests - currentCount);
+    } catch (error) {
+      console.error('Redis rate limiter error:', error);
+      return this.config.failOpen ? this.config.maxRequests : 0;
+    }
+  }
+
+  async reset(identifier: string): Promise<void> {
+    const key = `rate-limit:${identifier}`;
+    try {
+      await this.redis.del(key);
+    } catch (error) {
+      console.error('Redis rate limiter error:', error);
+    }
+  }
+
+  async clear(): Promise<void> {
+    try {
+      // Delete all rate limit keys
+      const keys = await this.redis.keys('rate-limit:*');
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+      }
+    } catch (error) {
+      console.error('Redis rate limiter error:', error);
+    }
+  }
+}
+
+/**
+ * Factory function to create appropriate rate limiter based on environment
+ */
+export function createRateLimiter(config?: Partial<RateLimitConfig>): RateLimiter {
+  // Check if Redis URL is configured
+  const redisUrl = process.env.REDIS_URL;
+  
+  if (redisUrl) {
+    try {
+      // Try to import Redis client dynamically
+      const Redis = require('ioredis') || require('redis');
+      const redis = new Redis(redisUrl);
+      console.log('Using Redis rate limiter for production');
+      return new RedisRateLimiter(redis, config);
+    } catch (error) {
+      console.warn('Redis not available, falling back to in-memory rate limiter:', error);
+    }
+  }
+  
+  console.log('Using in-memory rate limiter');
+  return new InMemoryRateLimiter(config);
+}
+
 // Singleton instance for the API route
-export const rateLimiter = new InMemoryRateLimiter({
+export const rateLimiter = createRateLimiter({
   maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '10', 10),
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '10000', 10),
 });
-

@@ -34,9 +34,12 @@ export async function POST(req: Request) {
     );
   }
 
+  let toolName: string | undefined;
+  
   try {
     const body = await req.json();
-    const { tool: toolName, input } = body;
+    ({ tool: toolName } = body);
+    const { input } = body;
 
     if (!toolName) {
       return Response.json(
@@ -76,15 +79,39 @@ export async function POST(req: Request) {
   } catch (error) {
     // Log full error server-side for debugging
     console.error('Tool execution error:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      tool: toolName ?? 'unknown',
+    });
 
     // SECURITY: Don't leak internal error details to client
-    // Zod validation errors are safe to expose
+    // Zod validation errors are safe to expose (they indicate schema mismatches)
     const isValidationError = error instanceof Error &&
       error.name === 'ZodError';
+
+    // For ZodError, format it nicely
+    if (isValidationError && error instanceof Error) {
+      try {
+        // Try to extract structured error info if available
+        const zodError = error as any;
+        if (zodError.errors && Array.isArray(zodError.errors)) {
+          const formattedErrors = zodError.errors.map((err: any) => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          console.error('Zod validation errors:', formattedErrors);
+        }
+      } catch (e) {
+        // Fallback to message if parsing fails
+      }
+    }
 
     return Response.json(
       {
         error: isValidationError
+          ? error.message
+          : error instanceof Error
           ? error.message
           : 'Tool execution failed'
       },

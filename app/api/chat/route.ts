@@ -1,15 +1,21 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { weatherTool, searchTool, counterTool } from '@/lib/tools';
-
-/**
- * API Route - Just import tools and use toAITool()!
- *
- * No duplication - tools are defined ONCE in lib/tools.tsx
- * with .server() handlers and .view() components.
- */
+import { rateLimiter } from '@/lib/rate-limiter';
 
 export async function POST(req: Request) {
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0]?.trim() || 
+             req.headers.get('x-real-ip') || 
+             'anonymous';
+
+  if (!rateLimiter.check(ip)) {
+    return Response.json(
+      { error: 'Rate limit exceeded' },
+      { status: 429 }
+    );
+  }
+
   const { messages } = await req.json();
 
   // AI SDK v5: Convert UIMessage[] from client to ModelMessage[] for streamText

@@ -62,6 +62,10 @@ export function useTool<TInput, TOutput>(
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
+  // Track execution ID to handle race conditions
+  const executionIdRef = useRef(0);
+  const pendingCountRef = useRef(0);
+
   const execute = useCallback(
     async (input?: TInput): Promise<TOutput | null> => {
       const finalInput = input ?? inputRef.current;
@@ -73,6 +77,10 @@ export function useTool<TInput, TOutput>(
         return null;
       }
 
+      // Increment execution ID and pending count
+      const currentExecutionId = ++executionIdRef.current;
+      pendingCountRef.current++;
+      
       setLoading(true);
       setError(null);
 
@@ -85,17 +93,28 @@ export function useTool<TInput, TOutput>(
         };
 
         const result = await tool.run(finalInput, context);
-        setData(result);
-        setExecuted(true);
-        optionsRef.current.onSuccess?.(result);
+        
+        // Only update state if this is the most recent execution
+        if (currentExecutionId === executionIdRef.current) {
+          setData(result);
+          setExecuted(true);
+          optionsRef.current.onSuccess?.(result);
+        }
         return result;
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
-        setError(error);
-        optionsRef.current.onError?.(error);
+        // Only update error state if this is the most recent execution
+        if (currentExecutionId === executionIdRef.current) {
+          setError(error);
+          optionsRef.current.onError?.(error);
+        }
         return null;
       } finally {
-        setLoading(false);
+        pendingCountRef.current--;
+        // Only set loading=false when all executions are complete
+        if (pendingCountRef.current === 0) {
+          setLoading(false);
+        }
       }
     },
     [tool]
