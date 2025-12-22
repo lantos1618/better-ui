@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const modelMessages = convertToModelMessages(messages);
 
   const result = await streamText({
-    model: openai('gpt-4o-mini'),
+    model: openai('gpt-4.1'),
     messages: modelMessages,
     tools: {
       // Use Better UI's toAITool() - that's it!

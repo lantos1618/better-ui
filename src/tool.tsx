@@ -213,7 +213,17 @@ export class Tool<TInput = any, TOutput = any> {
 
     // Validate output if schema provided
     if (this.outputSchema) {
-      result = this.outputSchema.parse(result);
+      try {
+        result = this.outputSchema.parse(result);
+      } catch (error) {
+        // Log validation error with context for debugging
+        console.error(`Output validation failed for tool "${this.name}":`, error);
+        if (error instanceof Error && 'errors' in error) {
+          console.error('Validation errors:', (error as any).errors);
+        }
+        // Re-throw to be handled by caller
+        throw error;
+      }
     }
 
     // Cache result if configured
