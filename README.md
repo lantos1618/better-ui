@@ -150,7 +150,7 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = streamText({
-    model: openai('gpt-4.1'),
+    model: openai('gpt-5.2'),
     messages: convertToModelMessages(messages),
     tools: {
       weather: weather.toAITool(),
