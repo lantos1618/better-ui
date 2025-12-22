@@ -140,25 +140,26 @@ function WeatherWidget({ city }) {
 
 ## AI Integration
 
-### With Vercel AI SDK
+### With Vercel AI SDK v5
 
 ```typescript
-import { streamText } from 'ai';
+import { streamText, convertToModelMessages, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const result = await streamText({
-    model: openai('gpt-4'),
-    messages,
+  const result = streamText({
+    model: openai('gpt-4o-mini'),
+    messages: convertToModelMessages(messages),
     tools: {
       weather: weather.toAITool(),
       search: search.toAITool(),
     },
+    stopWhen: stepCountIs(5), // Limit tool call iterations
   });
 
-  return result.toDataStreamResponse();
+  return result.toUIMessageStreamResponse();
 }
 ```
 
@@ -220,7 +221,7 @@ t.view((data, { loading, error }) => <Component data={data} />);
 
 ### `useTool(tool, input?, options?)`
 
-React hook for executing tools.
+React hook for executing a single tool.
 
 ```typescript
 const {
@@ -237,25 +238,42 @@ const {
 });
 ```
 
+### `useTools(tools, options?)`
+
+React hook for managing multiple tools with a single state object.
+
+```typescript
+import { useTools } from '@lantos1618/better-ui';
+
+const tools = useTools({ weather, search });
+
+// Execute tools independently
+await tools.weather.execute({ city: 'London' });
+await tools.search.execute({ query: 'restaurants' });
+
+// Each tool has its own state
+tools.weather.data;    // Weather result
+tools.weather.loading; // Weather loading state
+tools.search.data;     // Search result
+tools.search.loading;  // Search loading state
+```
+
 ## Project Structure
 
 ```
 src/
   tool.tsx          # Core tool() API
   react/
-    useTool.ts      # React hook
+    useTool.ts      # React hooks (useTool, useTools)
   index.ts          # Main exports
 
-app/
+app/                # Demo Next.js app
   demo/             # Demo page
-  api/chat/         # Chat API route
+  api/chat/         # Chat API route (AI SDK integration)
   api/tools/        # Tool execution API
 
 lib/
   tools.tsx         # Example tool definitions
-
-docs/
-  API_V2.md         # Full API documentation
 ```
 
 ## Development
