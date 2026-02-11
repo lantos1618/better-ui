@@ -4,6 +4,7 @@ import React, { createContext, useContext, useCallback, useRef, useState } from 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage, type ChatStatus } from 'ai';
 import type { Tool } from '../tool';
+import { createToolStateStore, type ToolStateStore } from './useToolStateStore';
 
 // ============================================
 // Types
@@ -25,12 +26,13 @@ interface ChatContextValue {
   tools: Record<string, Tool>;
   executeToolDirect: (toolName: string, toolInput: Record<string, unknown>, toolCallId: string) => Promise<void>;
   getOnAction: (toolCallId: string, toolName: string) => (input: Record<string, unknown>) => void;
-  loadingTools: Record<string, boolean>;
+  toolStateStore: ToolStateStore;
 }
 
 export interface ChatProviderProps {
   endpoint?: string;
   tools: Record<string, Tool>;
+  toolStateStore?: ToolStateStore;
   children: React.ReactNode;
 }
 
@@ -55,22 +57,37 @@ export function useChatContext(): ChatContextValue {
 // Provider
 // ============================================
 
-export function ChatProvider({ endpoint = '/api/chat', tools, children }: ChatProviderProps) {
+export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: externalStore, children }: ChatProviderProps) {
   const transportRef = useRef(new DefaultChatTransport({ api: endpoint }));
-  const { messages, sendMessage, status, addToolOutput } = useChat({
+  const { messages, sendMessage, status } = useChat({
     transport: transportRef.current,
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
 
-  const [loadingTools, setLoadingTools] = useState<Record<string, boolean>>({});
+  const internalStoreRef = useRef<ToolStateStore>(createToolStateStore());
+  const toolStateStore = externalStore || internalStoreRef.current;
+
+  const versionRef = useRef<Map<string, number>>(new Map());
 
   const executeToolDirect = useCallback(async (
     toolName: string,
     toolInput: Record<string, unknown>,
     toolCallId: string
   ) => {
-    setLoadingTools(prev => ({ ...prev, [toolCallId]: true }));
+    // Increment version for race guard
+    const currentVersion = (versionRef.current.get(toolCallId) || 0) + 1;
+    versionRef.current.set(toolCallId, currentVersion);
+
+    // Set loading state in store
+    const existing = toolStateStore.get(toolCallId);
+    toolStateStore.set(toolCallId, {
+      output: existing?.output ?? null,
+      loading: true,
+      error: null,
+      version: currentVersion,
+      toolName,
+    });
 
     try {
       const response = await fetch('/api/tools/execute', {
@@ -83,17 +100,29 @@ export function ChatProvider({ endpoint = '/api/chat', tools, children }: ChatPr
 
       const { result } = await response.json();
 
-      addToolOutput({ tool: toolName, toolCallId, output: result });
+      // Only apply if this is still the latest version
+      if (versionRef.current.get(toolCallId) === currentVersion) {
+        toolStateStore.set(toolCallId, {
+          output: result,
+          loading: false,
+          error: null,
+          version: currentVersion,
+          toolName,
+        });
+      }
     } catch (error) {
       console.error('Tool execution error:', error);
-    } finally {
-      setLoadingTools(prev => {
-        const next = { ...prev };
-        delete next[toolCallId];
-        return next;
-      });
+      if (versionRef.current.get(toolCallId) === currentVersion) {
+        toolStateStore.set(toolCallId, {
+          output: existing?.output ?? null,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Tool execution failed',
+          version: currentVersion,
+          toolName,
+        });
+      }
     }
-  }, [addToolOutput]);
+  }, [toolStateStore]);
 
   const callbackCacheRef = useRef<Map<string, (input: Record<string, unknown>) => void>>(new Map());
 
@@ -122,7 +151,7 @@ export function ChatProvider({ endpoint = '/api/chat', tools, children }: ChatPr
     tools,
     executeToolDirect,
     getOnAction,
-    loadingTools,
+    toolStateStore,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

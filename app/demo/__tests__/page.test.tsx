@@ -13,7 +13,6 @@ jest.mock('@ai-sdk/react', () => ({
     messages: [],
     sendMessage: jest.fn(),
     status: 'idle',
-    addToolOutput: jest.fn(),
   })),
 }));
 
@@ -25,6 +24,15 @@ jest.mock('ai', () => ({
     part?.type === 'tool' || part?.type === 'dynamic-tool',
   getToolOrDynamicToolName: (part: any) => part?.toolName || part?.tool?.name,
 }));
+
+// Mock react-markdown to avoid ESM issues in Jest
+jest.mock('react-markdown', () => {
+  return function MockReactMarkdown({ children }: { children: string }) {
+    return <div data-testid="markdown">{children}</div>;
+  };
+});
+
+jest.mock('remark-gfm', () => () => {});
 
 // Mock fetch for API calls
 global.fetch = jest.fn();
@@ -38,6 +46,40 @@ describe('ChatDemo (value tests)', () => {
     });
   });
 
+  it('renders suggestion chips in empty state', () => {
+    const { useChat } = require('@ai-sdk/react');
+    useChat.mockReturnValue({
+      messages: [],
+      sendMessage: jest.fn(),
+      status: 'idle',
+    });
+
+    render(<ChatDemo />);
+
+    expect(screen.getByText("What's the weather in Tokyo?")).toBeInTheDocument();
+    expect(screen.getByText("Create a counter called score")).toBeInTheDocument();
+    expect(screen.getByText("Search for React hooks")).toBeInTheDocument();
+    expect(screen.getByText("Write a fibonacci function")).toBeInTheDocument();
+  });
+
+  it('clicking a suggestion calls sendMessage', async () => {
+    const mockSendMessage = jest.fn();
+    const { useChat } = require('@ai-sdk/react');
+    useChat.mockReturnValue({
+      messages: [],
+      sendMessage: mockSendMessage,
+      status: 'idle',
+    });
+
+    render(<ChatDemo />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("What's the weather in Tokyo?"));
+    });
+
+    expect(mockSendMessage).toHaveBeenCalledWith({ text: "What's the weather in Tokyo?" });
+  });
+
   it('submits a message and clears input', async () => {
     const mockSendMessage = jest.fn();
     const { useChat } = require('@ai-sdk/react');
@@ -45,7 +87,6 @@ describe('ChatDemo (value tests)', () => {
       messages: [],
       sendMessage: mockSendMessage,
       status: 'idle',
-      addToolOutput: jest.fn(),
     });
 
     render(<ChatDemo />);
@@ -61,8 +102,7 @@ describe('ChatDemo (value tests)', () => {
     expect(input.value).toBe('');
   });
 
-  it('executes a tool action and wires addToolOutput', async () => {
-    const mockAddToolOutput = jest.fn();
+  it('executes a tool action and updates via store (no addToolOutput)', async () => {
     const { useChat } = require('@ai-sdk/react');
     useChat.mockReturnValue({
       messages: [
@@ -82,7 +122,6 @@ describe('ChatDemo (value tests)', () => {
       ],
       sendMessage: jest.fn(),
       status: 'idle',
-      addToolOutput: mockAddToolOutput,
     });
 
     (global.fetch as jest.Mock).mockResolvedValue({
@@ -98,6 +137,7 @@ describe('ChatDemo (value tests)', () => {
       fireEvent.click(screen.getByText('+1'));
     });
 
+    // Verify the API was called
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/tools/execute', {
         method: 'POST',
@@ -109,13 +149,7 @@ describe('ChatDemo (value tests)', () => {
       });
     });
 
-    await waitFor(() => {
-      expect(mockAddToolOutput).toHaveBeenCalledWith({
-        tool: 'counter',
-        toolCallId: 'call-1',
-        output: { name: 'test', value: 6, action: 'increment', previousValue: 5 },
-      });
-    });
+    // No addToolOutput call — the store handles state updates in-place
   });
 
   it('surfaces tool execution errors (logged)', async () => {
@@ -138,7 +172,6 @@ describe('ChatDemo (value tests)', () => {
       ],
       sendMessage: jest.fn(),
       status: 'idle',
-      addToolOutput: jest.fn(),
     });
 
     (global.fetch as jest.Mock).mockResolvedValue({ ok: false, status: 500 });
@@ -176,11 +209,9 @@ describe('ChatDemo (value tests)', () => {
       ],
       sendMessage: jest.fn(),
       status: 'idle',
-      addToolOutput: jest.fn(),
     });
 
     render(<ChatDemo />);
     expect(screen.getByText(/Unknown tool: unknown-tool/)).toBeInTheDocument();
   });
 });
-

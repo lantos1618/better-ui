@@ -7,14 +7,15 @@ import { Message } from './Message';
 export interface ThreadProps {
   className?: string;
   emptyMessage?: string;
+  suggestions?: string[];
 }
 
 /**
  * Message list with auto-scroll.
  * Renders messages from ChatContext, maps over messages, renders text parts and tool parts.
  */
-export function Thread({ className, emptyMessage }: ThreadProps) {
-  const { messages, isLoading, tools, loadingTools, getOnAction } = useChatContext();
+export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
+  const { messages, isLoading, sendMessage, tools, toolStateStore, getOnAction } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -33,6 +34,19 @@ export function Thread({ className, emptyMessage }: ThreadProps) {
               <p className="text-zinc-400 mb-4">
                 {emptyMessage || 'Send a message to get started'}
               </p>
+              {suggestions && suggestions.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => sendMessage(suggestion)}
+                      className="px-3 py-1.5 text-xs text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-full hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -42,7 +56,7 @@ export function Thread({ className, emptyMessage }: ThreadProps) {
             key={message.id}
             message={message}
             tools={tools}
-            loadingTools={loadingTools}
+            toolStateStore={toolStateStore}
             getOnAction={getOnAction}
           />
         ))}

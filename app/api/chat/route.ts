@@ -1,6 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
-import { weatherTool, searchTool, counterTool } from '@/lib/tools';
+import { weatherTool, searchTool, counterTool, artifactTool, navigateTool, setThemeTool } from '@/lib/tools';
 import { rateLimiter } from '@/lib/rate-limiter';
 
 export async function POST(req: Request) {
@@ -29,6 +29,9 @@ export async function POST(req: Request) {
       weather: weatherTool.toAITool(),
       search: searchTool.toAITool(),
       counter: counterTool.toAITool(),
+      artifact: artifactTool.toAITool(),
+      navigate: navigateTool.toAITool(),
+      setTheme: setThemeTool.toAITool(),
     },
     stopWhen: stepCountIs(5),
   });

@@ -78,6 +78,9 @@ describe('/api/chat', () => {
           weather: expect.any(Object),
           search: expect.any(Object),
           counter: expect.any(Object),
+          artifact: expect.any(Object),
+          navigate: expect.any(Object),
+          setTheme: expect.any(Object),
         },
       })
     );

@@ -12,6 +12,7 @@ export interface ChatProps {
   className?: string;
   placeholder?: string;
   emptyMessage?: string;
+  suggestions?: string[];
 }
 
 /**
@@ -24,6 +25,7 @@ export function Chat({
   className,
   placeholder,
   emptyMessage,
+  suggestions,
 }: ChatProps) {
   return (
     <ChatProvider endpoint={endpoint} tools={tools}>
@@ -31,6 +33,7 @@ export function Chat({
         <Thread
           className="flex-1 overflow-y-auto"
           emptyMessage={emptyMessage}
+          suggestions={suggestions}
         />
         <div className="p-4 pt-0">
           <Composer placeholder={placeholder} />

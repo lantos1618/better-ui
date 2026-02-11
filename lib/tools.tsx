@@ -2,7 +2,7 @@
  * Shared Tool Definitions
  */
 
-import { tool } from '@/src';
+import { tool } from '@/src/tool';
 import { z } from 'zod';
 
 // ============================================
@@ -254,6 +254,160 @@ counterTool.view((data, state) => {
 });
 
 // ============================================
+// Artifact Tool
+// ============================================
+
+export const artifactTool = tool({
+  name: 'artifact',
+  description: 'Render rich content like code, markdown, or HTML. Use this when the user asks you to write code, create documents, or generate any rich content.',
+  input: z.object({
+    type: z.enum(['code', 'markdown', 'html']).describe('The type of content to render'),
+    content: z.string().describe('The content to render'),
+    title: z.string().optional().describe('Optional title for the artifact'),
+    language: z.string().optional().describe('Programming language for code blocks'),
+  }),
+  output: z.object({
+    type: z.enum(['code', 'markdown', 'html']),
+    content: z.string(),
+    title: z.string().optional(),
+    language: z.string().optional(),
+  }),
+});
+
+artifactTool.server(async (input) => input);
+
+artifactTool.view((data, state) => {
+  if (state?.loading) {
+    return (
+      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm">
+          <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
+          <span>Generating...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden">
+      {data.title && (
+        <div className="px-4 py-2 border-b border-zinc-700">
+          <p className="text-zinc-300 text-sm font-medium">{data.title}</p>
+        </div>
+      )}
+      {data.type === 'code' && (
+        <pre className="p-4 overflow-x-auto text-sm">
+          <code className={`text-zinc-200 ${data.language ? `language-${data.language}` : ''}`}>
+            {data.content}
+          </code>
+        </pre>
+      )}
+      {data.type === 'markdown' && (
+        <div className="p-4 text-zinc-200 text-sm prose-invert max-w-none">
+          {data.content}
+        </div>
+      )}
+      {data.type === 'html' && (
+        <iframe
+          srcDoc={data.content}
+          sandbox="allow-scripts"
+          className="w-full min-h-[200px] border-0 bg-white"
+          title={data.title || 'HTML preview'}
+        />
+      )}
+    </div>
+  );
+});
+
+// ============================================
+// Navigate Tool
+// ============================================
+
+export const navigateTool = tool({
+  name: 'navigate',
+  description: 'Navigate the user to a URL. Use this when the user asks to go to a page or open a link.',
+  input: z.object({
+    url: z.string().describe('The URL to navigate to'),
+    label: z.string().optional().describe('Display label for the link'),
+  }),
+  output: z.object({
+    url: z.string(),
+    label: z.string().optional(),
+  }),
+});
+
+navigateTool.server(async (input) => input);
+
+navigateTool.view((data, state) => {
+  if (state?.loading) {
+    return (
+      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm">
+          <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
+          <span>Navigating...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+      <div className="flex items-center gap-3">
+        <span className="text-lg">&#x2197;</span>
+        <div>
+          <p className="text-zinc-200 text-sm font-medium">{data.label || data.url}</p>
+          <p className="text-zinc-500 text-xs truncate max-w-[300px]">{data.url}</p>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ============================================
+// Set Theme Tool
+// ============================================
+
+export const setThemeTool = tool({
+  name: 'setTheme',
+  description: 'Toggle the app theme between light and dark mode. Use this when the user asks to change the theme or switch to dark/light mode.',
+  input: z.object({
+    theme: z.enum(['light', 'dark']).describe('The theme to set'),
+  }),
+  output: z.object({
+    theme: z.enum(['light', 'dark']),
+  }),
+});
+
+setThemeTool.server(async (input) => input);
+
+setThemeTool.view((data, state) => {
+  if (state?.loading) {
+    return (
+      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+        <div className="flex items-center gap-2 text-zinc-400 text-sm">
+          <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
+          <span>Switching theme...</span>
+        </div>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  const icon = data.theme === 'dark' ? '\u{1F319}' : '\u{2600}\u{FE0F}';
+
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+      <div className="flex items-center gap-3">
+        <span className="text-lg">{icon}</span>
+        <p className="text-zinc-200 text-sm">Theme set to <span className="font-medium">{data.theme}</span></p>
+      </div>
+    </div>
+  );
+});
+
+// ============================================
 // Export
 // ============================================
 
@@ -261,4 +415,7 @@ export const tools = {
   weather: weatherTool,
   search: searchTool,
   counter: counterTool,
+  artifact: artifactTool,
+  navigate: navigateTool,
+  setTheme: setThemeTool,
 };
