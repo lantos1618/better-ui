@@ -7,7 +7,23 @@ declare const process: {
   env: Record<string, string | undefined>;
 };
 
-declare function require(id: string): any;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+declare function require(id: string): unknown;
+
+/** Minimal Redis client interface for rate limiting operations */
+interface RedisClient {
+  pipeline(): RedisPipeline;
+  del(...keys: string[]): Promise<number>;
+  keys(pattern: string): Promise<string[]>;
+}
+
+interface RedisPipeline {
+  zremrangebyscore(key: string, min: number, max: number): RedisPipeline;
+  zadd(key: string, score: number, member: string): RedisPipeline;
+  zcard(key: string): RedisPipeline;
+  expire(key: string, seconds: number): RedisPipeline;
+  exec(): Promise<Array<[Error | null, unknown]> | null>;
+}
 
 
 export interface RateLimitConfig {
@@ -180,9 +196,9 @@ export class InMemoryRateLimiter {
  */
 export class RedisRateLimiter implements RateLimiter {
   private config: RateLimitConfig;
-  private redis: any; // Redis client (any to avoid dependency on specific Redis library)
+  private redis: RedisClient;
 
-  constructor(redis: any, config: Partial<RateLimitConfig> = {}) {
+  constructor(redis: RedisClient, config: Partial<RateLimitConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.redis = redis;
   }
@@ -209,8 +225,8 @@ export class RedisRateLimiter implements RateLimiter {
       pipeline.expire(key, Math.ceil(this.config.windowMs / 1000));
       
       const results = await pipeline.exec();
-      const currentCount = results?.[1]?.[1] || 0;
-      
+      const currentCount = Number(results?.[1]?.[1]) || 0;
+
       return currentCount < this.config.maxRequests;
     } catch (error) {
       console.error('Redis rate limiter error:', error);
@@ -227,10 +243,10 @@ export class RedisRateLimiter implements RateLimiter {
       const pipeline = this.redis.pipeline();
       pipeline.zremrangebyscore(key, 0, windowStart);
       pipeline.zcard(key);
-      
+
       const results = await pipeline.exec();
-      const currentCount = results?.[1]?.[1] || 0;
-      
+      const currentCount = Number(results?.[1]?.[1]) || 0;
+
       return Math.max(0, this.config.maxRequests - currentCount);
     } catch (error) {
       console.error('Redis rate limiter error:', error);
@@ -270,7 +286,7 @@ export function createRateLimiter(config?: Partial<RateLimitConfig>): RateLimite
   if (redisUrl) {
     try {
       // Try to import Redis client dynamically
-      const Redis = require('ioredis') || require('redis');
+      const Redis = (require('ioredis') || require('redis')) as new (url: string) => RedisClient;
       const redis = new Redis(redisUrl);
       console.log('Using Redis rate limiter for production');
       return new RedisRateLimiter(redis, config);

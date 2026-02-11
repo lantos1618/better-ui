@@ -24,21 +24,23 @@ export function Composer({ className, placeholder = 'Ask something...' }: Compos
   };
 
   return (
-    <form onSubmit={handleSubmit} className={`flex gap-3 ${className || ''}`}>
+    <form onSubmit={handleSubmit} className={`relative ${className || ''}`}>
       <input
         type="text"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder={placeholder}
-        className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-700 transition-colors"
+        className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-700 transition-colors"
         disabled={isLoading}
       />
       <button
         type="submit"
         disabled={isLoading || !input.trim()}
-        className="px-5 py-3 bg-zinc-100 text-zinc-900 text-sm font-medium rounded-xl hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
       >
-        Send
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14.5 1.5L7 9M14.5 1.5L10 14.5L7 9M14.5 1.5L1.5 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
     </form>
   );

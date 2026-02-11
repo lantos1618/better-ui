@@ -119,6 +119,30 @@ describe('/api/tools/execute', () => {
     });
   });
 
+  describe('HITL guard', () => {
+    it('returns 403 for confirm-required tool (sendEmail)', async () => {
+      const req = createMockRequest({
+        tool: 'sendEmail',
+        input: { to: 'alice@example.com', subject: 'Hi', body: 'Hello' },
+      });
+
+      const response = await POST(req);
+      const data = await expectResponse(response, 403);
+      expect(data.error).toBe('This tool requires confirmation. Use /api/tools/confirm.');
+    });
+
+    it('allows non-confirm tool (weather)', async () => {
+      const req = createMockRequest({
+        tool: 'weather',
+        input: { city: 'London' },
+      });
+
+      const response = await POST(req);
+      const data = await expectResponse(response, 200);
+      expect(data.result).toHaveProperty('city', 'London');
+    });
+  });
+
   describe('edge cases', () => {
     it('handles empty body gracefully', async () => {
       const req = {

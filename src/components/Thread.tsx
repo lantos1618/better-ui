@@ -15,7 +15,7 @@ export interface ThreadProps {
  * Renders messages from ChatContext, maps over messages, renders text parts and tool parts.
  */
 export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
-  const { messages, isLoading, sendMessage, tools, toolStateStore, getOnAction } = useChatContext();
+  const { messages, isLoading, sendMessage, tools, toolStateStore, getOnAction, confirmTool, rejectTool } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -58,6 +58,8 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
             tools={tools}
             toolStateStore={toolStateStore}
             getOnAction={getOnAction}
+            onConfirm={confirmTool}
+            onReject={rejectTool}
           />
         ))}
 

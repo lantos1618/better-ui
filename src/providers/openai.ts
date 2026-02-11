@@ -10,8 +10,13 @@ export function createOpenAIProvider(config: ProviderConfig): Provider {
     type: 'openai',
     modelId: config.model,
     model: (): LanguageModelV2 => {
+      // Dynamic require is used intentionally to keep model() synchronous.
+      // Switching to async import() would change the Provider API contract.
+      // Variable indirection prevents Turbopack/webpack from statically resolving
+      // this optional peer dependency at build time.
+      const id = '@ai-sdk/openai';
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { openai } = require('@ai-sdk/openai') as { openai: (model: string) => LanguageModelV2 };
+      const { openai } = require(id) as { openai: (model: string) => LanguageModelV2 };
       return openai(config.model);
     },
   };

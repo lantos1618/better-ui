@@ -9,7 +9,7 @@ export interface UseToolOptions {
   /** Custom context overrides */
   context?: Partial<ToolContext>;
   /** Callback on success */
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: unknown) => void;
   /** Callback on error */
   onError?: (error: Error) => void;
 }
@@ -146,7 +146,7 @@ export function useTool<TInput, TOutput>(
 }
 
 /** Internal state for a single tool in useTools */
-interface ToolState<TOutput = any> {
+interface ToolState<TOutput = unknown> {
   data: TOutput | null;
   loading: boolean;
   error: Error | null;
@@ -154,6 +154,8 @@ interface ToolState<TOutput = any> {
 }
 
 /** Combined state for all tools */
+// `any` is required in conditional type inference patterns.
+// `extends Tool<unknown, infer O>` would not correctly infer the type parameter.
 type ToolsState<T extends Record<string, Tool>> = {
   [K in keyof T]: ToolState<T[K] extends Tool<any, infer O> ? O : never>;
 };
@@ -177,6 +179,8 @@ type ToolsState<T extends Record<string, Tool>> = {
 export function useTools<T extends Record<string, Tool>>(
   tools: T,
   options: UseToolOptions = {}
+// `any` is required in conditional type inference patterns.
+// `extends Tool<unknown, infer O>` would not correctly infer the type parameter.
 ): {
   [K in keyof T]: UseToolResult<
     T[K] extends Tool<infer I, any> ? I : never,
@@ -215,7 +219,7 @@ export function useTools<T extends Record<string, Tool>>(
         loading: false,
         error: null,
         executed: false,
-      } as ToolState;
+      } as ToolState<any>;
     }
     return initial;
   });
@@ -310,7 +314,8 @@ export function useTools<T extends Record<string, Tool>>(
       executed: toolState?.executed ?? false,
       execute: createExecute(toolName, tool),
       reset: createReset(toolName),
-    } as any;
+    // Per-key type safety is enforced by the function's return type annotation.
+    } as UseToolResult<any, any>;
   }
 
   return results;

@@ -1,5 +1,6 @@
 import { tools } from '@/lib/tools';
 import { rateLimiter } from '@/lib/rate-limiter';
+import { auditLogger, createAuditEntry } from '@/lib/audit';
 
 /**
  * Direct tool execution endpoint
@@ -64,8 +65,21 @@ export async function POST(req: Request) {
       );
     }
 
+    // HITL guard: block tools that require confirmation for this specific input.
+    // Tools with conditional confirm (function) are only blocked when shouldConfirm returns true.
+    if (tool.requiresConfirmation && tool.shouldConfirm(input)) {
+      auditLogger.log(
+        createAuditEntry('tool_blocked', toolName, ip).finish(false, 'HITL bypass attempt')
+      );
+      return Response.json(
+        { error: 'This tool requires confirmation. Use /api/tools/confirm.' },
+        { status: 403 }
+      );
+    }
+
     // Execute the tool server-side with proper context
     // SECURITY: isServer=true ensures server handler runs, not client
+    const audit = createAuditEntry('tool_execute', toolName, ip);
     const result = await tool.run(input, {
       isServer: true,
       // Add request context for server handlers that need it
@@ -75,16 +89,27 @@ export async function POST(req: Request) {
       // session: await getSession(req),
     });
 
+    auditLogger.log(audit.finish(true));
     return Response.json({ result });
   } catch (error) {
     // Log full error server-side for debugging
-    console.error('Tool execution error:', error);
-    console.error('Error details:', {
+    // Note: avoid passing raw Zod errors to console.error — some loggers
+    // fail to serialize them. Extract safe properties instead.
+    console.error('Tool execution error:', {
       name: error instanceof Error ? error.name : 'Unknown',
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       tool: toolName ?? 'unknown',
     });
+
+    if (toolName) {
+      auditLogger.log(
+        createAuditEntry('tool_execute', toolName, ip).finish(
+          false,
+          error instanceof Error ? error.message : 'Tool execution failed'
+        )
+      );
+    }
 
     // SECURITY: Don't leak internal error details to client
     // Zod validation errors are safe to expose (they indicate schema mismatches)
@@ -94,15 +119,14 @@ export async function POST(req: Request) {
     // For ZodError, format it nicely
     if (isValidationError && error instanceof Error) {
       try {
-        // Try to extract structured error info if available
-        const zodError = error as any;
+        const zodError = error as { errors?: Array<{ path: string[]; message: string }> };
         if (zodError.errors && Array.isArray(zodError.errors)) {
-          const formattedErrors = zodError.errors.map((err: any) => 
+          const formattedErrors = zodError.errors.map((err) =>
             `${err.path.join('.')}: ${err.message}`
           ).join('; ');
           console.error('Zod validation errors:', formattedErrors);
         }
-      } catch (e) {
+      } catch {
         // Fallback to message if parsing fails
       }
     }

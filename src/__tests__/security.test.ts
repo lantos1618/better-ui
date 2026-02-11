@@ -154,6 +154,9 @@ describe('Security', () => {
         hasView: false,
         hasStream: false,
         hasCache: false,
+        confirm: false,
+        hints: {},
+        requiresConfirmation: false,
       });
     });
 

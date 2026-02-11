@@ -81,6 +81,16 @@ describe('/api/chat', () => {
           artifact: expect.any(Object),
           navigate: expect.any(Object),
           setTheme: expect.any(Object),
+          stockQuote: expect.any(Object),
+          sendEmail: expect.any(Object),
+          taskList: expect.any(Object),
+          question: expect.any(Object),
+          form: expect.any(Object),
+          dataTable: expect.any(Object),
+          progress: expect.any(Object),
+          media: expect.any(Object),
+          code: expect.any(Object),
+          fileUpload: expect.any(Object),
         },
       })
     );
@@ -112,7 +122,7 @@ describe('/api/chat', () => {
     counterSpy.mockRestore();
   });
 
-  it('configures stopWhen with stepCountIs(5)', async () => {
+  it('configures stopWhen with stepCountIs(10)', async () => {
     const { streamText, stepCountIs } = require('ai');
     const mockStream = {
       toUIMessageStreamResponse: jest.fn(() => new Response('stream-data')),
@@ -125,7 +135,7 @@ describe('/api/chat', () => {
 
     await POST(req);
 
-    expect(stepCountIs).toHaveBeenCalledWith(5);
+    expect(stepCountIs).toHaveBeenCalledWith(10);
     expect(streamText).toHaveBeenCalledWith(
       expect.objectContaining({
         stopWhen: expect.any(Object),

@@ -29,5 +29,35 @@ export type { PanelProps } from './Panel';
 export { useToolEffect } from './useToolEffect';
 export type { ToolEffectCallback } from './useToolEffect';
 
+export { useToolOutput } from './useToolOutput';
+export type { ToolOutputResult } from './useToolOutput';
+
+export { useChatToolOutput } from './useChatToolOutput';
+
 export { createToolStateStore, useToolState } from './useToolStateStore';
 export type { ToolStateStore, ToolStateEntry } from './useToolStateStore';
+
+// View building blocks — use these in your tool .view() functions
+export { QuestionView } from './Question';
+export type { QuestionViewProps, QuestionOption } from './Question';
+
+export { FormView } from './Form';
+export type { FormViewProps, FormField } from './Form';
+
+export { DataTableView } from './DataTable';
+export type { DataTableViewProps, DataTableColumn } from './DataTable';
+
+export { ProgressView } from './Progress';
+export type { ProgressViewProps, ProgressStep } from './Progress';
+
+export { MediaDisplayView } from './MediaDisplay';
+export type { MediaDisplayViewProps, MediaItem } from './MediaDisplay';
+
+export { CodeBlockView } from './CodeBlock';
+export type { CodeBlockViewProps } from './CodeBlock';
+
+export { ToastProvider, useToast } from './Toast';
+export type { Toast } from './Toast';
+
+export { FileUploadView } from './FileUpload';
+export type { FileUploadViewProps, UploadedFile } from './FileUpload';

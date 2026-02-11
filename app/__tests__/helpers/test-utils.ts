@@ -6,7 +6,7 @@
  * Create a mock Request object for testing
  */
 export function createMockRequest(
-  body?: any,
+  body?: Record<string, unknown>,
   headers?: Record<string, string>
 ): Request {
   const headersObj = new Headers(headers);
@@ -22,7 +22,8 @@ export function createMockRequest(
 /**
  * Helper to extract JSON from Response
  */
-export async function getResponseJson(response: Response): Promise<any> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getResponseJson(response: Response): Promise<Record<string, any>> {
   return await response.json();
 }
 
@@ -32,7 +33,8 @@ export async function getResponseJson(response: Response): Promise<any> {
 export async function expectResponse(
   response: Response,
   expectedStatus: number
-): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<Record<string, any>> {
   expect(response.status).toBe(expectedStatus);
   return await response.json();
 }

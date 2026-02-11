@@ -27,6 +27,10 @@ interface ChatContextValue {
   executeToolDirect: (toolName: string, toolInput: Record<string, unknown>, toolCallId: string) => Promise<void>;
   getOnAction: (toolCallId: string, toolName: string) => (input: Record<string, unknown>) => void;
   toolStateStore: ToolStateStore;
+  /** Approve and execute a HITL tool, then feed result back to AI */
+  confirmTool: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => Promise<void>;
+  /** Reject a HITL tool and notify AI */
+  rejectTool: (toolCallId: string, toolName: string) => Promise<void>;
 }
 
 export interface ChatProviderProps {
@@ -59,7 +63,7 @@ export function useChatContext(): ChatContextValue {
 
 export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: externalStore, children }: ChatProviderProps) {
   const transportRef = useRef(new DefaultChatTransport({ api: endpoint }));
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, addToolOutput } = useChat({
     transport: transportRef.current,
   });
 
@@ -69,6 +73,27 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
   const toolStateStore = externalStore || internalStoreRef.current;
 
   const versionRef = useRef<Map<string, number>>(new Map());
+  /** Track toolCallIds whose state was changed by user UI actions (dirty for AI sync) */
+  const dirtyToolCallIdsRef = useRef<Set<string>>(new Set());
+
+  /**
+   * Build a state context object from dirty tool entries.
+   * Returns null if no dirty state.
+   */
+  const collectDirtyState = useCallback((): Record<string, unknown> | null => {
+    const dirty = dirtyToolCallIdsRef.current;
+    if (dirty.size === 0) return null;
+
+    const stateContext: Record<string, unknown> = {};
+    for (const id of dirty) {
+      const entry = toolStateStore.get(id);
+      if (entry?.output && entry.toolName) {
+        stateContext[entry.toolName] = entry.output;
+      }
+    }
+    dirty.clear();
+    return Object.keys(stateContext).length > 0 ? stateContext : null;
+  }, [toolStateStore]);
 
   const executeToolDirect = useCallback(async (
     toolName: string,
@@ -109,6 +134,20 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
           version: currentVersion,
           toolName,
         });
+        // Mark as dirty — user changed state via UI action
+        dirtyToolCallIdsRef.current.add(toolCallId);
+
+        // Auto-respond: if the tool has autoRespond, immediately send state to AI
+        const toolDef = tools[toolName];
+        if (toolDef?.autoRespond) {
+          // Clear this tool from dirty set since we're sending it now
+          dirtyToolCallIdsRef.current.delete(toolCallId);
+          // Also collect any other dirty state
+          const otherState = collectDirtyState();
+          const stateContext = { ...otherState, [toolName]: result };
+          const envelope = JSON.stringify({ text: '', stateContext, _meta: { hidden: true } });
+          sendMessage({ text: envelope });
+        }
       }
     } catch (error) {
       console.error('Tool execution error:', error);
@@ -122,7 +161,94 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
         });
       }
     }
-  }, [toolStateStore]);
+  }, [toolStateStore, tools, sendMessage, collectDirtyState]);
+
+  const confirmTool = useCallback(async (
+    toolCallId: string,
+    toolName: string,
+    toolInput: Record<string, unknown>
+  ) => {
+    const currentVersion = (versionRef.current.get(toolCallId) || 0) + 1;
+    versionRef.current.set(toolCallId, currentVersion);
+
+    // Set loading + confirmed state
+    toolStateStore.set(toolCallId, {
+      output: null,
+      loading: true,
+      error: null,
+      version: currentVersion,
+      toolName,
+      status: 'confirmed',
+    });
+
+    try {
+      const response = await fetch('/api/tools/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tool: toolName, input: toolInput }),
+      });
+
+      if (!response.ok) throw new Error('Tool execution failed');
+
+      const { result } = await response.json();
+
+      if (versionRef.current.get(toolCallId) === currentVersion) {
+        toolStateStore.set(toolCallId, {
+          output: result,
+          loading: false,
+          error: null,
+          version: currentVersion,
+          toolName,
+          status: 'confirmed',
+        });
+      }
+
+      // Feed result back to AI so conversation continues
+      await addToolOutput({
+        state: 'output-available',
+        tool: toolName as any,
+        toolCallId,
+        output: result,
+      });
+    } catch (error) {
+      console.error('HITL tool execution error:', error);
+      if (versionRef.current.get(toolCallId) === currentVersion) {
+        toolStateStore.set(toolCallId, {
+          output: null,
+          loading: false,
+          error: error instanceof Error ? error.message : 'Tool execution failed',
+          version: currentVersion,
+          toolName,
+          status: 'confirmed',
+        });
+      }
+    }
+  }, [toolStateStore, addToolOutput]);
+
+  const rejectTool = useCallback(async (
+    toolCallId: string,
+    toolName: string
+  ) => {
+    const currentVersion = (versionRef.current.get(toolCallId) || 0) + 1;
+    versionRef.current.set(toolCallId, currentVersion);
+
+    toolStateStore.set(toolCallId, {
+      output: null,
+      loading: false,
+      error: null,
+      version: currentVersion,
+      toolName,
+      status: 'rejected',
+    });
+
+    // Notify AI that user rejected
+    await addToolOutput({
+      state: 'output-error',
+      tool: toolName as any,
+      toolCallId,
+      errorText: 'User rejected this action',
+    });
+  }, [toolStateStore, addToolOutput]);
 
   const callbackCacheRef = useRef<Map<string, (input: Record<string, unknown>) => void>>(new Map());
 
@@ -138,10 +264,29 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     return cb;
   }, [executeToolDirect]);
 
+  /**
+   * Send a message with optional state context as a structured JSON envelope.
+   *
+   * Wire format (when state context is present):
+   *   JSON.stringify({ text, stateContext, _meta: { hidden } })
+   *
+   * Plain text (no state context):
+   *   Just the text string
+   *
+   * The server parses the envelope to inject stateContext into the prompt.
+   * The Message component parses it to control display.
+   */
   const handleSendMessage = useCallback((text: string) => {
     if (!text.trim()) return;
-    sendMessage({ text });
-  }, [sendMessage]);
+
+    const stateContext = collectDirtyState();
+    if (stateContext) {
+      const envelope = JSON.stringify({ text, stateContext, _meta: { hidden: false } });
+      sendMessage({ text: envelope });
+    } else {
+      sendMessage({ text });
+    }
+  }, [sendMessage, collectDirtyState]);
 
   const value: ChatContextValue = {
     messages,
@@ -152,6 +297,8 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     executeToolDirect,
     getOnAction,
     toolStateStore,
+    confirmTool,
+    rejectTool,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

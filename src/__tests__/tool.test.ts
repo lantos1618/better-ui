@@ -260,6 +260,9 @@ describe('Tool', () => {
         hasView: false,
         hasStream: false,
         hasCache: false,
+        confirm: false,
+        hints: {},
+        requiresConfirmation: false,
       });
 
       // Ensure no handler or schema leakage
@@ -301,7 +304,7 @@ describe('Tool', () => {
       });
 
       const aiTool = myTool.toAITool();
-      await aiTool.execute({ x: 5 });
+      await aiTool.execute!({ x: 5 });
 
       expect(wasServer).toBe(true);
     });
@@ -743,6 +746,90 @@ describe('Tool', () => {
       );
       expect(result3).toEqual({ y: 44 });
     });
+  });
+});
+
+describe('Tool hints', () => {
+  it('defaults to empty object', () => {
+    const myTool = tool({
+      name: 'noHints',
+      input: z.object({ x: z.number() }),
+    });
+    expect(myTool.hints).toEqual({});
+  });
+
+  it('stores provided hints', () => {
+    const myTool = tool({
+      name: 'withHints',
+      input: z.object({ x: z.number() }),
+      hints: { readOnly: true, idempotent: true },
+    });
+    expect(myTool.hints).toEqual({ readOnly: true, idempotent: true });
+  });
+
+  it('destructive: true implies requiresConfirmation', () => {
+    const myTool = tool({
+      name: 'destructive',
+      input: z.object({ x: z.number() }),
+      hints: { destructive: true },
+    });
+    expect(myTool.requiresConfirmation).toBe(true);
+  });
+
+  it('readOnly: true does not imply requiresConfirmation', () => {
+    const myTool = tool({
+      name: 'readOnly',
+      input: z.object({ x: z.number() }),
+      hints: { readOnly: true },
+    });
+    expect(myTool.requiresConfirmation).toBe(false);
+  });
+
+  it('explicit confirm: true still works without hints', () => {
+    const myTool = tool({
+      name: 'explicitConfirm',
+      input: z.object({ x: z.number() }),
+      confirm: true,
+    });
+    expect(myTool.requiresConfirmation).toBe(true);
+    expect(myTool.hints).toEqual({});
+  });
+
+  it('toJSON includes hints and requiresConfirmation', () => {
+    const myTool = tool({
+      name: 'jsonHints',
+      input: z.object({ x: z.number() }),
+      hints: { destructive: true },
+    });
+    myTool.server(() => ({ y: 1 }));
+
+    const json = myTool.toJSON();
+    expect(json.hints).toEqual({ destructive: true });
+    expect(json.requiresConfirmation).toBe(true);
+  });
+
+  it('ToolBuilder .hints() method works', () => {
+    const myTool = tool('builderHints')
+      .input(z.object({ x: z.number() }))
+      .hints({ destructive: true, idempotent: false })
+      .build();
+
+    expect(myTool.hints).toEqual({ destructive: true, idempotent: false });
+    expect(myTool.requiresConfirmation).toBe(true);
+  });
+
+  it('toAITool omits execute for destructive tools', () => {
+    const myTool = tool({
+      name: 'destructiveAI',
+      description: 'A destructive tool',
+      input: z.object({ x: z.number() }),
+      hints: { destructive: true },
+    });
+    myTool.server(() => ({ y: 1 }));
+
+    const aiTool = myTool.toAITool();
+    expect(aiTool.description).toBe('A destructive tool');
+    expect(aiTool).not.toHaveProperty('execute');
   });
 });
 

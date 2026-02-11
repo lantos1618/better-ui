@@ -8,7 +8,8 @@ const suggestions = [
   "What's the weather in Tokyo?",
   "Create a counter called score",
   "Search for React hooks",
-  "Write a fibonacci function",
+  "Send an email to alice@example.com",
+  "Plan: get weather in Tokyo, check AAPL stock, and email results to alice@example.com",
 ];
 
 function ChatWithEffects() {
@@ -36,9 +37,6 @@ export default function ChatDemo() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-medium tracking-tight">Better UI</h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Tools defined once, used everywhere
-          </p>
         </div>
 
         {/* Two-column layout */}
@@ -66,10 +64,6 @@ export default function ChatDemo() {
           </div>
         </ChatProvider>
 
-        {/* Footer */}
-        <p className="text-center text-zinc-600 text-xs mt-8">
-          Define tools once with .server() and .view() &mdash; use everywhere
-        </p>
       </div>
     </div>
   );

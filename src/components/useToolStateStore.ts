@@ -12,6 +12,14 @@ export interface ToolStateEntry {
   error: string | null;
   version: number;
   toolName?: string;
+  /** HITL confirmation status */
+  status?: 'pending' | 'confirmed' | 'rejected';
+  /** Entity group key — "toolName:groupKey(input)" — groups related calls */
+  entityId?: string;
+  /** Raw tool input, stored for conditional confirm checks */
+  toolInput?: unknown;
+  /** Auto-incrementing insertion order (store-assigned) */
+  seqNo?: number;
 }
 
 export interface ToolStateStore {
@@ -20,6 +28,8 @@ export interface ToolStateStore {
   subscribe: (toolCallId: string, listener: () => void) => () => void;
   subscribeAll: (listener: () => void) => () => void;
   getSnapshot: () => Map<string, ToolStateEntry>;
+  /** Returns Map with highest-seqNo entry per entityId + all ungrouped entries */
+  getLatestPerEntity: () => Map<string, ToolStateEntry>;
 }
 
 // ============================================
@@ -27,9 +37,10 @@ export interface ToolStateStore {
 // ============================================
 
 export function createToolStateStore(): ToolStateStore {
-  const state = new Map<string, ToolStateEntry>();
+  let state = new Map<string, ToolStateEntry>();
   const keyListeners = new Map<string, Set<() => void>>();
   const globalListeners = new Set<() => void>();
+  let seqCounter = 0;
 
   function notifyKey(toolCallId: string) {
     const listeners = keyListeners.get(toolCallId);
@@ -45,7 +56,11 @@ export function createToolStateStore(): ToolStateStore {
     },
 
     set(toolCallId: string, entry: ToolStateEntry) {
-      state.set(toolCallId, entry);
+      state = new Map(state);
+      // Auto-assign seqNo if not already set for this toolCallId
+      const existing = state.get(toolCallId);
+      const seqNo = existing?.seqNo ?? ++seqCounter;
+      state.set(toolCallId, { ...entry, seqNo });
       notifyKey(toolCallId);
     },
 
@@ -73,6 +88,29 @@ export function createToolStateStore(): ToolStateStore {
 
     getSnapshot() {
       return state;
+    },
+
+    getLatestPerEntity() {
+      const result = new Map<string, ToolStateEntry>();
+      const entityLatest = new Map<string, { toolCallId: string; entry: ToolStateEntry }>();
+
+      for (const [toolCallId, entry] of state) {
+        if (entry.entityId) {
+          const current = entityLatest.get(entry.entityId);
+          if (!current || (entry.seqNo ?? 0) > (current.entry.seqNo ?? 0)) {
+            entityLatest.set(entry.entityId, { toolCallId, entry });
+          }
+        } else {
+          // Ungrouped entries pass through
+          result.set(toolCallId, entry);
+        }
+      }
+
+      for (const [, { toolCallId, entry }] of entityLatest) {
+        result.set(toolCallId, entry);
+      }
+
+      return result;
     },
   };
 }

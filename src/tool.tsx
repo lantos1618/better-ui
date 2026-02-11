@@ -12,6 +12,22 @@ import React, { ReactElement, memo } from 'react';
 // Types
 // ============================================
 
+/** Behavioral hints for tools */
+export interface ToolHints {
+  /** Tool performs destructive/irreversible actions (auto-implies requiresConfirmation) */
+  destructive?: boolean;
+  /** Tool only reads data, never modifies state */
+  readOnly?: boolean;
+  /** Tool can be safely retried without side effects */
+  idempotent?: boolean;
+}
+
+/** Entry stored in the tool context cache */
+interface CacheEntry {
+  data: unknown;
+  expiry: number;
+}
+
 /**
  * Context passed to tool handlers
  *
@@ -23,7 +39,7 @@ import React, { ReactElement, memo } from 'react';
  */
 export interface ToolContext {
   /** Shared cache for deduplication */
-  cache: Map<string, any>;
+  cache: Map<string, CacheEntry>;
   /** Fetch function (can be customized for auth headers, etc.) */
   fetch: typeof fetch;
   /** Whether running on server */
@@ -37,9 +53,9 @@ export interface ToolContext {
   /** Cookies - NEVER available on client */
   cookies?: Record<string, string>;
   /** Authenticated user - NEVER available on client */
-  user?: any;
+  user?: Record<string, unknown>;
   /** Session data - NEVER available on client */
-  session?: any;
+  session?: Record<string, unknown>;
 
   // === Client-only fields ===
   /** Optimistic update function */
@@ -66,6 +82,17 @@ export interface ToolConfig<TInput, TOutput> {
   cache?: CacheConfig<TInput>;
   /** Configure auto-fetch behavior for client-side execution */
   clientFetch?: ClientFetchConfig;
+  /** If true or returns true, tool requires human confirmation before executing (HITL).
+   *  When a function, it receives the input and can conditionally require confirmation. */
+  confirm?: boolean | ((input: TInput) => boolean);
+  /** Behavioral hints for the tool */
+  hints?: ToolHints;
+  /** Group related tool calls by a key derived from input.
+   *  Calls with the same groupKey are collapsed in the thread — only the latest renders fully. */
+  groupKey?: (input: TInput) => string;
+  /** When true, a user UI action on this tool automatically sends the updated state
+   *  to the AI so it can continue without the user typing a message. */
+  autoRespond?: boolean;
 }
 
 export type ServerHandler<TInput, TOutput> = (
@@ -88,7 +115,7 @@ export type StreamHandler<TInput, TOutput> = (
   }
 ) => Promise<TOutput>;
 
-export type ViewState<TInput = any> = {
+export type ViewState<TInput = unknown> = {
   loading?: boolean;
   /** True while receiving partial streaming updates */
   streaming?: boolean;
@@ -96,7 +123,7 @@ export type ViewState<TInput = any> = {
   onAction?: (input: TInput) => void | Promise<void>;
 };
 
-export type ViewComponent<TOutput, TInput = any> = (
+export type ViewComponent<TOutput, TInput = unknown> = (
   data: TOutput,
   state?: ViewState<TInput>
 ) => ReactElement | null;
@@ -105,6 +132,9 @@ export type ViewComponent<TOutput, TInput = any> = (
 // Tool Class
 // ============================================
 
+// Default generic parameters use `any` intentionally — this is an API boundary.
+// Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>
+// won't accept arbitrary inputs.
 export class Tool<TInput = any, TOutput = any> {
   readonly name: string;
   readonly description?: string;
@@ -113,10 +143,14 @@ export class Tool<TInput = any, TOutput = any> {
   readonly tags: string[];
   readonly cacheConfig?: CacheConfig<TInput>;
   readonly clientFetchConfig?: ClientFetchConfig;
+  readonly confirm: boolean | ((input: TInput) => boolean);
+  readonly hints: ToolHints;
+  readonly groupKey?: (input: TInput) => string;
+  readonly autoRespond: boolean;
 
   private _server?: ServerHandler<TInput, TOutput>;
   private _client?: ClientHandler<TInput, TOutput>;
-  private _view?: ViewComponent<TOutput>;
+  private _view?: ViewComponent<TOutput, TInput>;
   private _stream?: StreamHandler<TInput, TOutput>;
 
   constructor(config: ToolConfig<TInput, TOutput>) {
@@ -127,6 +161,10 @@ export class Tool<TInput = any, TOutput = any> {
     this.tags = config.tags || [];
     this.cacheConfig = config.cache;
     this.clientFetchConfig = config.clientFetch;
+    this.confirm = config.confirm ?? false;
+    this.hints = config.hints ?? {};
+    this.groupKey = config.groupKey;
+    this.autoRespond = config.autoRespond ?? false;
     // Initialize View with default behavior
     this._initView();
   }
@@ -153,7 +191,7 @@ export class Tool<TInput = any, TOutput = any> {
    * Define view component for rendering results
    * Our differentiator from TanStack AI
    */
-  view(component: ViewComponent<TOutput>): this {
+  view(component: ViewComponent<TOutput, TInput>): this {
     this._view = component;
     // Reinitialize memoized View component with the new view function
     this._initView();
@@ -208,7 +246,7 @@ export class Tool<TInput = any, TOutput = any> {
 
       const cached = context.cache.get(cacheKey);
       if (cached && cached.expiry > Date.now()) {
-        return cached.data;
+        return cached.data as TOutput;
       }
     }
 
@@ -241,7 +279,7 @@ export class Tool<TInput = any, TOutput = any> {
         // Log validation error with context for debugging
         console.error(`Output validation failed for tool "${this.name}":`, error);
         if (error instanceof Error && 'errors' in error) {
-          console.error('Validation errors:', (error as any).errors);
+          console.error('Validation errors:', (error as { errors?: unknown[] }).errors);
         }
         // Re-throw to be handled by caller
         throw error;
@@ -474,6 +512,39 @@ export class Tool<TInput = any, TOutput = any> {
   }
 
   /**
+   * Check if tool requires human confirmation before executing (HITL)
+   * Returns true if `confirm` is truthy (boolean true or a function) OR `hints.destructive: true`
+   */
+  get requiresConfirmation(): boolean {
+    return !!this.confirm || this.hints.destructive === true;
+  }
+
+  /**
+   * Determine if a specific input should trigger user confirmation.
+   * - If `confirm` is a function, calls it with input
+   * - If `confirm` is boolean, returns it
+   * - If `hints.destructive`, returns true
+   */
+  shouldConfirm(input: TInput): boolean {
+    if (typeof this.confirm === 'function') {
+      return this.confirm(input);
+    }
+    if (typeof this.confirm === 'boolean') {
+      return this.confirm;
+    }
+    return this.hints.destructive === true;
+  }
+
+  /**
+   * Get the entity group key for a given input.
+   * Returns `"toolName:groupKey(input)"` if groupKey is defined, otherwise undefined.
+   */
+  getGroupKey(input: TInput): string | undefined {
+    if (!this.groupKey) return undefined;
+    return `${this.name}:${this.groupKey(input)}`;
+  }
+
+  /**
    * Convert to plain object (for serialization)
    *
    * SECURITY: This intentionally excludes handlers and schemas to prevent
@@ -489,14 +560,27 @@ export class Tool<TInput = any, TOutput = any> {
       hasView: this.hasView,
       hasStream: this.hasStream,
       hasCache: !!this.cacheConfig,
+      confirm: !!this.confirm,
+      hints: this.hints,
+      requiresConfirmation: this.requiresConfirmation,
       // Intentionally NOT included: handlers, schemas, clientFetchConfig
     };
   }
 
   /**
    * Convert to AI SDK format (Vercel AI SDK v5 compatible)
+   *
+   * If `confirm` is true, the execute function is omitted so the AI SDK
+   * leaves the tool call at `state: 'input-available'`, enabling HITL
+   * confirmation on the client before execution.
    */
   toAITool() {
+    if (this.requiresConfirmation) {
+      return {
+        description: this.description || this.name,
+        inputSchema: this.inputSchema,
+      };
+    }
     return {
       description: this.description || this.name,
       inputSchema: this.inputSchema,
@@ -526,6 +610,9 @@ export class Tool<TInput = any, TOutput = any> {
  *   return { temp: await getTemp(city) };
  * });
  */
+// Default generic parameters use `any` intentionally — this is an API boundary.
+// Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>
+// won't accept arbitrary inputs.
 export function tool<TInput, TOutput = any>(
   config: ToolConfig<TInput, TOutput>
 ): Tool<TInput, TOutput>;
@@ -542,6 +629,9 @@ export function tool<TInput, TOutput = any>(
  */
 export function tool(name: string): ToolBuilder;
 
+// Default generic parameters use `any` intentionally — this is an API boundary.
+// Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>
+// won't accept arbitrary inputs.
 export function tool<TInput, TOutput = any>(
   nameOrConfig: string | ToolConfig<TInput, TOutput>
 ): Tool<TInput, TOutput> | ToolBuilder {
@@ -555,6 +645,9 @@ export function tool<TInput, TOutput = any>(
 // Fluent Builder
 // ============================================
 
+// Default generic parameters use `any` intentionally — this is an API boundary.
+// Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>
+// won't accept arbitrary inputs.
 class ToolBuilder<TInput = any, TOutput = any> {
   private _name: string;
   private _description?: string;
@@ -563,9 +656,13 @@ class ToolBuilder<TInput = any, TOutput = any> {
   private _tags: string[] = [];
   private _cache?: CacheConfig<TInput>;
   private _clientFetch?: ClientFetchConfig;
+  private _confirm?: boolean | ((input: TInput) => boolean);
+  private _hints?: ToolHints;
+  private _groupKey?: (input: TInput) => string;
+  private _autoRespond?: boolean;
   private _serverHandler?: ServerHandler<TInput, TOutput>;
   private _clientHandler?: ClientHandler<TInput, TOutput>;
-  private _viewComponent?: ViewComponent<TOutput>;
+  private _viewComponent?: ViewComponent<TOutput, TInput>;
   private _streamHandler?: StreamHandler<TInput, TOutput>;
 
   constructor(name: string) {
@@ -614,6 +711,30 @@ class ToolBuilder<TInput = any, TOutput = any> {
     return this;
   }
 
+  /** Require human confirmation before executing (HITL) */
+  requireConfirm(value: boolean | ((input: TInput) => boolean) = true): this {
+    this._confirm = value;
+    return this;
+  }
+
+  /** Set a groupKey function for collapsing related tool calls */
+  groupBy(fn: (input: TInput) => string): this {
+    this._groupKey = fn;
+    return this;
+  }
+
+  /** Auto-send updated state to AI after user interacts with this tool's UI */
+  autoRespondAfterAction(value = true): this {
+    this._autoRespond = value;
+    return this;
+  }
+
+  /** Set behavioral hints for the tool */
+  hints(hints: ToolHints): this {
+    this._hints = hints;
+    return this;
+  }
+
   server(handler: ServerHandler<TInput, TOutput>): this {
     this._serverHandler = handler;
     return this;
@@ -629,7 +750,7 @@ class ToolBuilder<TInput = any, TOutput = any> {
     return this;
   }
 
-  view(component: ViewComponent<TOutput>): this {
+  view(component: ViewComponent<TOutput, TInput>): this {
     this._viewComponent = component;
     return this;
   }
@@ -650,6 +771,10 @@ class ToolBuilder<TInput = any, TOutput = any> {
       tags: this._tags,
       cache: this._cache,
       clientFetch: this._clientFetch,
+      confirm: this._confirm,
+      hints: this._hints,
+      groupKey: this._groupKey,
+      autoRespond: this._autoRespond,
     });
 
     if (this._serverHandler) t.server(this._serverHandler);

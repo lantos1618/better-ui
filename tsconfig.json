@@ -39,6 +39,7 @@
     "node_modules",
     "examples.backup",
     "*.backup",
-    "examples/stock-chat-app"
+    "examples/stock-chat-app",
+    "examples/persistence-drizzle"
   ]
 }

@@ -8,34 +8,38 @@ import { createRateLimiter, RateLimiter } from '../../lib/rate-limiter';
 import type { LanguageModelV2 } from '@ai-sdk/provider';
 import type { Provider } from '../providers/types';
 
-// Dynamic imports for optional dependencies
-declare function require(id: string): any;
+// Minimal interfaces for Next.js types to avoid hard dependency on next package.
+// These only include properties we actually use.
+interface NextRequestLike {
+  headers: Headers;
+  json(): Promise<Record<string, unknown>>;
+  nextUrl: { pathname: string };
+}
 
-type NextRequest = any;
-type NextResponse = any;
+interface NextResponseStatic {
+  json(body: unknown, init?: { status?: number }): Response;
+  next(): Response;
+}
 
-// Import Next.js types dynamically
-let NextRequestImpl: any;
-let NextResponseImpl: any;
+// Dynamic imports for optional Next.js dependency
+let NextResponseImpl: NextResponseStatic | undefined;
 
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nextServer = require('next/server');
-  NextRequestImpl = nextServer.NextRequest;
   NextResponseImpl = nextServer.NextResponse;
-} catch (error) {
+} catch {
   // Next.js not available, will be handled at runtime
 }
 
-// Re-export types if available
-export const NextRequest = NextRequestImpl;
-export const NextResponse = NextResponseImpl;
+export const NextResponse = NextResponseImpl as NextResponseStatic;
 
 /**
  * Next.js-specific tool execution context
  */
 export interface NextJSToolContext extends ToolContext {
   /** Next.js request object */
-  request: NextRequest;
+  request: NextRequestLike;
   /** Extracted user information from request */
   user?: {
     id?: string;
@@ -72,14 +76,14 @@ export function createNextJSToolHandler(
     /** Custom rate limiter instance */
     rateLimiter?: RateLimiter;
     /** Authentication middleware */
-    auth?: (req: NextRequest) => Promise<NextJSToolContext['user']>;
+    auth?: (req: NextRequestLike) => Promise<NextJSToolContext['user']>;
     /** Custom error handler */
-    onError?: (error: Error, req: NextRequest) => NextResponse;
+    onError?: (error: Error, req: NextRequestLike) => Response;
   } = {}
 ) {
   const rateLimiter = options.rateLimiter || createRateLimiter(options.rateLimit);
 
-  return async function handler(req: NextRequest) {
+  return async function handler(req: NextRequestLike) {
     try {
       // Extract IP for rate limiting
       const forwardedFor = req.headers.get('x-forwarded-for');
@@ -135,6 +139,14 @@ export function createNextJSToolHandler(
         );
       }
 
+      // HITL guard: block confirm-required tools on the execute handler
+      if (tool.requiresConfirmation) {
+        return NextResponse.json(
+          { error: 'This tool requires confirmation. Use the confirm handler.' },
+          { status: 403 }
+        );
+      }
+
       // Create Next.js-specific context
       const context: NextJSToolContext = {
         isServer: true,
@@ -177,10 +189,106 @@ export function createNextJSToolHandler(
 }
 
 /**
+ * Create a Next.js API route handler for confirmed tool execution (HITL)
+ *
+ * Only accepts tools where `requiresConfirmation === true`.
+ * Default stricter rate limit (5 req/10s).
+ */
+export function createNextJSConfirmHandler(
+  tools: Record<string, Tool>,
+  options: {
+    rateLimit?: { maxRequests: number; windowMs: number };
+    rateLimiter?: RateLimiter;
+    auth?: (req: NextRequestLike) => Promise<NextJSToolContext['user']>;
+    onError?: (error: Error, req: NextRequestLike) => Response;
+  } = {}
+) {
+  const rateLimiter = options.rateLimiter || createRateLimiter(
+    options.rateLimit ?? { maxRequests: 5, windowMs: 10_000 }
+  );
+
+  return async function handler(req: NextRequestLike) {
+    try {
+      const forwardedFor = req.headers.get('x-forwarded-for');
+      const ip = forwardedFor?.split(',')[0]?.trim() ||
+                 req.headers.get('x-real-ip') ||
+                 'anonymous';
+
+      if (rateLimiter && !await rateLimiter.check(ip)) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded' },
+          { status: 429 }
+        );
+      }
+
+      let user: NextJSToolContext['user'] | undefined;
+      if (options.auth) {
+        try {
+          user = await options.auth(req);
+        } catch {
+          return NextResponse.json(
+            { error: 'Authentication failed' },
+            { status: 401 }
+          );
+        }
+      }
+
+      const body = await req.json();
+      const { tool: toolName, input } = body;
+
+      if (!toolName) {
+        return NextResponse.json({ error: 'Missing tool name' }, { status: 400 });
+      }
+
+      if (input === undefined) {
+        return NextResponse.json({ error: 'Missing input' }, { status: 400 });
+      }
+
+      const tool = tools[toolName as keyof typeof tools];
+      if (!tool) {
+        return NextResponse.json({ error: 'Tool not found' }, { status: 404 });
+      }
+
+      // Only accept tools that require confirmation
+      if (!tool.requiresConfirmation) {
+        return NextResponse.json(
+          { error: 'This tool does not require confirmation. Use the execute handler.' },
+          { status: 400 }
+        );
+      }
+
+      const context: NextJSToolContext = {
+        isServer: true,
+        request: req,
+        headers: req.headers,
+        cache: new Map(),
+        fetch: globalThis.fetch?.bind(globalThis),
+        user,
+      };
+
+      const result = await tool.run(input, context);
+      return NextResponse.json({ result });
+    } catch (error) {
+      console.error('Next.js tool confirmation error:', error);
+
+      if (options.onError) {
+        return options.onError(error as Error, req);
+      }
+
+      const isValidationError = error instanceof Error && error.name === 'ZodError';
+      return NextResponse.json(
+        { error: isValidationError ? error.message : 'Tool execution failed' },
+        { status: isValidationError ? 400 : 500 }
+      );
+    }
+  };
+}
+
+/**
  * Extract common user information from Next.js request headers
  * This is a helper function - you should implement your own auth logic
  */
-export async function extractUserFromHeaders(req: NextRequest): Promise<NextJSToolContext['user']> {
+export async function extractUserFromHeaders(req: NextRequestLike): Promise<NextJSToolContext['user']> {
   const authHeader = req.headers.get('authorization');
   const userHeader = req.headers.get('x-user');
   
@@ -223,10 +331,10 @@ export function createNextJSChatHandler(
     /** Custom rate limiter */
     rateLimiter?: RateLimiter;
     /** Authentication middleware */
-    auth?: (req: NextRequest) => Promise<NextJSToolContext['user']>;
+    auth?: (req: NextRequestLike) => Promise<NextJSToolContext['user']>;
   } = {}
 ) {
-  return async function handler(req: NextRequest) {
+  return async function handler(req: NextRequestLike) {
     try {
       // Import AI SDK dynamically to avoid dependency
       const { streamText, stepCountIs, convertToModelMessages } = await import('ai');
@@ -239,7 +347,8 @@ export function createNextJSChatHandler(
         modelInstance = openai(options.model || 'gpt-4o-mini');
       }
 
-      const { messages } = await req.json();
+      const body = await req.json();
+      const { messages } = body as { messages: Parameters<typeof convertToModelMessages>[0] };
       const modelMessages = convertToModelMessages(messages);
 
       const result = await streamText({
@@ -279,7 +388,7 @@ export function createNextJSMiddleware(options: {
 }) {
   const rateLimiter = options.rateLimit ? createRateLimiter(options.rateLimit) : undefined;
 
-  return async function middleware(req: NextRequest) {
+  return async function middleware(req: NextRequestLike) {
     const url = req.nextUrl.pathname;
     
     // Only protect tool endpoints

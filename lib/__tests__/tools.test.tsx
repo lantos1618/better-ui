@@ -52,9 +52,10 @@ describe('Tool View Components', () => {
     it('renders search results', () => {
       const { View } = searchTool;
       const data = {
+        query: 'test',
         results: [
-          { id: 1, title: 'Result 1', score: 0.95 },
-          { id: 2, title: 'Result 2', score: 0.87 },
+          { id: 1, title: 'Result 1', snippet: 'A snippet about test.', score: 0.95 },
+          { id: 2, title: 'Result 2', snippet: 'Another snippet.', score: 0.87 },
         ],
       };
       render(<View data={data} />);
@@ -64,6 +65,7 @@ describe('Tool View Components', () => {
       expect(screen.getByText('Result 2')).toBeInTheDocument();
       expect(screen.getByText('95%')).toBeInTheDocument();
       expect(screen.getByText('87%')).toBeInTheDocument();
+      expect(screen.getByText('2 found')).toBeInTheDocument();
     });
 
     it('renders null when no data and not loading', () => {
