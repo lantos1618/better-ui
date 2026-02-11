@@ -1,0 +1,81 @@
+---
+title: "State Sync"
+description: "Keep the AI in sync with user interactions in tool UIs"
+---
+
+## The Problem
+
+Without state sync, the AI is blind to what users do in tool UIs:
+
+1. AI renders a counter at 0
+2. User clicks +5 (counter shows 5)
+3. User asks "what's the count?"
+4. AI says "0" — it never saw the clicks
+
+## How State Sync Works
+
+Better UI tracks a "dirty set" of tool states that changed via user interaction. When the user sends their next message, dirty state is bundled into a **JSON envelope** and sent to the server.
+
+```
+User clicks button → state marked dirty
+User types message → envelope sent:
+{
+  "text": "what's the count?",
+  "stateContext": {
+    "counter": { "count": 5 }
+  },
+  "_meta": { "hidden": false }
+}
+```
+
+The server extracts `stateContext` and appends it to the AI's system prompt:
+
+```
+Current UI tool state (updated by user interactions):
+{
+  "counter": { "count": 5 }
+}
+```
+
+The AI now knows the counter is at 5.
+
+## Auto-Respond
+
+For some tools, you want the AI to react immediately when the user interacts — without the user typing a message. Set `autoRespond: true`:
+
+```tsx
+const question = tool({
+  name: 'question',
+  autoRespond: true,
+  // ...
+});
+```
+
+When the user selects an option:
+1. The tool re-executes with the selection
+2. A hidden envelope is immediately sent to the AI
+3. The AI processes the selection and continues
+
+The hidden envelope uses `_meta: { hidden: true }` so it doesn't appear as a visible message in the chat.
+
+## Envelope Format
+
+Messages between client and server use a structured JSON format:
+
+```typescript
+interface Envelope {
+  text: string;                          // The user's message text
+  stateContext: Record<string, unknown>; // Tool states that changed
+  _meta: {
+    hidden: boolean;                     // If true, don't show in chat
+  };
+}
+```
+
+Plain text messages (no dirty state) are sent as regular strings — no envelope wrapper.
+
+## What Gets Synced
+
+Only tools whose state was changed via `onAction` (user interaction) are included. State from AI-initiated tool calls is NOT synced back since the AI already knows about those.
+
+The dirty set is cleared after each send. If the user interacts with multiple tools between messages, all dirty states are collected into a single envelope.

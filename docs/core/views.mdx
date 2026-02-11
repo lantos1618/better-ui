@@ -1,0 +1,113 @@
+---
+title: "Views"
+description: "React components that render automatically when the AI calls a tool"
+---
+
+## Defining a View
+
+Every tool can have a `.view()` that receives the tool's output and an optional state object:
+
+```tsx
+weather.view((data, state) => {
+  if (state?.loading) {
+    return <div>Loading weather...</div>;
+  }
+
+  return (
+    <div className="p-4 rounded-xl bg-blue-500 text-white">
+      <h3>{data.city}</h3>
+      <p className="text-3xl">{data.temp}°F</p>
+    </div>
+  );
+});
+```
+
+## View Signature
+
+```tsx
+type ViewComponent<TOutput, TInput> = (
+  data: TOutput,
+  state?: ViewState<TInput>
+) => ReactElement | null;
+
+type ViewState<TInput> = {
+  loading?: boolean;
+  streaming?: boolean;
+  error?: Error | null;
+  onAction?: (input: TInput) => void | Promise<void>;
+};
+```
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `data` | `TOutput` | The tool's output data |
+| `state.loading` | `boolean` | True while the tool is executing |
+| `state.streaming` | `boolean` | True while receiving streaming updates |
+| `state.error` | `Error \| null` | Error if execution failed |
+| `state.onAction` | `(input) => void` | Callback to re-execute the tool with new input |
+
+## Interactive Views
+
+Use `state.onAction` to make views that users can interact with:
+
+```tsx
+counter.view((data, state) => (
+  <div className="flex items-center gap-4">
+    <button
+      onClick={() => state?.onAction?.({ count: data.count - 1 })}
+      disabled={state?.loading}
+    >
+      -1
+    </button>
+    <span className="text-2xl font-bold">{data.count}</span>
+    <button
+      onClick={() => state?.onAction?.({ count: data.count + 1 })}
+      disabled={state?.loading}
+    >
+      +1
+    </button>
+  </div>
+));
+```
+
+When `onAction` is called:
+1. The tool's server handler re-executes with the new input
+2. The view updates with the new output
+3. The state is marked "dirty" for AI sync
+
+## Default View
+
+If no `.view()` is defined, the tool output renders as formatted JSON:
+
+```json
+{
+  "city": "Tokyo",
+  "temp": 68,
+  "condition": "Cloudy"
+}
+```
+
+## Using Built-in View Components
+
+Better UI provides pre-built view components you can use in your tool views:
+
+```tsx
+import { QuestionView, FormView, DataTableView } from '@lantos1618/better-ui/components';
+
+questionTool.view((data, state) => (
+  <QuestionView
+    question={data.question}
+    options={data.options}
+    mode={data.mode}
+    selected={data.selected}
+    onSelect={(value) => state?.onAction?.({ ...data, selected: value })}
+    loading={state?.loading}
+  />
+));
+```
+
+See [Components](/components/overview) for the full list.
+
+## Memoization
+
+Tool views are automatically memoized with `React.memo`. They only re-render when `data`, `loading`, `streaming`, or `error` change. The `onAction` callback is excluded from the comparison since it's stable per tool call.

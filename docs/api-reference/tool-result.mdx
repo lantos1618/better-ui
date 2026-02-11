@@ -1,0 +1,63 @@
+---
+title: "ToolResult"
+description: "Renders a tool's output using its view component"
+---
+
+## Import
+
+```tsx
+import { ToolResult } from '@lantos1618/better-ui/components';
+```
+
+## Props
+
+<ParamField path="toolName" type="string" required>
+  Name of the tool
+</ParamField>
+
+<ParamField path="toolCallId" type="string" required>
+  Unique ID for this tool call
+</ParamField>
+
+<ParamField path="output" type="unknown">
+  Tool output data
+</ParamField>
+
+<ParamField path="toolInput" type="unknown">
+  Tool input data (used for HITL and grouping)
+</ParamField>
+
+<ParamField path="hasResult" type="boolean" required>
+  Whether the tool has completed execution
+</ParamField>
+
+<ParamField path="tools" type="Record<string, Tool>" required>
+  Tool registry
+</ParamField>
+
+<ParamField path="toolStateStore" type="ToolStateStore" required>
+  Tool state store
+</ParamField>
+
+<ParamField path="getOnAction" type="(toolCallId, toolName) => (input) => void" required>
+  Callback factory for actions
+</ParamField>
+
+<ParamField path="onConfirm" type="(toolCallId, toolName, input) => void">
+  HITL confirmation callback
+</ParamField>
+
+<ParamField path="onReject" type="(toolCallId, toolName) => void">
+  HITL rejection callback
+</ParamField>
+
+## Behavior
+
+ToolResult handles several concerns:
+
+1. **View resolution**: Looks up `tools[toolName]` and renders its `.View`
+2. **State store seeding**: Seeds the store with `entityId`, `toolInput`, `seqNo`
+3. **Grouping collapse**: Uses `useIsCollapsed` — renders a chip if superseded by a newer call
+4. **HITL flow**: Shows Approve/Reject when `shouldConfirm(input)` returns true
+5. **Auto-approve**: When `shouldConfirm(input)` returns false but `requiresConfirmation` is true, auto-approves
+6. **Loading state**: Shows tool name with loading indicator during execution

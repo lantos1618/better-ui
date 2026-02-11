@@ -1,0 +1,54 @@
+---
+title: "DataTable"
+description: "Sortable, paginated table for structured data"
+---
+
+## Import
+
+```tsx
+import { DataTableView } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<DataTableView
+  title="Top Stocks"
+  columns={[
+    { key: 'symbol', label: 'Symbol' },
+    { key: 'price', label: 'Price', align: 'right' },
+    { key: 'change', label: 'Change', align: 'right' },
+  ]}
+  rows={[
+    { symbol: 'AAPL', price: '$189.50', change: '+2.3%' },
+    { symbol: 'GOOGL', price: '$141.20', change: '-0.8%' },
+    { symbol: 'MSFT', price: '$378.90', change: '+1.1%' },
+  ]}
+  pageSize={10}
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Optional table title
+</ParamField>
+
+<ParamField path="columns" type="DataTableColumn[]" required>
+  Column definitions with `key`, `label`, and optional `align` (`'left' | 'center' | 'right'`).
+</ParamField>
+
+<ParamField path="rows" type="Record<string, unknown>[]" required>
+  Array of row objects. Keys correspond to column `key` values.
+</ParamField>
+
+<ParamField path="pageSize" type="number" default="10">
+  Number of rows per page. Pagination controls appear when rows exceed this.
+</ParamField>
+
+## Features
+
+- **Sortable columns**: Click any column header to sort ascending/descending
+- **Pagination**: Automatic page controls when data exceeds `pageSize`
+- **Alignment**: Right-align numeric columns, center-align status columns
+- **Row count**: Shows "Showing X of Y rows" footer

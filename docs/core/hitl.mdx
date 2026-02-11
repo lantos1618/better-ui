@@ -1,0 +1,108 @@
+---
+title: "Human-in-the-Loop"
+description: "Require user approval before executing sensitive tool actions"
+---
+
+## Overview
+
+Some tools shouldn't execute automatically. Email sending, database deletions, financial transactions — these need human approval. Better UI provides **Human-in-the-Loop (HITL)** confirmation built into the tool definition.
+
+## Basic Confirmation
+
+Set `confirm: true` to always require approval:
+
+```tsx
+const sendEmail = tool({
+  name: 'sendEmail',
+  confirm: true,
+  input: z.object({
+    to: z.string(),
+    subject: z.string(),
+    body: z.string(),
+  }),
+  // ...
+});
+```
+
+When the AI calls `sendEmail`, the user sees an **Approve / Reject** card instead of the tool executing immediately.
+
+## Conditional Confirmation
+
+Pass a function to `confirm` to decide per-call:
+
+```tsx
+const taskList = tool({
+  name: 'taskList',
+  confirm: (input) => input.action === 'create',
+  input: z.object({
+    action: z.enum(['create', 'update', 'delete']),
+    // ...
+  }),
+});
+```
+
+- `taskList({ action: 'create' })` → shows confirmation card
+- `taskList({ action: 'update' })` → executes immediately (auto-approved)
+
+## How It Works
+
+### When `confirm` is set (tool requires confirmation):
+
+1. `toAITool()` omits the `execute` function
+2. AI SDK leaves the tool call at `state: 'input-available'` (not executed)
+3. `ToolResult` checks `shouldConfirm(input)`:
+   - **True**: Shows Approve/Reject card
+   - **False**: Auto-approves and executes immediately
+
+### Confirmation Flow
+
+```
+AI calls tool → ToolResult renders
+                    │
+         shouldConfirm(input)?
+           ╱              ╲
+         Yes               No
+          │                 │
+    Show card          Auto-approve
+    [Approve] [Reject]     │
+        │        │         │
+      Execute  Notify    Execute
+        │      AI of       │
+        │      rejection   │
+        ▼                  ▼
+    addToolOutput      addToolOutput
+    (result)           (result)
+        │                  │
+        ▼                  ▼
+    AI continues       AI continues
+```
+
+### Destructive Hints
+
+Tools with `hints.destructive: true` automatically require confirmation:
+
+```tsx
+const deleteAccount = tool({
+  name: 'deleteAccount',
+  hints: { destructive: true },
+  // No need to set confirm — destructive implies it
+});
+```
+
+## Confirmation Endpoint
+
+HITL tools execute through a separate endpoint (`/api/tools/confirm`) to keep the execution path distinct from regular tool execution. This lets you add additional audit logging or authorization checks for confirmed actions.
+
+```ts
+// app/api/tools/confirm/route.ts
+export async function POST(req: Request) {
+  const { tool: toolName, input } = await req.json();
+  const toolDef = tools[toolName];
+
+  // Additional audit logging for confirmed actions
+  audit.log({ action: 'tool_confirmed', tool: toolName });
+
+  const result = await toolDef.run(input, { isServer: true });
+  return Response.json({ result });
+}
+```

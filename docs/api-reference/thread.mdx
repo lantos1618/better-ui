@@ -1,0 +1,40 @@
+---
+title: "Thread"
+description: "Message list with auto-scroll and tool rendering"
+---
+
+## Import
+
+```tsx
+import { Thread } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<ChatProvider tools={tools}>
+  <Thread className="flex-1 overflow-y-auto" />
+  <Composer />
+</ChatProvider>
+```
+
+## Props
+
+<ParamField path="className" type="string">
+  CSS class for the outer container
+</ParamField>
+
+Thread automatically:
+- Renders all messages from `useChatContext()`
+- Auto-scrolls to the latest message
+- Passes tools, state store, and callbacks to each `Message`
+- Handles tool result rendering via `ToolResult`
+
+## Message Rendering
+
+Each message renders based on its role:
+- **User**: Right-aligned bubble with plain text
+- **Assistant**: Left-aligned bubble with rendered Markdown
+- **Tool parts**: Rendered via `ToolResult` → `tool.View`
+
+Hidden messages (from autoRespond state sync) are automatically suppressed.

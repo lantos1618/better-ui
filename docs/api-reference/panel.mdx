@@ -1,0 +1,73 @@
+---
+title: "Panel"
+description: "Side panel for displaying tool outputs"
+---
+
+## Import
+
+```tsx
+import { Panel, ChatPanel } from '@lantos1618/better-ui/components';
+```
+
+## Panel (Standalone)
+
+Use `Panel` directly with a tool state store:
+
+```tsx
+<Panel
+  tools={tools}
+  toolStateStore={store}
+  getOnAction={getOnAction}
+  maxItems={5}
+/>
+```
+
+### Props
+
+<ParamField path="tools" type="Record<string, Tool>" required>
+  Tool registry
+</ParamField>
+
+<ParamField path="toolStateStore" type="ToolStateStore" required>
+  Tool state store to read from
+</ParamField>
+
+<ParamField path="getOnAction" type="(toolCallId, toolName) => (input) => void" required>
+  Callback factory for tool re-execution
+</ParamField>
+
+<ParamField path="maxItems" type="number" default="5">
+  Maximum number of items to display
+</ParamField>
+
+<ParamField path="className" type="string">
+  CSS class for the panel container
+</ParamField>
+
+## ChatPanel (with ChatProvider)
+
+Use `ChatPanel` inside a `ChatProvider` — it reads context automatically:
+
+```tsx
+<ChatProvider tools={tools}>
+  <div className="flex">
+    <Thread className="flex-1" />
+    <ChatPanel maxItems={5} className="w-96" />
+  </div>
+  <Composer />
+</ChatProvider>
+```
+
+## Multi-Item Rendering
+
+The panel displays multiple tool outputs simultaneously:
+
+1. Groups entries by `entityId` (from tool grouping)
+2. Shows only the latest entry per entity group
+3. Includes all ungrouped entries
+4. Sorts by `seqNo` descending (newest first)
+5. Caps at `maxItems`
+
+## Empty State
+
+When no tool outputs are available, the panel shows a centered icon with a dot grid background.

@@ -1,0 +1,118 @@
+---
+title: "tool()"
+description: "Factory function to create a new Tool"
+---
+
+## Signature
+
+```tsx
+// Object config
+function tool<TInput, TOutput>(config: ToolConfig<TInput, TOutput>): Tool<TInput, TOutput>;
+
+// Fluent builder
+function tool(name: string): ToolBuilder;
+```
+
+## ToolConfig
+
+```typescript
+interface ToolConfig<TInput, TOutput> {
+  name: string;
+  description?: string;
+  input: z.ZodType<TInput>;
+  output?: z.ZodType<TOutput>;
+  tags?: string[];
+  cache?: CacheConfig<TInput>;
+  clientFetch?: ClientFetchConfig;
+  confirm?: boolean | ((input: TInput) => boolean);
+  hints?: ToolHints;
+  groupKey?: (input: TInput) => string;
+  autoRespond?: boolean;
+}
+```
+
+### Parameters
+
+<ParamField path="name" type="string" required>
+  Unique name for the tool. Used as the key in tool registries and for AI SDK.
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description sent to the AI model so it knows when to use this tool.
+</ParamField>
+
+<ParamField path="input" type="z.ZodType<TInput>" required>
+  Zod schema for validating tool input. Provides TypeScript inference throughout.
+</ParamField>
+
+<ParamField path="output" type="z.ZodType<TOutput>">
+  Optional Zod schema for validating tool output.
+</ParamField>
+
+<ParamField path="confirm" type="boolean | ((input: TInput) => boolean)">
+  Require user confirmation before executing. When a function, evaluated per-call.
+</ParamField>
+
+<ParamField path="groupKey" type="(input: TInput) => string">
+  Group related tool calls by a key derived from input. Calls with the same key collapse in the thread.
+</ParamField>
+
+<ParamField path="autoRespond" type="boolean">
+  When true, user interactions with this tool's view automatically trigger an AI response.
+</ParamField>
+
+<ParamField path="hints" type="ToolHints">
+  Behavioral hints: `destructive` (auto-implies confirm), `readOnly`, `idempotent`.
+</ParamField>
+
+<ParamField path="cache" type="CacheConfig<TInput>">
+  Cache configuration with `ttl` (ms) and optional `key` function.
+</ParamField>
+
+<ParamField path="tags" type="string[]">
+  Metadata tags for organizing tools.
+</ParamField>
+
+<ParamField path="clientFetch" type="ClientFetchConfig">
+  Customize the auto-fetch endpoint (default: `/api/tools/execute`).
+</ParamField>
+
+## ToolBuilder (Fluent API)
+
+```tsx
+const weather = tool('weather')
+  .description('Get weather')
+  .input(z.object({ city: z.string() }))
+  .output(z.object({ temp: z.number() }))
+  .tags('weather', 'api')
+  .cache({ ttl: 60000 })
+  .requireConfirm(false)
+  .groupBy((input) => input.city)
+  .autoRespondAfterAction(true)
+  .hints({ readOnly: true })
+  .server(async ({ city }) => ({ temp: 72 }))
+  .client(async ({ city }) => ({ temp: 72 }))
+  .stream(async ({ city }, { stream }) => { /* ... */ })
+  .view((data) => <div>{data.temp}</div>)
+  .build();
+```
+
+### Builder Methods
+
+| Method | Description |
+|--------|-------------|
+| `.description(desc)` | Set tool description |
+| `.input(schema)` | Set input Zod schema |
+| `.output(schema)` | Set output Zod schema |
+| `.tags(...tags)` | Add metadata tags |
+| `.cache(config)` | Configure caching |
+| `.clientFetch(config)` | Configure auto-fetch endpoint |
+| `.requireConfirm(value)` | Set confirmation requirement |
+| `.groupBy(fn)` | Set group key function |
+| `.autoRespondAfterAction(value)` | Set auto-respond flag |
+| `.hints(hints)` | Set behavioral hints |
+| `.server(handler)` | Set server handler |
+| `.client(handler)` | Set client handler |
+| `.stream(handler)` | Set stream handler |
+| `.view(component)` | Set view component |
+| `.build()` | Create the Tool instance |

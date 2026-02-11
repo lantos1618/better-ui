@@ -1,0 +1,36 @@
+---
+title: "Composer"
+description: "Message input with send button"
+---
+
+## Import
+
+```tsx
+import { Composer } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<ChatProvider tools={tools}>
+  <Thread />
+  <Composer placeholder="Ask me anything..." />
+</ChatProvider>
+```
+
+## Props
+
+<ParamField path="placeholder" type="string" default="'Type a message...'">
+  Placeholder text for the input field
+</ParamField>
+
+<ParamField path="className" type="string">
+  CSS class for the container
+</ParamField>
+
+## Features
+
+- **Enter to send**: Press Enter to send, Shift+Enter for newline
+- **Auto-disable**: Disabled while AI is streaming
+- **State sync**: Automatically bundles dirty tool state into the message envelope
+- **Clear on send**: Input clears after sending

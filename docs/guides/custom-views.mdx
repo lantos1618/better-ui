@@ -1,0 +1,151 @@
+---
+title: "Custom Views"
+description: "Build your own tool views from scratch"
+---
+
+## Basic Pattern
+
+Every tool view receives the tool's output data and an optional state object:
+
+```tsx
+myTool.view((data, state) => {
+  // data: the tool's TOutput
+  // state.loading: boolean
+  // state.streaming: boolean
+  // state.error: Error | null
+  // state.onAction: (input: TInput) => void
+  return <div>...</div>;
+});
+```
+
+## Loading State
+
+Show a skeleton or spinner while the tool executes:
+
+```tsx
+weather.view((data, state) => {
+  if (state?.loading && !data) {
+    return (
+      <div className="animate-pulse bg-zinc-800 rounded-xl p-4 h-24" />
+    );
+  }
+
+  return (
+    <div className="p-4 rounded-xl bg-blue-500">
+      <p>{data.temp}°F</p>
+    </div>
+  );
+});
+```
+
+## Interactive Actions
+
+Use `state.onAction` to let users trigger re-execution with new input:
+
+```tsx
+const counter = tool({
+  name: 'counter',
+  input: z.object({ count: z.number() }),
+  output: z.object({ count: z.number() }),
+});
+
+counter.view((data, state) => (
+  <div className="flex items-center gap-4">
+    <button
+      onClick={() => state?.onAction?.({ count: data.count - 1 })}
+      disabled={state?.loading}
+      className="px-3 py-1 bg-zinc-700 rounded"
+    >
+      -
+    </button>
+    <span className="text-2xl font-mono">{data.count}</span>
+    <button
+      onClick={() => state?.onAction?.({ count: data.count + 1 })}
+      disabled={state?.loading}
+      className="px-3 py-1 bg-zinc-700 rounded"
+    >
+      +
+    </button>
+  </div>
+));
+```
+
+When the user clicks a button:
+1. `onAction` calls the tool with new input `{ count: N }`
+2. Server handler runs and returns the new count
+3. View re-renders with updated data
+4. State is marked dirty for AI sync
+
+## Composing Built-in Components
+
+Mix built-in components with custom elements:
+
+```tsx
+import { ProgressView, DataTableView } from '@lantos1618/better-ui/components';
+
+deployTool.view((data, state) => (
+  <div className="space-y-4">
+    <h3 className="text-lg font-semibold">{data.projectName}</h3>
+
+    <ProgressView
+      type="steps"
+      steps={data.steps}
+    />
+
+    {data.logs && (
+      <DataTableView
+        title="Build Logs"
+        columns={[
+          { key: 'timestamp', label: 'Time' },
+          { key: 'message', label: 'Message' },
+        ]}
+        rows={data.logs}
+      />
+    )}
+  </div>
+));
+```
+
+## Streaming Views
+
+For tools with `.stream()` handlers, the view receives partial data during streaming:
+
+```tsx
+search.view((data, state) => (
+  <div>
+    {state?.streaming && (
+      <div className="text-sm text-zinc-500 mb-2">Searching...</div>
+    )}
+    <ul>
+      {data.results?.map((r, i) => (
+        <li key={i}>{r.title}</li>
+      ))}
+    </ul>
+  </div>
+));
+```
+
+## Error Handling
+
+Handle errors gracefully in your view:
+
+```tsx
+weather.view((data, state) => {
+  if (state?.error) {
+    return (
+      <div className="p-4 rounded-xl bg-red-900/20 border border-red-800 text-red-300">
+        Failed to load weather: {state.error.message}
+      </div>
+    );
+  }
+
+  // ... normal rendering
+});
+```
+
+## Tips
+
+- Always disable interactive elements when `state.loading` is true
+- Use `state?.onAction?.()` with optional chaining — state may be undefined
+- When calling `onAction` with selection/form data, spread the original data to maintain the full input shape: `state?.onAction?.({ ...data, selected: value })`
+- Views are automatically memoized — avoid creating new objects/functions in the render unless necessary

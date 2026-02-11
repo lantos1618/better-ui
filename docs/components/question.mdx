@@ -1,0 +1,103 @@
+---
+title: "Question"
+description: "Single-select or multi-select choice component"
+---
+
+## Import
+
+```tsx
+import { QuestionView } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<QuestionView
+  question="What kind of stocks are you interested in?"
+  options={[
+    { label: 'Tech', value: 'tech', description: 'FAANG, semiconductors, etc.' },
+    { label: 'Energy', value: 'energy', description: 'Oil, solar, wind' },
+    { label: 'Finance', value: 'finance', description: 'Banks, insurance, fintech' },
+  ]}
+  mode="single"
+  onSelect={(value) => console.log(value)}
+/>
+```
+
+## Props
+
+<ParamField path="question" type="string" required>
+  The question text displayed at the top
+</ParamField>
+
+<ParamField path="options" type="QuestionOption[]" required>
+  Available options. Each option has `label`, `value`, and optional `description`.
+</ParamField>
+
+<ParamField path="mode" type="'single' | 'multi'" default="'single'">
+  Selection mode. `single` submits immediately on click. `multi` shows checkboxes with a confirm button.
+</ParamField>
+
+<ParamField path="selected" type="string | string[] | null">
+  Currently selected value(s). When set, shows the "answered" state.
+</ParamField>
+
+<ParamField path="onSelect" type="(value: string | string[]) => void">
+  Called when user makes a selection. Returns a single string in single mode, or an array in multi mode.
+</ParamField>
+
+<ParamField path="allowFreeform" type="boolean" default="false">
+  Show an "Or type your own answer..." option for custom text input.
+</ParamField>
+
+<ParamField path="loading" type="boolean" default="false">
+  Disables interaction and reduces opacity while loading.
+</ParamField>
+
+## States
+
+### Unanswered (Single Select)
+Options display as radio buttons. Clicking an option immediately submits.
+
+### Unanswered (Multi Select)
+Options display as checkboxes. User toggles selections, then clicks "Confirm (N selected)".
+
+### Answered
+Shows the question with a green badge displaying the selected answer(s).
+
+## Example: AI Tool
+
+```tsx
+const questionTool = tool({
+  name: 'question',
+  autoRespond: true,
+  input: z.object({
+    question: z.string(),
+    options: z.array(z.object({
+      label: z.string(),
+      value: z.string(),
+      description: z.string().optional(),
+    })),
+    mode: z.enum(['single', 'multi']).optional(),
+    allowFreeform: z.boolean().optional(),
+    selected: z.union([z.string(), z.array(z.string())]).optional(),
+  }),
+  output: z.object({ /* ... */ }),
+});
+
+questionTool.view((data, state) => (
+  <QuestionView
+    question={data.question}
+    options={data.options}
+    mode={data.mode || 'single'}
+    selected={data.selected}
+    onSelect={(value) => state?.onAction?.({
+      ...data,
+      selected: value,
+    })}
+    loading={state?.loading}
+  />
+));
+```
+
+With `autoRespond: true`, the AI automatically receives the user's selection and continues the conversation.

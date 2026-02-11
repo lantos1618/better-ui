@@ -1,0 +1,73 @@
+---
+title: "useToolState / createToolStateStore"
+description: "Shared tool state management"
+---
+
+## Import
+
+```tsx
+import { createToolStateStore, useToolState } from '@lantos1618/better-ui/components';
+```
+
+## createToolStateStore
+
+Creates a store for managing tool state across components.
+
+```tsx
+const store = createToolStateStore();
+```
+
+### Store Methods
+
+| Method | Description |
+|--------|-------------|
+| `get(toolCallId)` | Get state entry for a tool call |
+| `set(toolCallId, entry)` | Set state entry (auto-assigns `seqNo`) |
+| `subscribe(toolCallId, callback)` | Subscribe to changes for a specific tool call |
+| `subscribeAll(callback)` | Subscribe to all changes |
+| `getSnapshot()` | Get all entries as a Map |
+| `getLatestPerEntity()` | Get latest entry per entity group |
+
+## ToolStateEntry
+
+```typescript
+interface ToolStateEntry {
+  output: unknown;
+  loading: boolean;
+  error: string | null;
+  version: number;
+  toolName?: string;
+  status?: 'confirmed' | 'rejected';
+  entityId?: string;    // "toolName:groupKey(input)"
+  toolInput?: unknown;
+  seqNo?: number;       // Auto-incrementing insertion order
+}
+```
+
+## useToolState
+
+React hook to subscribe to a specific tool call's state:
+
+```tsx
+function MyComponent({ toolCallId }: { toolCallId: string }) {
+  const state = useToolState(store, toolCallId);
+
+  if (state?.loading) return <Spinner />;
+  if (state?.error) return <Error message={state.error} />;
+
+  return <div>{JSON.stringify(state?.output)}</div>;
+}
+```
+
+## Usage with ChatProvider
+
+ChatProvider creates an internal store automatically. You can also pass an external store:
+
+```tsx
+const store = createToolStateStore();
+
+<ChatProvider tools={tools} toolStateStore={store}>
+  <Thread />
+  <MyCustomPanel store={store} />
+</ChatProvider>
+```

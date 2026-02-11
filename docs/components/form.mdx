@@ -1,0 +1,93 @@
+---
+title: "Form"
+description: "Schema-driven form component for collecting structured data"
+---
+
+## Import
+
+```tsx
+import { FormView } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<FormView
+  title="Contact Information"
+  fields={[
+    { name: 'name', label: 'Full Name', type: 'text', required: true },
+    { name: 'email', label: 'Email', type: 'email', required: true },
+    { name: 'message', label: 'Message', type: 'textarea' },
+    { name: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Medium', 'High'] },
+    { name: 'newsletter', label: 'Subscribe to newsletter', type: 'toggle' },
+  ]}
+  onSubmit={(values) => console.log(values)}
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Optional form title displayed above the fields
+</ParamField>
+
+<ParamField path="description" type="string">
+  Optional description text below the title
+</ParamField>
+
+<ParamField path="fields" type="FormField[]" required>
+  Array of field definitions (see Field Types below)
+</ParamField>
+
+<ParamField path="submitLabel" type="string" default="'Submit'">
+  Custom text for the submit button
+</ParamField>
+
+<ParamField path="submitted" type="boolean">
+  When true, shows the submitted state with a summary of values
+</ParamField>
+
+<ParamField path="values" type="Record<string, unknown>">
+  Pre-filled or submitted values
+</ParamField>
+
+<ParamField path="onSubmit" type="(values: Record<string, unknown>) => void">
+  Called when user submits the form
+</ParamField>
+
+<ParamField path="loading" type="boolean" default="false">
+  Disables the form while loading
+</ParamField>
+
+## Field Types
+
+| Type | Renders | Description |
+|------|---------|-------------|
+| `text` | Text input | Single line text |
+| `number` | Number input | Numeric value |
+| `email` | Email input | Email with validation |
+| `textarea` | Multi-line input | Long text |
+| `select` | Dropdown | Choose from `options` array |
+| `toggle` | Switch | Boolean on/off |
+
+### Field Definition
+
+```typescript
+interface FormField {
+  name: string;        // Field key in the values object
+  label: string;       // Display label
+  type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'toggle';
+  required?: boolean;  // Validation
+  placeholder?: string;
+  options?: string[];  // For select type
+  defaultValue?: unknown;
+}
+```
+
+## States
+
+### Active
+Renders all fields with a submit button. Required fields show validation on submit.
+
+### Submitted
+Shows a read-only summary with field labels and submitted values, highlighted in a success theme.

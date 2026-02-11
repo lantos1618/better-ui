@@ -1,0 +1,106 @@
+---
+title: "Introduction"
+description: "A type-safe framework for building AI tools with rich, interactive UIs"
+---
+
+# Better UI
+
+Better UI is a framework for building AI-powered applications where **tools have views**. Instead of the AI returning plain text that you render manually, each tool defines its own React component that renders automatically when the AI calls it.
+
+## The Problem
+
+Every AI chat framework makes you do this:
+
+```tsx
+// 😩 The old way: manually map tool outputs to UI
+if (toolCall.name === 'weather') {
+  return <WeatherCard data={toolCall.output} />;
+} else if (toolCall.name === 'stockQuote') {
+  return <StockCard data={toolCall.output} />;
+} else if (toolCall.name === 'taskList') {
+  return <TaskList data={toolCall.output} />;
+}
+// ... for every single tool
+```
+
+## The Solution
+
+With Better UI, views are part of the tool definition:
+
+```tsx
+const weather = tool({
+  name: 'weather',
+  input: z.object({ city: z.string() }),
+  output: z.object({ temp: z.number(), condition: z.string() }),
+});
+
+weather.server(async ({ city }) => {
+  const data = await fetchWeather(city);
+  return { temp: data.temp, condition: data.condition };
+});
+
+weather.view((data) => (
+  <div className="p-4 rounded-xl bg-blue-50">
+    <h3>{data.condition}</h3>
+    <p className="text-3xl font-bold">{data.temp}°F</p>
+  </div>
+));
+```
+
+When the AI calls the `weather` tool, the view renders automatically. No switch statements. No manual mapping. The tool **is** the UI.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Tools = Views" icon="puzzle-piece">
+    Every tool defines its own React view. AI calls tool → view renders automatically.
+  </Card>
+  <Card title="Type-Safe" icon="shield-check">
+    Zod schemas for input/output. Full TypeScript inference from schema to view.
+  </Card>
+  <Card title="Interactive" icon="hand-pointer">
+    Views can have buttons, forms, and actions that execute tools and sync state back to the AI.
+  </Card>
+  <Card title="Human-in-the-Loop" icon="user-check">
+    Tools can require user approval before executing. Conditional per-input confirmation.
+  </Card>
+  <Card title="State Sync" icon="arrows-rotate">
+    When users interact with tool UIs, the state automatically syncs back to the AI context.
+  </Card>
+  <Card title="Tool Grouping" icon="layer-group">
+    Repeated tool calls (like task list updates) collapse into a single card instead of stacking.
+  </Card>
+  <Card title="Rich Components" icon="palette">
+    Built-in Question, Form, DataTable, Progress, Media, CodeBlock, Toast, and FileUpload views.
+  </Card>
+  <Card title="Multi-Provider" icon="plug">
+    Works with OpenAI, Anthropic, Google, and OpenRouter via Vercel AI SDK.
+  </Card>
+</CardGroup>
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   tool()     │────▶│  AI SDK v5   │────▶│  LLM        │
+│  definition  │     │  streamText  │     │  (any)      │
+│              │     └──────────────┘     └─────────────┘
+│  .server()   │            │
+│  .view()     │            ▼
+│  .client()   │     ┌──────────────┐
+└─────────────┘     │  ChatProvider │
+                    │  Thread/Panel │
+                    │  ToolResult   │──▶ tool.View auto-renders
+                    └──────────────┘
+```
+
+## Next Steps
+
+<CardGroup>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in 5 minutes
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts">
+    Understand tools, views, and state sync
+  </Card>
+</CardGroup>

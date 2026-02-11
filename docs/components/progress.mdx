@@ -1,0 +1,66 @@
+---
+title: "Progress"
+description: "Step-based progress indicators and percentage bars"
+---
+
+## Import
+
+```tsx
+import { ProgressView } from '@lantos1618/better-ui/components';
+```
+
+## Step-Based Progress
+
+```tsx
+<ProgressView
+  title="Deployment Pipeline"
+  type="steps"
+  steps={[
+    { label: 'Build', status: 'done', detail: 'Compiled in 2.3s' },
+    { label: 'Test', status: 'running', detail: '47/52 passed' },
+    { label: 'Deploy', status: 'pending' },
+  ]}
+/>
+```
+
+## Percentage Bar
+
+```tsx
+<ProgressView
+  title="Upload Progress"
+  type="bar"
+  percent={67}
+  detail="Uploading 3 of 5 files..."
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Progress indicator title
+</ParamField>
+
+<ParamField path="type" type="'steps' | 'bar'" default="'steps'">
+  Display mode
+</ParamField>
+
+<ParamField path="steps" type="ProgressStep[]">
+  For step mode. Each step has `label`, `status` (`'pending' | 'running' | 'done' | 'error'`), and optional `detail`.
+</ParamField>
+
+<ParamField path="percent" type="number">
+  For bar mode. Progress percentage (0-100).
+</ParamField>
+
+<ParamField path="detail" type="string">
+  Additional detail text below the progress indicator.
+</ParamField>
+
+## Step Statuses
+
+| Status | Icon | Color |
+|--------|------|-------|
+| `pending` | Circle outline | Gray |
+| `running` | Pulsing dot | Blue |
+| `done` | Checkmark | Green |
+| `error` | X mark | Red |

@@ -1,0 +1,97 @@
+---
+title: "Providers"
+description: "Use Better UI with OpenAI, Anthropic, Google, or OpenRouter"
+---
+
+## Overview
+
+Better UI works with any LLM provider supported by Vercel AI SDK. The tool definition is provider-agnostic — you only change the `model` in your API route.
+
+## OpenAI
+
+```ts
+import { openai } from '@ai-sdk/openai';
+
+const result = await streamText({
+  model: openai('gpt-4o'),
+  tools: { weather: weatherTool.toAITool() },
+  messages,
+});
+```
+
+## Anthropic
+
+```ts
+import { anthropic } from '@ai-sdk/anthropic';
+
+const result = await streamText({
+  model: anthropic('claude-sonnet-4-5-20250929'),
+  tools: { weather: weatherTool.toAITool() },
+  messages,
+});
+```
+
+## Google
+
+```ts
+import { google } from '@ai-sdk/google';
+
+const result = await streamText({
+  model: google('gemini-2.0-flash'),
+  tools: { weather: weatherTool.toAITool() },
+  messages,
+});
+```
+
+## OpenRouter
+
+```ts
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+
+const result = await streamText({
+  model: openrouter('anthropic/claude-sonnet-4-5-20250929'),
+  tools: { weather: weatherTool.toAITool() },
+  messages,
+});
+```
+
+## Environment Variables
+
+Set the API key for your provider:
+
+```bash
+# .env.local
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_GENERATIVE_AI_API_KEY=...
+OPENROUTER_API_KEY=sk-or-...
+```
+
+## Multi-Provider Setup
+
+You can use different providers for different routes or let users choose:
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
+
+export async function POST(req: Request) {
+  const { messages, provider = 'openai' } = await req.json();
+
+  const model = provider === 'anthropic'
+    ? anthropic('claude-sonnet-4-5-20250929')
+    : openai('gpt-4o');
+
+  const result = await streamText({
+    model,
+    tools: { weather: weatherTool.toAITool() },
+    messages: convertToModelMessages(messages),
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+The tools are identical across providers — `toAITool()` returns a standard format that all Vercel AI SDK providers understand.

@@ -1,0 +1,110 @@
+---
+title: "Core Concepts"
+description: "Understand the mental model behind Better UI"
+---
+
+## Tools Are the Unit of UI
+
+In Better UI, a **tool** is not just a function the AI can call — it's a complete unit of functionality with:
+
+| Layer | Purpose | Runs where |
+|-------|---------|-----------|
+| **Schema** | Input/output types via Zod | Both |
+| **Server** | Business logic, API calls, DB queries | Server only |
+| **Client** | Optional client-side logic | Browser only |
+| **View** | React component to render output | Browser only |
+
+```tsx
+const stockQuote = tool({
+  name: 'stockQuote',
+  input: z.object({ symbol: z.string() }),
+  output: z.object({ symbol: z.string(), price: z.number(), change: z.number() }),
+});
+
+stockQuote.server(async ({ symbol }) => { /* fetch from API */ });
+stockQuote.view((data) => <StockCard {...data} />);
+```
+
+When the AI calls `stockQuote({ symbol: 'AAPL' })`, the server handler runs, and the view renders the result — automatically.
+
+## The Rendering Pipeline
+
+```
+AI calls tool → server handler runs → output returned
+                                          │
+                        ┌─────────────────┘
+                        ▼
+              ToolResult component
+                        │
+                        ▼
+              tool.View renders with output data
+```
+
+`ToolResult` is the bridge. It:
+1. Looks up the tool definition by name
+2. Passes the output to `tool.View`
+3. Handles loading, error, and streaming states
+4. Provides `onAction` for interactive views
+
+## Interactive Views
+
+Views aren't read-only. They can trigger actions:
+
+```tsx
+counter.view((data, state) => (
+  <div>
+    <span>{data.count}</span>
+    <button onClick={() => state?.onAction?.({ count: data.count + 1 })}>
+      +1
+    </button>
+  </div>
+));
+```
+
+When the user clicks +1, `onAction` re-executes the tool with the new input. The view updates with the new output.
+
+## State Sync
+
+When a user interacts with a tool view (clicking buttons, selecting options), the updated state is tracked as "dirty". The next time the user sends a message, dirty state is bundled as a JSON envelope and sent to the server, where it's injected into the AI's context.
+
+This means: **the AI always knows what the user did in the UI**.
+
+```
+User clicks +5 on counter → state marked dirty
+User types "what's the score?" → envelope: { text: "what's the score?", stateContext: { counter: { count: 16 } } }
+AI responds: "The current count is 16"
+```
+
+## Tool Grouping
+
+When the AI calls the same tool multiple times with the same `groupKey`, earlier calls collapse into minimal chips. Only the latest renders fully.
+
+```tsx
+const taskList = tool({
+  name: 'taskList',
+  groupKey: (input) => input.listId || 'default',
+  // ...
+});
+```
+
+AI calls `taskList` 10 times to update tasks → user sees 1 full card + 9 collapsed chips.
+
+## Human-in-the-Loop (HITL)
+
+Tools can require user confirmation before executing:
+
+```tsx
+const sendEmail = tool({
+  name: 'sendEmail',
+  confirm: true, // always confirm
+  // ...
+});
+
+const taskList = tool({
+  name: 'taskList',
+  confirm: (input) => input.action === 'create', // only confirm creates
+  // ...
+});
+```
+
+When `confirm` is set, the AI SDK leaves the tool call pending. The user sees an Approve/Reject card. On approval, the tool executes and the result feeds back to the AI.

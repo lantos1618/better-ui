@@ -1,0 +1,115 @@
+---
+title: "Tools"
+description: "Define AI tools with schemas, handlers, and views"
+---
+
+## Creating Tools
+
+There are two ways to create tools: **object config** and **fluent builder**.
+
+### Object Config
+
+```tsx
+import { tool } from '@lantos1618/better-ui';
+import { z } from 'zod';
+
+const weather = tool({
+  name: 'weather',
+  description: 'Get current weather for a city',
+  input: z.object({ city: z.string() }),
+  output: z.object({ temp: z.number(), condition: z.string() }),
+});
+
+weather.server(async ({ city }) => {
+  return { temp: 72, condition: 'Sunny' };
+});
+
+weather.view((data) => (
+  <div>{data.temp}°F — {data.condition}</div>
+));
+```
+
+### Fluent Builder
+
+```tsx
+const weather = tool('weather')
+  .description('Get current weather')
+  .input(z.object({ city: z.string() }))
+  .output(z.object({ temp: z.number(), condition: z.string() }))
+  .server(async ({ city }) => ({ temp: 72, condition: 'Sunny' }))
+  .view((data) => <div>{data.temp}°F</div>)
+  .build();
+```
+
+## Tool Configuration
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `string` | Unique tool name |
+| `description` | `string` | Description for the AI model |
+| `input` | `z.ZodType` | Zod schema for input validation |
+| `output` | `z.ZodType` | Optional Zod schema for output validation |
+| `confirm` | `boolean \| (input) => boolean` | Require user confirmation ([HITL](/core/hitl)) |
+| `groupKey` | `(input) => string` | Group related calls ([Tool Grouping](/guides/tool-grouping)) |
+| `autoRespond` | `boolean` | Auto-send state to AI after user interaction ([Auto-Respond](/guides/auto-respond)) |
+| `hints` | `ToolHints` | Behavioral hints (`destructive`, `readOnly`, `idempotent`) |
+| `cache` | `CacheConfig` | Cache configuration with TTL |
+| `tags` | `string[]` | Metadata tags |
+
+## Handlers
+
+### Server Handler
+
+Runs on your server (API routes, server components). Never exposed to the client.
+
+```tsx
+weather.server(async (input, ctx) => {
+  // ctx.env — environment variables
+  // ctx.headers — request headers
+  // ctx.user — authenticated user
+  // ctx.cache — shared cache map
+  return { temp: 72, condition: 'Sunny' };
+});
+```
+
+### Client Handler
+
+Optional. Runs in the browser. If not defined, the tool auto-fetches from `/api/tools/execute`.
+
+```tsx
+counter.client(async ({ count }) => {
+  // Client-side logic (no server roundtrip)
+  return { count };
+});
+```
+
+### Stream Handler
+
+For tools that produce partial results over time.
+
+```tsx
+search.stream(async (input, { stream }) => {
+  for (const result of results) {
+    stream({ results: [result] }); // partial update
+    await delay(100);
+  }
+  return { results }; // final result
+});
+```
+
+## Converting to AI SDK Format
+
+Pass tools to Vercel AI SDK's `streamText` with `toAITool()`:
+
+```ts
+const result = await streamText({
+  model: openai('gpt-4o'),
+  tools: {
+    weather: weatherTool.toAITool(),
+    search: searchTool.toAITool(),
+  },
+  messages,
+});
+```
+
+`toAITool()` returns the schema + execute function. When `confirm` is set, it omits the execute function so the AI SDK leaves the call pending for user approval.

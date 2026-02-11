@@ -1,0 +1,60 @@
+---
+title: "Media"
+description: "Image grids, video, and audio display"
+---
+
+## Import
+
+```tsx
+import { MediaDisplayView } from '@lantos1618/better-ui/components';
+```
+
+## Image Grid
+
+```tsx
+<MediaDisplayView
+  title="Generated Images"
+  items={[
+    { type: 'image', url: '/img1.jpg', alt: 'Landscape' },
+    { type: 'image', url: '/img2.jpg', alt: 'Portrait' },
+    { type: 'image', url: '/img3.jpg', alt: 'Abstract' },
+  ]}
+/>
+```
+
+## Video
+
+```tsx
+<MediaDisplayView
+  items={[
+    { type: 'video', url: '/demo.mp4', title: 'Product Demo' },
+  ]}
+/>
+```
+
+## Audio
+
+```tsx
+<MediaDisplayView
+  items={[
+    { type: 'audio', url: '/podcast.mp3', title: 'Episode 42' },
+  ]}
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Optional title above the media grid
+</ParamField>
+
+<ParamField path="items" type="MediaItem[]" required>
+  Array of media items. Each item has `type` (`'image' | 'video' | 'audio'`), `url`, and optional `title`/`alt`.
+</ParamField>
+
+## Features
+
+- **Image grid**: Responsive grid layout with click-to-expand lightbox
+- **Video player**: Native HTML5 video with controls
+- **Audio player**: Native HTML5 audio with controls
+- **Mixed content**: Images, video, and audio can be combined in one display

@@ -1,0 +1,70 @@
+---
+title: "Toast"
+description: "Non-blocking notification toasts"
+---
+
+## Import
+
+```tsx
+import { ToastProvider, useToast } from '@lantos1618/better-ui/components';
+```
+
+## Setup
+
+Wrap your app with `ToastProvider`:
+
+```tsx
+function App() {
+  return (
+    <ToastProvider>
+      <YourContent />
+    </ToastProvider>
+  );
+}
+```
+
+## Usage
+
+```tsx
+function MyComponent() {
+  const { addToast } = useToast();
+
+  return (
+    <button onClick={() => addToast({
+      type: 'success',
+      title: 'Email Sent',
+      message: 'Your message was delivered successfully.',
+      duration: 5000,
+    })}>
+      Send Email
+    </button>
+  );
+}
+```
+
+## Toast Types
+
+| Type | Color | Use Case |
+|------|-------|----------|
+| `success` | Green | Operation completed |
+| `error` | Red | Something failed |
+| `warning` | Amber | Potential issue |
+| `info` | Blue | General notification |
+
+## Toast Options
+
+```typescript
+interface Toast {
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message?: string;
+  duration?: number; // Auto-dismiss in ms (default: 4000, 0 = persistent)
+}
+```
+
+## Features
+
+- **Auto-dismiss**: Toasts disappear after `duration` ms
+- **Stacking**: Multiple toasts stack vertically
+- **Manual dismiss**: Click the X button to dismiss early
+- **Smooth animations**: Slide-in and fade-out transitions

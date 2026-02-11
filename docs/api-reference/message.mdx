@@ -1,0 +1,48 @@
+---
+title: "Message"
+description: "Renders a single chat message with tool outputs"
+---
+
+## Import
+
+```tsx
+import { Message } from '@lantos1618/better-ui/components';
+```
+
+## Props
+
+<ParamField path="message" type="UIMessage" required>
+  The AI SDK UIMessage to render
+</ParamField>
+
+<ParamField path="tools" type="Record<string, Tool>" required>
+  Tool registry for resolving views
+</ParamField>
+
+<ParamField path="toolStateStore" type="ToolStateStore" required>
+  Tool state store
+</ParamField>
+
+<ParamField path="getOnAction" type="(toolCallId, toolName) => (input) => void" required>
+  Callback factory for tool re-execution
+</ParamField>
+
+<ParamField path="onConfirm" type="(toolCallId, toolName, input) => void">
+  HITL confirmation callback
+</ParamField>
+
+<ParamField path="onReject" type="(toolCallId, toolName) => void">
+  HITL rejection callback
+</ParamField>
+
+<ParamField path="className" type="string">
+  CSS class for the message container
+</ParamField>
+
+## Rendering Behavior
+
+- **User messages**: Right-aligned bubble with plain text
+- **Assistant messages**: Left-aligned bubble with rendered Markdown
+- **Tool parts**: Each tool part renders as a `ToolResult`
+- **Hidden messages**: JSON envelope messages with `_meta.hidden: true` are not displayed
+- **Envelope parsing**: User messages that are JSON envelopes have their `text` extracted for display

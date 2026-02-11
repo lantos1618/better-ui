@@ -1,0 +1,118 @@
+---
+title: "Tool Class"
+description: "The Tool class instance methods and properties"
+---
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `string` | Tool name |
+| `description` | `string \| undefined` | Tool description |
+| `inputSchema` | `z.ZodType<TInput>` | Input Zod schema |
+| `outputSchema` | `z.ZodType<TOutput> \| undefined` | Output Zod schema |
+| `tags` | `string[]` | Metadata tags |
+| `confirm` | `boolean \| ((input) => boolean)` | Confirmation config |
+| `hints` | `ToolHints` | Behavioral hints |
+| `autoRespond` | `boolean` | Auto-respond flag |
+| `View` | `React.NamedExoticComponent` | Memoized React view component |
+
+## Methods
+
+### `.server(handler)`
+
+Define the server-side implementation.
+
+```typescript
+tool.server(async (input: TInput, ctx: ToolContext) => TOutput);
+```
+
+### `.client(handler)`
+
+Define the client-side implementation. Optional — auto-fetches if not set.
+
+```typescript
+tool.client(async (input: TInput, ctx: ToolContext) => TOutput);
+```
+
+### `.view(component)`
+
+Define the React view component.
+
+```typescript
+tool.view((data: TOutput, state?: ViewState<TInput>) => ReactElement | null);
+```
+
+### `.stream(handler)`
+
+Define the streaming implementation.
+
+```typescript
+tool.stream(async (input: TInput, ctx: ToolContext & { stream: StreamCallback<TOutput> }) => TOutput);
+```
+
+### `.run(input, ctx?)`
+
+Execute the tool. Uses server or client handler based on environment.
+
+```typescript
+const result = await tool.run({ city: 'Tokyo' });
+```
+
+### `.call(input, ctx?)`
+
+Alias for `.run()`.
+
+### `.runStream(input, ctx?)`
+
+Execute with streaming. Returns an async generator of partial results.
+
+```typescript
+for await (const { partial, done } of tool.runStream(input)) {
+  console.log(partial);
+  if (done) break;
+}
+```
+
+### `.toAITool()`
+
+Convert to Vercel AI SDK format for use with `streamText`.
+
+```typescript
+const result = await streamText({
+  tools: { weather: weatherTool.toAITool() },
+});
+```
+
+Returns `{ description, inputSchema, execute? }`. The `execute` function is omitted when `requiresConfirmation` is true.
+
+### `.shouldConfirm(input)`
+
+Check if a specific input should trigger user confirmation.
+
+```typescript
+tool.shouldConfirm({ action: 'delete' }); // true
+tool.shouldConfirm({ action: 'read' });   // false
+```
+
+### `.getGroupKey(input)`
+
+Get the entity group key for a given input.
+
+```typescript
+tool.getGroupKey({ listId: 'tasks' }); // "taskList:tasks"
+```
+
+### `.toJSON()`
+
+Serialize to a safe plain object (excludes handlers and schemas).
+
+## Computed Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `hasView` | `boolean` | Has a view component |
+| `hasServer` | `boolean` | Has a server handler |
+| `hasClient` | `boolean` | Has a client handler |
+| `hasStream` | `boolean` | Has a stream handler |
+| `requiresConfirmation` | `boolean` | Requires any form of confirmation |

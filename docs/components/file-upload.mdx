@@ -1,0 +1,64 @@
+---
+title: "FileUpload"
+description: "Drag-and-drop file upload with validation"
+---
+
+## Import
+
+```tsx
+import { FileUploadView } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<FileUploadView
+  title="Upload Documents"
+  accept=".pdf,.doc,.docx"
+  maxFiles={5}
+  maxSizeMB={10}
+  onUpload={(files) => console.log(files)}
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Upload area title
+</ParamField>
+
+<ParamField path="description" type="string">
+  Helper text below the title
+</ParamField>
+
+<ParamField path="accept" type="string">
+  Accepted file types (e.g. `'.pdf,.jpg,.png'` or `'image/*'`)
+</ParamField>
+
+<ParamField path="maxFiles" type="number" default="10">
+  Maximum number of files
+</ParamField>
+
+<ParamField path="maxSizeMB" type="number" default="10">
+  Maximum file size in megabytes
+</ParamField>
+
+<ParamField path="files" type="UploadedFile[]">
+  Pre-populated file list (for showing uploaded state)
+</ParamField>
+
+<ParamField path="onUpload" type="(files: UploadedFile[]) => void">
+  Called when files are selected or dropped
+</ParamField>
+
+<ParamField path="loading" type="boolean" default="false">
+  Shows uploading state
+</ParamField>
+
+## Features
+
+- **Drag and drop**: Drop files onto the upload zone
+- **Click to browse**: Click the zone to open file picker
+- **Validation**: File type and size validation with error messages
+- **File list**: Shows selected files with names and sizes
+- **Upload state**: Shows uploaded files in a success theme

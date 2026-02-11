@@ -1,0 +1,57 @@
+---
+title: "Auto-Respond"
+description: "Automatically continue the AI conversation after user interactions"
+---
+
+## Overview
+
+Normally, after a user interacts with a tool UI (clicking a button, selecting an option), the state waits until the user types a message. With `autoRespond`, the updated state is immediately sent to the AI so it can continue.
+
+## Usage
+
+```tsx
+const question = tool({
+  name: 'question',
+  autoRespond: true,
+  // ...
+});
+```
+
+## How It Works
+
+1. AI calls the question tool with options
+2. User selects "Tech stocks"
+3. `onAction` re-executes the tool with the selection
+4. Because `autoRespond: true`, a **hidden envelope** is immediately sent:
+   ```json
+   {
+     "text": "",
+     "stateContext": { "question": { "selected": "tech" } },
+     "_meta": { "hidden": true }
+   }
+   ```
+5. The AI receives the selection and continues (e.g., fetches tech stocks)
+
+The hidden envelope has `_meta.hidden: true`, so it doesn't appear as a visible user message in the chat thread.
+
+## When to Use
+
+**Good candidates for autoRespond:**
+- Question/choice tools — AI should act on the user's selection
+- Form tools — AI should process the submitted data
+- Approval tools — AI should continue after approval
+
+**Not recommended for autoRespond:**
+- Counter/slider tools — user may click multiple times before wanting the AI to react
+- Editing tools — user may not be done with changes
+
+## Combining with State Sync
+
+`autoRespond` and regular state sync work together:
+
+- **autoRespond**: Sends state immediately when user interacts (hidden message)
+- **State sync**: Collects dirty state and sends it with the user's next typed message
+
+If a tool has `autoRespond: true`, its state is sent immediately and removed from the dirty set. Other dirty tool states are still collected on the next typed message.
+
+If a tool does NOT have `autoRespond`, its state accumulates in the dirty set until the user sends a message.

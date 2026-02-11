@@ -1,0 +1,68 @@
+---
+title: "Components Overview"
+description: "Pre-built view components for common AI tool patterns"
+---
+
+Better UI ships view components you can use inside your tool `.view()` functions. These handle common patterns like questions, forms, data tables, and more.
+
+## Usage Pattern
+
+All view components follow the same pattern — use them inside your tool's `.view()`:
+
+```tsx
+import { QuestionView } from '@lantos1618/better-ui/components';
+
+myTool.view((data, state) => (
+  <QuestionView
+    question={data.question}
+    options={data.options}
+    selected={data.selected}
+    onSelect={(value) => state?.onAction?.({ ...data, selected: value })}
+    loading={state?.loading}
+  />
+));
+```
+
+## Available Components
+
+<CardGroup cols={2}>
+  <Card title="Question" icon="circle-question" href="/components/question">
+    Single-select or multi-select choice cards with optional freeform input
+  </Card>
+  <Card title="Form" icon="rectangle-list" href="/components/form">
+    Schema-driven forms with text, number, email, textarea, select, and toggle fields
+  </Card>
+  <Card title="DataTable" icon="table" href="/components/data-table">
+    Sortable, paginated tables with column definitions
+  </Card>
+  <Card title="Progress" icon="bars-progress" href="/components/progress">
+    Step-based progress indicators or percentage bars
+  </Card>
+  <Card title="Media" icon="image" href="/components/media">
+    Image grids with lightbox, video, and audio players
+  </Card>
+  <Card title="CodeBlock" icon="code" href="/components/code-block">
+    Syntax-highlighted code display with copy button and diff view
+  </Card>
+  <Card title="Toast" icon="bell" href="/components/toast">
+    Non-blocking notification toasts (success, error, warning, info)
+  </Card>
+  <Card title="FileUpload" icon="upload" href="/components/file-upload">
+    Drag-and-drop file upload with validation
+  </Card>
+</CardGroup>
+
+## Chat Components
+
+Better UI also provides pre-built chat layout components:
+
+| Component | Description |
+|-----------|-------------|
+| [`Chat`](/api-reference/chat-provider) | Full chat UI (Thread + Composer + Panel) |
+| [`ChatProvider`](/api-reference/chat-provider) | Context provider for chat state |
+| [`Thread`](/api-reference/thread) | Message list with auto-scroll |
+| [`Composer`](/api-reference/composer) | Message input with send button |
+| [`Panel`](/api-reference/panel) | Side panel for tool outputs |
+| [`Message`](/api-reference/message) | Single message renderer |
+| [`ToolResult`](/api-reference/tool-result) | Tool output renderer (auto-resolves views) |
+| [`Markdown`](/api-reference/thread) | Markdown renderer for assistant messages |

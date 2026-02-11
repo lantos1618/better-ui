@@ -1,0 +1,63 @@
+---
+title: "CodeBlock"
+description: "Code display with copy button, line numbers, and diff view"
+---
+
+## Import
+
+```tsx
+import { CodeBlockView } from '@lantos1618/better-ui/components';
+```
+
+## Basic Usage
+
+```tsx
+<CodeBlockView
+  title="api/route.ts"
+  language="typescript"
+  code={`export async function POST(req: Request) {
+  const { messages } = await req.json();
+  return streamText({ model, messages });
+}`}
+/>
+```
+
+## Diff View
+
+```tsx
+<CodeBlockView
+  title="Changes"
+  language="typescript"
+  code={codeString}
+  diff={true}
+/>
+```
+
+## Props
+
+<ParamField path="title" type="string">
+  Optional title (often the filename)
+</ParamField>
+
+<ParamField path="code" type="string" required>
+  The code content to display
+</ParamField>
+
+<ParamField path="language" type="string">
+  Language identifier for syntax context (e.g. `'typescript'`, `'python'`, `'json'`)
+</ParamField>
+
+<ParamField path="showLineNumbers" type="boolean" default="true">
+  Show line numbers in the gutter
+</ParamField>
+
+<ParamField path="diff" type="boolean" default="false">
+  Enable diff view — lines starting with `+` are highlighted green, `-` are highlighted red
+</ParamField>
+
+## Features
+
+- **Copy button**: One-click copy with visual feedback
+- **Line numbers**: Toggleable line number gutter
+- **Diff highlighting**: Green/red line backgrounds for added/removed lines
+- **Monospace font**: Proper code formatting

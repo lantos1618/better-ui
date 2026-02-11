@@ -1,0 +1,57 @@
+---
+title: "useTool"
+description: "React hook for executing tools and managing their state"
+---
+
+## Import
+
+```tsx
+import { useTool } from '@lantos1618/better-ui';
+```
+
+## Usage
+
+```tsx
+function WeatherWidget() {
+  const { data, loading, error, execute } = useTool(weatherTool);
+
+  return (
+    <div>
+      <button onClick={() => execute({ city: 'Tokyo' })} disabled={loading}>
+        Get Weather
+      </button>
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error.message}</p>}
+      {data && <p>{data.temp}°F — {data.condition}</p>}
+    </div>
+  );
+}
+```
+
+## Signature
+
+```typescript
+function useTool<TInput, TOutput>(
+  tool: Tool<TInput, TOutput>
+): {
+  data: TOutput | null;
+  loading: boolean;
+  error: Error | null;
+  execute: (input: TInput) => Promise<TOutput>;
+};
+```
+
+## Return Value
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | `TOutput \| null` | Latest tool output |
+| `loading` | `boolean` | True while executing |
+| `error` | `Error \| null` | Error from last execution |
+| `execute` | `(input) => Promise<TOutput>` | Trigger tool execution |
+
+## Notes
+
+- Uses the tool's client handler if available, otherwise auto-fetches from the server
+- State is local to the component (not shared with ChatProvider)
+- For tool state that's part of a chat conversation, use `ChatProvider` + `ToolResult` instead

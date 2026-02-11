@@ -1,0 +1,48 @@
+---
+title: "useToolOutput"
+description: "Subscribe to a specific tool's latest output"
+---
+
+## Import
+
+```tsx
+import { useToolOutput } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+function CounterDisplay({ store }: { store: ToolStateStore }) {
+  const counter = useToolOutput(store, 'counter');
+
+  if (!counter) return <p>No counter data yet</p>;
+
+  return <p>Count: {counter.count}</p>;
+}
+```
+
+## Signature
+
+```typescript
+function useToolOutput<T = unknown>(
+  store: ToolStateStore,
+  toolName: string
+): T | null;
+```
+
+Returns the latest output from any tool call with the given `toolName`, or `null` if no output exists.
+
+## useChatToolOutput
+
+Same hook but reads from ChatProvider context automatically:
+
+```tsx
+import { useChatToolOutput } from '@lantos1618/better-ui/components';
+
+function CounterDisplay() {
+  const counter = useChatToolOutput('counter');
+  return counter ? <p>{counter.count}</p> : null;
+}
+```
+
+Must be used inside a `ChatProvider`.

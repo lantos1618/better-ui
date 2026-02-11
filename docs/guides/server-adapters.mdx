@@ -1,0 +1,112 @@
+---
+title: "Server Adapters"
+description: "Use Better UI with Express, Next.js, or any Node.js framework"
+---
+
+## Next.js (App Router)
+
+Better UI works natively with Next.js App Router:
+
+```ts
+// app/api/chat/route.ts
+import { streamText, convertToModelMessages } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { weatherTool } from '@/lib/tools';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    messages: convertToModelMessages(messages),
+    tools: { weather: weatherTool.toAITool() },
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+### Tool Execution Route
+
+```ts
+// app/api/tools/execute/route.ts
+import { createNextToolHandler } from '@lantos1618/better-ui/adapters/nextjs';
+import { weatherTool, searchTool } from '@/lib/tools';
+
+const tools = { weather: weatherTool, search: searchTool };
+const handler = createNextToolHandler(tools);
+
+export const POST = handler;
+```
+
+## Express
+
+```ts
+import express from 'express';
+import { createExpressToolHandler } from '@lantos1618/better-ui/adapters/express';
+import { weatherTool, searchTool } from './tools';
+
+const app = express();
+app.use(express.json());
+
+const tools = { weather: weatherTool, search: searchTool };
+
+app.post('/api/tools/execute', createExpressToolHandler(tools));
+
+app.listen(3001);
+```
+
+## Custom Server
+
+For any server framework, use the tool's `.run()` method directly:
+
+```ts
+import { weatherTool } from './tools';
+
+// Your framework's route handler
+async function handleToolExecution(req, res) {
+  const { tool: toolName, input } = req.body;
+
+  const tools = { weather: weatherTool };
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return res.status(400).json({ error: 'Unknown tool' });
+  }
+
+  try {
+    const result = await toolDef.run(input, {
+      isServer: true,
+      headers: req.headers,
+      user: req.user,
+    });
+    return res.json({ result });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+}
+```
+
+## Tool Context
+
+All server handlers receive a `ToolContext` with server-specific fields:
+
+```ts
+weatherTool.server(async (input, ctx) => {
+  // ctx.isServer — always true on server
+  // ctx.env — environment variables
+  // ctx.headers — request headers
+  // ctx.cookies — parsed cookies
+  // ctx.user — authenticated user (set by your middleware)
+  // ctx.session — session data
+  // ctx.cache — shared cache map
+  // ctx.fetch — fetch function (can be customized)
+
+  const apiKey = ctx.env?.WEATHER_API_KEY;
+  const userId = ctx.user?.id;
+
+  return { temp: 72, condition: 'Sunny' };
+});
+```
+
+These fields are automatically stripped on the client to prevent accidental leakage of server secrets.

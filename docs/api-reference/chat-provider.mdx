@@ -1,0 +1,78 @@
+---
+title: "ChatProvider"
+description: "React context provider for chat state and tool execution"
+---
+
+## Import
+
+```tsx
+import { ChatProvider, useChatContext } from '@lantos1618/better-ui/components';
+```
+
+## ChatProvider
+
+Provides chat state, message sending, and tool execution to all child components.
+
+```tsx
+<ChatProvider
+  endpoint="/api/chat"
+  tools={{ weather: weatherTool, search: searchTool }}
+>
+  <Thread />
+  <Composer />
+</ChatProvider>
+```
+
+### Props
+
+<ParamField path="endpoint" type="string" default="'/api/chat'">
+  URL of your chat API route
+</ParamField>
+
+<ParamField path="tools" type="Record<string, Tool>" required>
+  Map of tool name to Tool instance. Used for view rendering and tool execution.
+</ParamField>
+
+<ParamField path="toolStateStore" type="ToolStateStore">
+  Optional external tool state store. If not provided, an internal store is created.
+</ParamField>
+
+<ParamField path="children" type="React.ReactNode" required>
+  Child components that need access to chat context
+</ParamField>
+
+## useChatContext
+
+Hook to access chat state from any component within ChatProvider.
+
+```tsx
+function MyComponent() {
+  const {
+    messages,
+    sendMessage,
+    isLoading,
+    status,
+    tools,
+    toolStateStore,
+    getOnAction,
+    confirmTool,
+    rejectTool,
+  } = useChatContext();
+
+  return <div>...</div>;
+}
+```
+
+### Return Value
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | `UIMessage[]` | All chat messages |
+| `sendMessage` | `(text: string) => void` | Send a user message (auto-attaches dirty state) |
+| `isLoading` | `boolean` | True when streaming or submitted |
+| `status` | `ChatStatus` | Detailed status: `'ready' \| 'streaming' \| 'submitted' \| 'error'` |
+| `tools` | `Record<string, Tool>` | Tool registry |
+| `toolStateStore` | `ToolStateStore` | Tool state store |
+| `getOnAction` | `(toolCallId, toolName) => (input) => void` | Get stable callback for tool re-execution |
+| `confirmTool` | `(toolCallId, toolName, input) => Promise<void>` | Approve a HITL tool call |
+| `rejectTool` | `(toolCallId, toolName) => Promise<void>` | Reject a HITL tool call |

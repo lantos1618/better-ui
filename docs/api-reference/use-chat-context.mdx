@@ -1,0 +1,60 @@
+---
+title: "useChatContext"
+description: "Access chat state from any component within ChatProvider"
+---
+
+## Import
+
+```tsx
+import { useChatContext } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+function CustomStatusBar() {
+  const { isLoading, messages, status } = useChatContext();
+
+  return (
+    <div className="flex items-center gap-2">
+      <span>{messages.length} messages</span>
+      {isLoading && <span className="animate-pulse">AI is thinking...</span>}
+      <span className="text-xs text-zinc-500">{status}</span>
+    </div>
+  );
+}
+```
+
+## Return Value
+
+```typescript
+interface ChatContextValue {
+  messages: UIMessage[];
+  sendMessage: (text: string) => void;
+  isLoading: boolean;
+  status: ChatStatus;
+  tools: Record<string, Tool>;
+  executeToolDirect: (toolName: string, toolInput: Record<string, unknown>, toolCallId: string) => Promise<void>;
+  getOnAction: (toolCallId: string, toolName: string) => (input: Record<string, unknown>) => void;
+  toolStateStore: ToolStateStore;
+  confirmTool: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => Promise<void>;
+  rejectTool: (toolCallId: string, toolName: string) => Promise<void>;
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | `UIMessage[]` | All messages in the conversation |
+| `sendMessage` | `(text) => void` | Send a user message with auto state sync |
+| `isLoading` | `boolean` | True during streaming or submission |
+| `status` | `ChatStatus` | `'ready'`, `'streaming'`, `'submitted'`, or `'error'` |
+| `tools` | `Record<string, Tool>` | The tool registry |
+| `executeToolDirect` | `(name, input, id) => Promise` | Execute a tool directly (used by onAction) |
+| `getOnAction` | `(id, name) => (input) => void` | Get a stable onAction callback |
+| `toolStateStore` | `ToolStateStore` | The shared tool state store |
+| `confirmTool` | `(id, name, input) => Promise` | Approve a HITL tool call |
+| `rejectTool` | `(id, name) => Promise` | Reject a HITL tool call |
+
+## Requirements
+
+Must be used within a `<ChatProvider>`. Throws if called outside.

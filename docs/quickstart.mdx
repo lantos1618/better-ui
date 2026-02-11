@@ -1,0 +1,152 @@
+---
+title: "Quickstart"
+description: "Get Better UI running in your Next.js app in 5 minutes"
+---
+
+## Installation
+
+<CodeGroup>
+```bash npm
+npm install @lantos1618/better-ui ai @ai-sdk/react @ai-sdk/openai zod
+```
+
+```bash pnpm
+pnpm add @lantos1618/better-ui ai @ai-sdk/react @ai-sdk/openai zod
+```
+
+```bash bun
+bun add @lantos1618/better-ui ai @ai-sdk/react @ai-sdk/openai zod
+```
+</CodeGroup>
+
+## 1. Define a Tool
+
+Create `lib/tools.tsx`:
+
+```tsx
+import { tool } from '@lantos1618/better-ui';
+import { z } from 'zod';
+
+export const weatherTool = tool({
+  name: 'weather',
+  description: 'Get current weather for a city',
+  input: z.object({ city: z.string() }),
+  output: z.object({
+    city: z.string(),
+    temp: z.number(),
+    condition: z.string(),
+  }),
+});
+
+// Server-side logic (runs in your API route, never exposed to client)
+weatherTool.server(async ({ city }) => {
+  // Replace with real API call
+  return { city, temp: 72, condition: 'Sunny' };
+});
+
+// View (renders automatically when AI calls this tool)
+weatherTool.view((data) => (
+  <div className="p-4 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+    <p className="text-sm opacity-80">{data.city}</p>
+    <p className="text-4xl font-bold">{data.temp}°F</p>
+    <p className="text-sm">{data.condition}</p>
+  </div>
+));
+```
+
+## 2. Create the API Route
+
+Create `app/api/chat/route.ts`:
+
+```ts
+import { openai } from '@ai-sdk/openai';
+import { streamText, convertToModelMessages } from 'ai';
+import { weatherTool } from '@/lib/tools';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const modelMessages = convertToModelMessages(messages);
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    system: 'You are a helpful assistant with access to tools.',
+    messages: modelMessages,
+    tools: {
+      weather: weatherTool.toAITool(),
+    },
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+## 3. Create the Tool Execution Route
+
+Create `app/api/tools/execute/route.ts`:
+
+```ts
+import { weatherTool } from '@/lib/tools';
+import type { Tool } from '@lantos1618/better-ui';
+
+const tools: Record<string, Tool> = {
+  weather: weatherTool,
+};
+
+export async function POST(req: Request) {
+  const { tool: toolName, input } = await req.json();
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return Response.json({ error: 'Unknown tool' }, { status: 400 });
+  }
+
+  const result = await toolDef.run(input, { isServer: true });
+  return Response.json({ result });
+}
+```
+
+## 4. Add the Chat UI
+
+Create `app/page.tsx`:
+
+```tsx
+'use client';
+
+import { Chat } from '@lantos1618/better-ui/components';
+import { weatherTool } from '@/lib/tools';
+
+const tools = { weather: weatherTool };
+
+export default function Home() {
+  return (
+    <div className="h-screen">
+      <Chat endpoint="/api/chat" tools={tools} />
+    </div>
+  );
+}
+```
+
+That's it. Type "What's the weather in Tokyo?" and the AI will call the weather tool, which automatically renders your custom view.
+
+## What Just Happened?
+
+1. **`tool()`** defined the weather tool with input/output schemas, server logic, and a view
+2. **`toAITool()`** converted it to Vercel AI SDK format for `streamText`
+3. **`Chat`** rendered a full chat interface with Thread + Composer
+4. When the AI called the `weather` tool, **`ToolResult`** looked up the tool's `.View` component and rendered it automatically
+
+No switch statements. No manual output → component mapping. The tool carries its own view.
+
+## Next Steps
+
+<CardGroup>
+  <Card title="Add Interactive Tools" icon="hand-pointer" href="/core/views">
+    Make tool views that users can interact with
+  </Card>
+  <Card title="Human-in-the-Loop" icon="user-check" href="/core/hitl">
+    Add confirmation flows for dangerous actions
+  </Card>
+  <Card title="Built-in Components" icon="palette" href="/components/overview">
+    Use pre-built Question, Form, DataTable, and more
+  </Card>
+</CardGroup>
