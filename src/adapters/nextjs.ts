@@ -5,6 +5,8 @@
 
 import { Tool, ToolContext } from '../tool';
 import { createRateLimiter, RateLimiter } from '../../lib/rate-limiter';
+import type { LanguageModelV2 } from '@ai-sdk/provider';
+import type { Provider } from '../providers/types';
 
 // Dynamic imports for optional dependencies
 declare function require(id: string): any;
@@ -212,8 +214,10 @@ export async function extractUserFromHeaders(req: NextRequest): Promise<NextJSTo
 export function createNextJSChatHandler(
   tools: Record<string, Tool>,
   options: {
-    /** AI model to use */
+    /** AI model to use (default: gpt-4o-mini via OpenAI) */
     model?: string;
+    /** Provider instance (overrides model string) */
+    provider?: Provider;
     /** Maximum steps (tool calls) allowed */
     maxSteps?: number;
     /** Custom rate limiter */
@@ -226,13 +230,20 @@ export function createNextJSChatHandler(
     try {
       // Import AI SDK dynamically to avoid dependency
       const { streamText, stepCountIs, convertToModelMessages } = await import('ai');
-      const { openai } = await import('@ai-sdk/openai');
+
+      let modelInstance: LanguageModelV2;
+      if (options.provider) {
+        modelInstance = options.provider.model();
+      } else {
+        const { openai } = await import('@ai-sdk/openai');
+        modelInstance = openai(options.model || 'gpt-4o-mini');
+      }
 
       const { messages } = await req.json();
       const modelMessages = convertToModelMessages(messages);
 
       const result = await streamText({
-        model: openai(options.model || 'gpt-4o-mini'),
+        model: modelInstance,
         messages: modelMessages,
         tools: Object.fromEntries(
           Object.entries(tools).map(([name, tool]) => [name, tool.toAITool()])

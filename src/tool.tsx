@@ -78,8 +78,20 @@ export type ClientHandler<TInput, TOutput> = (
   ctx: ToolContext
 ) => Promise<TOutput> | TOutput;
 
+export type StreamCallback<TOutput> = (partial: Partial<TOutput>) => void;
+
+export type StreamHandler<TInput, TOutput> = (
+  input: TInput,
+  ctx: ToolContext & {
+    /** Send a partial update to the view */
+    stream: StreamCallback<TOutput>;
+  }
+) => Promise<TOutput>;
+
 export type ViewState<TInput = any> = {
   loading?: boolean;
+  /** True while receiving partial streaming updates */
+  streaming?: boolean;
   error?: Error | null;
   onAction?: (input: TInput) => void | Promise<void>;
 };
@@ -105,6 +117,7 @@ export class Tool<TInput = any, TOutput = any> {
   private _server?: ServerHandler<TInput, TOutput>;
   private _client?: ClientHandler<TInput, TOutput>;
   private _view?: ViewComponent<TOutput>;
+  private _stream?: StreamHandler<TInput, TOutput>;
 
   constructor(config: ToolConfig<TInput, TOutput>) {
     this.name = config.name;
@@ -144,6 +157,15 @@ export class Tool<TInput = any, TOutput = any> {
     this._view = component;
     // Reinitialize memoized View component with the new view function
     this._initView();
+    return this;
+  }
+
+  /**
+   * Define streaming implementation
+   * The handler receives a `stream` callback to push partial updates.
+   */
+  stream(handler: StreamHandler<TInput, TOutput>): this {
+    this._stream = handler;
     return this;
   }
 
@@ -249,6 +271,86 @@ export class Tool<TInput = any, TOutput = any> {
   }
 
   /**
+   * Execute with streaming - returns async generator of partial results.
+   * Falls back to run() if no stream handler is defined.
+   */
+  async *runStream(input: TInput, ctx?: Partial<ToolContext>): AsyncGenerator<{
+    partial: Partial<TOutput>;
+    done: boolean;
+  }> {
+    const validated = this.inputSchema.parse(input);
+
+    if (!this._stream) {
+      // Fallback: run normally and yield once
+      const result = await this.run(input, ctx);
+      yield { partial: result as Partial<TOutput>, done: true };
+      return;
+    }
+
+    const isServer = ctx?.isServer ?? (typeof window === 'undefined');
+
+    const context: ToolContext = {
+      cache: ctx?.cache || new Map(),
+      fetch: ctx?.fetch || globalThis.fetch?.bind(globalThis),
+      isServer,
+      ...(isServer ? {
+        env: ctx?.env,
+        headers: ctx?.headers,
+        cookies: ctx?.cookies,
+        user: ctx?.user,
+        session: ctx?.session,
+      } : {
+        optimistic: ctx?.optimistic,
+      }),
+    };
+
+    // Queue-based push-to-pull conversion
+    type QueueItem = { partial: Partial<TOutput> } | { done: true; result: TOutput };
+    const queue: QueueItem[] = [];
+    let waiter: ((value: void) => void) | null = null;
+
+    const notify = () => { waiter?.(); waiter = null; };
+    const wait = () => new Promise<void>(r => { waiter = r; });
+
+    const streamFn: StreamCallback<TOutput> = (partial) => {
+      queue.push({ partial });
+      notify();
+    };
+
+    let error: Error | null = null;
+    let isDone = false;
+
+    // Run handler in background
+    this._stream(validated, { ...context, stream: streamFn })
+      .then(result => {
+        queue.push({ done: true, result });
+        isDone = true;
+        notify();
+      })
+      .catch(err => {
+        error = err instanceof Error ? err : new Error(String(err));
+        isDone = true;
+        notify();
+      });
+
+    while (true) {
+      while (queue.length > 0) {
+        const item = queue.shift()!;
+        if ('done' in item) {
+          let finalResult = item.result;
+          if (this.outputSchema) finalResult = this.outputSchema.parse(finalResult);
+          yield { partial: finalResult as Partial<TOutput>, done: true };
+          return;
+        }
+        yield { partial: item.partial, done: false };
+      }
+      if (error) throw error;
+      if (isDone && queue.length === 0) return;
+      await wait();
+    }
+  }
+
+  /**
    * Default client fetch when no .client() is defined
    *
    * SECURITY: This ensures server handlers never run on the client.
@@ -282,6 +384,7 @@ export class Tool<TInput = any, TOutput = any> {
   View!: React.NamedExoticComponent<{
     data: TOutput | null;
     loading?: boolean;
+    streaming?: boolean;
     error?: Error | null;
     onAction?: (input: TInput) => void | Promise<void>;
   }>;
@@ -292,6 +395,7 @@ export class Tool<TInput = any, TOutput = any> {
     const ViewComponent: React.FC<{
       data: TOutput | null;
       loading?: boolean;
+      streaming?: boolean;
       error?: Error | null;
       onAction?: (input: TInput) => void | Promise<void>;
     }> = (props) => {
@@ -309,6 +413,7 @@ export class Tool<TInput = any, TOutput = any> {
 
       return viewFn(props.data!, {
         loading: props.loading,
+        streaming: props.streaming,
         error: props.error,
         onAction: props.onAction,
       });
@@ -327,6 +432,9 @@ export class Tool<TInput = any, TOutput = any> {
 
       // Compare loading state
       if (prevProps.loading !== nextProps.loading) return false;
+
+      // Compare streaming state
+      if (prevProps.streaming !== nextProps.streaming) return false;
 
       // Compare error
       if (prevProps.error !== nextProps.error) return false;
@@ -359,6 +467,13 @@ export class Tool<TInput = any, TOutput = any> {
   }
 
   /**
+   * Check if tool has a streaming implementation
+   */
+  get hasStream(): boolean {
+    return !!this._stream;
+  }
+
+  /**
    * Convert to plain object (for serialization)
    *
    * SECURITY: This intentionally excludes handlers and schemas to prevent
@@ -372,6 +487,7 @@ export class Tool<TInput = any, TOutput = any> {
       hasServer: this.hasServer,
       hasClient: this.hasClient,
       hasView: this.hasView,
+      hasStream: this.hasStream,
       hasCache: !!this.cacheConfig,
       // Intentionally NOT included: handlers, schemas, clientFetchConfig
     };
@@ -450,6 +566,7 @@ class ToolBuilder<TInput = any, TOutput = any> {
   private _serverHandler?: ServerHandler<TInput, TOutput>;
   private _clientHandler?: ClientHandler<TInput, TOutput>;
   private _viewComponent?: ViewComponent<TOutput>;
+  private _streamHandler?: StreamHandler<TInput, TOutput>;
 
   constructor(name: string) {
     this._name = name;
@@ -507,6 +624,11 @@ class ToolBuilder<TInput = any, TOutput = any> {
     return this;
   }
 
+  stream(handler: StreamHandler<TInput, TOutput>): this {
+    this._streamHandler = handler;
+    return this;
+  }
+
   view(component: ViewComponent<TOutput>): this {
     this._viewComponent = component;
     return this;
@@ -532,6 +654,7 @@ class ToolBuilder<TInput = any, TOutput = any> {
 
     if (this._serverHandler) t.server(this._serverHandler);
     if (this._clientHandler) t.client(this._clientHandler);
+    if (this._streamHandler) t.stream(this._streamHandler);
     if (this._viewComponent) t.view(this._viewComponent);
 
     return t;
@@ -542,6 +665,13 @@ class ToolBuilder<TInput = any, TOutput = any> {
    */
   async run(input: TInput, ctx?: Partial<ToolContext>): Promise<TOutput> {
     return this.build().run(input, ctx);
+  }
+
+  async *runStream(input: TInput, ctx?: Partial<ToolContext>): AsyncGenerator<{
+    partial: Partial<TOutput>;
+    done: boolean;
+  }> {
+    yield* this.build().runStream(input, ctx);
   }
 
   get View() {

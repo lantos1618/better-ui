@@ -10,6 +10,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.mjs",
+      "require": "./dist/components/index.js"
     }
   },
   "files": [
@@ -34,7 +39,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npm run build:lib && npm run build:next",
-    "build:lib": "tsup src/index.ts --format cjs,esm --dts --clean --tsconfig tsconfig.lib.json",
+    "build:lib": "tsup src/index.ts src/components/index.ts --format cjs,esm --dts --clean --tsconfig tsconfig.lib.json",
     "build:next": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -50,13 +55,21 @@
   },
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/google": "^2.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
       "optional": true
     }
   },

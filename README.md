@@ -10,7 +10,12 @@
 
 Better UI provides a clean, fluent API for creating tools that AI assistants can execute. Define input/output schemas with Zod, implement server and client logic separately, and render results with React components.
 
-**Key differentiator**: Unlike other AI tool libraries, Better UI includes **view integration** - tools can render their own results in UI.
+**Key differentiators**:
+- **View integration** - tools render their own results in UI (no other framework does this)
+- **Multi-provider support** - OpenAI, Anthropic, Google Gemini, OpenRouter
+- **Streaming tool views** - progressive partial data rendering
+- **Pre-made chat components** - drop-in `<Chat />` with automatic tool view rendering
+- **Server infrastructure** - rate limiting, caching, Next.js/Express adapters
 
 ## Installation
 
@@ -40,10 +45,125 @@ weather.server(async ({ city }) => {
 // View for rendering results (our differentiator!)
 weather.view((data) => (
   <div className="weather-card">
-    <span>{data.temp}°</span>
+    <span>{data.temp}</span>
     <span>{data.condition}</span>
   </div>
 ));
+```
+
+## Drop-in Chat UI
+
+```tsx
+import { Chat } from '@lantos1618/better-ui/components';
+
+function App() {
+  return (
+    <Chat
+      endpoint="/api/chat"
+      tools={{ weather, search, counter }}
+      className="h-[600px]"
+      placeholder="Ask something..."
+    />
+  );
+}
+```
+
+Or compose your own layout:
+
+```tsx
+import { ChatProvider, Thread, Composer } from '@lantos1618/better-ui/components';
+
+function App() {
+  return (
+    <ChatProvider endpoint="/api/chat" tools={tools}>
+      <div className="flex flex-col h-screen">
+        <Thread className="flex-1 overflow-y-auto" />
+        <Composer placeholder="Type a message..." />
+      </div>
+    </ChatProvider>
+  );
+}
+```
+
+Tool results in chat automatically render using the tool's `.view()` component.
+
+## Multi-Provider Support
+
+```typescript
+import { createProvider } from '@lantos1618/better-ui';
+
+// OpenAI
+const provider = createProvider({ provider: 'openai', model: 'gpt-4o' });
+
+// Anthropic
+const provider = createProvider({ provider: 'anthropic', model: 'claude-4-sonnet' });
+
+// Google Gemini
+const provider = createProvider({ provider: 'google', model: 'gemini-2.5-pro' });
+
+// OpenRouter (access any model)
+const provider = createProvider({
+  provider: 'openrouter',
+  model: 'anthropic/claude-4-sonnet',
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+```
+
+Use with the chat handler:
+
+```typescript
+import { streamText, convertToModelMessages } from 'ai';
+import { createProvider } from '@lantos1618/better-ui';
+
+const provider = createProvider({ provider: 'openai', model: 'gpt-4o' });
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+  const result = streamText({
+    model: provider.model(),
+    messages: convertToModelMessages(messages),
+    tools: {
+      weather: weatherTool.toAITool(),
+    },
+  });
+  return result.toUIMessageStreamResponse();
+}
+```
+
+## Streaming Tool Views
+
+Tools can stream partial results progressively:
+
+```typescript
+import { useToolStream } from '@lantos1618/better-ui';
+
+// Define a streaming tool
+const analysis = tool({
+  name: 'analysis',
+  input: z.object({ query: z.string() }),
+  output: z.object({ summary: z.string(), score: z.number() }),
+});
+
+analysis.stream(async ({ query }, { stream }) => {
+  stream({ summary: 'Analyzing...' });       // Partial update
+  const result = await analyzeData(query);
+  stream({ summary: result.summary });        // More data
+  return { summary: result.summary, score: result.score }; // Final
+});
+
+// In a component:
+function AnalysisWidget({ query }) {
+  const { data, streaming, loading, execute } = useToolStream(analysis);
+
+  return (
+    <div>
+      <button onClick={() => execute({ query })}>Analyze</button>
+      {loading && <p>Starting...</p>}
+      {streaming && <p>Streaming: {data?.summary}</p>}
+      {data?.score && <p>Score: {data.score}</p>}
+    </div>
+  );
+}
 ```
 
 ## Core Concepts
@@ -79,7 +199,6 @@ The `.client()` method defines what happens when called from the browser. If not
 
 ```typescript
 myTool.client(async ({ query }, ctx) => {
-  // Custom client logic: caching, optimistic updates, etc.
   const cached = ctx.cache.get(query);
   if (cached) return cached;
 
@@ -95,10 +214,24 @@ myTool.client(async ({ query }, ctx) => {
 The `.view()` method defines how to render the tool's results:
 
 ```typescript
-myTool.view((data, { loading, error }) => {
+myTool.view((data, { loading, error, streaming }) => {
   if (loading) return <Spinner />;
   if (error) return <Error message={error.message} />;
+  if (streaming) return <PartialResults data={data} />;
   return <Results items={data.results} />;
+});
+```
+
+### 5. Streaming
+
+The `.stream()` method enables progressive partial updates:
+
+```typescript
+myTool.stream(async ({ query }, { stream }) => {
+  stream({ status: 'searching...' });
+  const results = await search(query);
+  stream({ results, status: 'done' });
+  return { results, status: 'done', count: results.length };
 });
 ```
 
@@ -110,120 +243,21 @@ const search = tool('search')
   .input(z.object({ query: z.string() }))
   .output(z.object({ results: z.array(z.string()) }))
   .server(async ({ query }) => ({ results: await db.search(query) }))
+  .stream(async ({ query }, { stream }) => {
+    stream({ results: [] });
+    const results = await db.search(query);
+    return { results };
+  })
   .view((data) => <ResultsList items={data.results} />);
 ```
 
-## React Usage
+## React Hooks
+
+### `useTool(tool, input?, options?)`
 
 ```typescript
 import { useTool } from '@lantos1618/better-ui';
 
-function WeatherWidget({ city }) {
-  const { data, loading, error, execute } = useTool(weather);
-
-  return (
-    <div>
-      <button onClick={() => execute({ city })}>Get Weather</button>
-      {loading && <Spinner />}
-      {error && <div>Error: {error.message}</div>}
-      {data && <weather.View data={data} />}
-    </div>
-  );
-}
-
-// Or with auto-execution
-function WeatherWidget({ city }) {
-  const { data, loading } = useTool(weather, { city }, { auto: true });
-  return <weather.View data={data} loading={loading} />;
-}
-```
-
-## AI Integration
-
-### With Vercel AI SDK v5
-
-```typescript
-import { streamText, convertToModelMessages, stepCountIs } from 'ai';
-import { openai } from '@ai-sdk/openai';
-
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-
-  const result = streamText({
-    model: openai('gpt-5.2'),
-    messages: convertToModelMessages(messages),
-    tools: {
-      weather: weather.toAITool(),
-      search: search.toAITool(),
-    },
-    stopWhen: stepCountIs(5), // Limit tool call iterations
-  });
-
-  return result.toUIMessageStreamResponse();
-}
-```
-
-## API Reference
-
-### `tool(config)` or `tool(name)`
-
-Create a new tool with object config or fluent builder.
-
-```typescript
-// Object config
-const t = tool({
-  name: string,
-  description?: string,
-  input: ZodSchema,
-  output?: ZodSchema,
-  tags?: string[],
-  cache?: { ttl: number, key?: (input) => string },
-});
-
-// Fluent builder
-const t = tool('name')
-  .description(string)
-  .input(ZodSchema)
-  .output(ZodSchema)
-  .tags(...string[])
-  .cache({ ttl, key? });
-```
-
-### `.server(handler)`
-
-Define server-side implementation.
-
-```typescript
-t.server(async (input, ctx) => {
-  // ctx.env, ctx.headers, ctx.user, ctx.session available
-  return result;
-});
-```
-
-### `.client(handler)`
-
-Define client-side implementation (optional).
-
-```typescript
-t.client(async (input, ctx) => {
-  // ctx.cache, ctx.fetch, ctx.optimistic available
-  return result;
-});
-```
-
-### `.view(component)`
-
-Define React component for rendering results.
-
-```typescript
-t.view((data, { loading, error }) => <Component data={data} />);
-```
-
-### `useTool(tool, input?, options?)`
-
-React hook for executing a single tool.
-
-```typescript
 const {
   data,      // Result data
   loading,   // Loading state
@@ -232,48 +266,96 @@ const {
   reset,     // Reset state
   executed,  // Has been executed
 } = useTool(myTool, initialInput, {
-  auto: false,      // Auto-execute on mount
+  auto: false,
   onSuccess: (data) => {},
   onError: (error) => {},
 });
 ```
 
-### `useTools(tools, options?)`
+### `useToolStream(tool, options?)`
 
-React hook for managing multiple tools with a single state object.
+```typescript
+import { useToolStream } from '@lantos1618/better-ui';
+
+const {
+  data,       // Progressive partial data
+  finalData,  // Complete validated data (when done)
+  streaming,  // True while receiving partial updates
+  loading,    // True before first chunk
+  error,
+  execute,
+  reset,
+} = useToolStream(myTool);
+```
+
+### `useTools(tools, options?)`
 
 ```typescript
 import { useTools } from '@lantos1618/better-ui';
 
 const tools = useTools({ weather, search });
 
-// Execute tools independently
 await tools.weather.execute({ city: 'London' });
 await tools.search.execute({ query: 'restaurants' });
 
-// Each tool has its own state
 tools.weather.data;    // Weather result
-tools.weather.loading; // Weather loading state
-tools.search.data;     // Search result
 tools.search.loading;  // Search loading state
+```
+
+## Chat Components
+
+Import from `@lantos1618/better-ui/components`:
+
+| Component | Description |
+|-----------|-------------|
+| `Chat` | All-in-one chat component (ChatProvider + Thread + Composer) |
+| `ChatProvider` | Context provider wrapping AI SDK's `useChat` |
+| `Thread` | Message list with auto-scroll |
+| `Message` | Single message with automatic tool view rendering |
+| `Composer` | Input form with send button |
+| `ToolResult` | Renders a tool's `.View` in chat context |
+
+All components accept `className` for styling customization.
+
+## Providers
+
+| Provider | Package Required | Example Model |
+|----------|-----------------|---------------|
+| OpenAI | `@ai-sdk/openai` (included) | `gpt-4o`, `gpt-5.2` |
+| Anthropic | `@ai-sdk/anthropic` (optional) | `claude-4-sonnet` |
+| Google | `@ai-sdk/google` (optional) | `gemini-2.5-pro` |
+| OpenRouter | `@ai-sdk/openai` (included) | `anthropic/claude-4-sonnet` |
+
+```bash
+# Optional providers
+npm install @ai-sdk/anthropic  # For Anthropic
+npm install @ai-sdk/google     # For Google Gemini
 ```
 
 ## Project Structure
 
 ```
 src/
-  tool.tsx          # Core tool() API
+  tool.tsx            # Core tool() API with streaming
   react/
-    useTool.ts      # React hooks (useTool, useTools)
-  index.ts          # Main exports
-
-app/                # Demo Next.js app
-  demo/             # Demo page
-  api/chat/         # Chat API route (AI SDK integration)
-  api/tools/        # Tool execution API
-
-lib/
-  tools.tsx         # Example tool definitions
+    useTool.ts        # React hooks (useTool, useTools)
+    useToolStream.ts  # Streaming hook
+  components/
+    Chat.tsx          # All-in-one chat component
+    ChatProvider.tsx   # Chat context provider
+    Thread.tsx        # Message list
+    Message.tsx       # Single message
+    Composer.tsx      # Input form
+    ToolResult.tsx    # Tool view renderer
+  providers/
+    openai.ts         # OpenAI adapter
+    anthropic.ts      # Anthropic adapter
+    google.ts         # Google Gemini adapter
+    openrouter.ts     # OpenRouter adapter
+  adapters/
+    nextjs.ts         # Next.js route handlers
+    express.ts        # Express middleware
+  index.ts            # Main exports
 ```
 
 ## Development
@@ -284,6 +366,7 @@ npm run dev          # Run dev server
 npm run build:lib    # Build library
 npm run build        # Build everything
 npm run type-check   # TypeScript check
+npm test             # Run tests
 ```
 
 ## License

@@ -152,6 +152,7 @@ describe('Security', () => {
         hasServer: true,
         hasClient: true,
         hasView: false,
+        hasStream: false,
         hasCache: false,
       });
     });

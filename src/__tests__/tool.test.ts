@@ -258,6 +258,7 @@ describe('Tool', () => {
         hasServer: true,
         hasClient: false,
         hasView: false,
+        hasStream: false,
         hasCache: false,
       });
 
