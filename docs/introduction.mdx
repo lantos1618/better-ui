@@ -82,16 +82,16 @@ When the AI calls the `weather` tool, the view renders automatically. No switch 
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│   tool()     │────▶│  AI SDK v5   │────▶│  LLM        │
-│  definition  │     │  streamText  │     │  (any)      │
-│              │     └──────────────┘     └─────────────┘
-│  .server()   │            │
-│  .view()     │            ▼
-│  .client()   │     ┌──────────────┐
+│   tool()    │────▶│  AI SDK v5   │────▶│  LLM        │
+│  definition │     │  streamText  │     │  (any)      │
+│             │     └──────────────┘     └─────────────┘
+│  .server()  │            │
+│  .view()    │            ▼
+│  .client()  │     ┌───────────────┐
 └─────────────┘     │  ChatProvider │
                     │  Thread/Panel │
                     │  ToolResult   │──▶ tool.View auto-renders
-                    └──────────────┘
+                    └───────────────┘
 ```
 
 ## Next Steps

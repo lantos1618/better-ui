@@ -11,98 +11,89 @@
     "light": "#60A5FA",
     "dark": "#2563EB"
   },
-  "theme": "quill",
-  "layout": "sidenav",
-  "sidebar": {
-    "items": "border"
+  "theme": "maple",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Core",
+            "pages": [
+              "core/tools",
+              "core/views",
+              "core/state-sync",
+              "core/hitl"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "components/overview",
+              "components/question",
+              "components/form",
+              "components/data-table",
+              "components/progress",
+              "components/media",
+              "components/code-block",
+              "components/toast",
+              "components/file-upload"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/custom-views",
+              "guides/tool-grouping",
+              "guides/auto-respond",
+              "guides/providers",
+              "guides/server-adapters"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core API",
+            "pages": [
+              "api-reference/tool",
+              "api-reference/tool-class"
+            ]
+          },
+          {
+            "group": "React",
+            "pages": [
+              "api-reference/chat-provider",
+              "api-reference/thread",
+              "api-reference/panel",
+              "api-reference/composer",
+              "api-reference/message",
+              "api-reference/tool-result"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "pages": [
+              "api-reference/use-tool",
+              "api-reference/use-tool-state",
+              "api-reference/use-tool-output",
+              "api-reference/use-chat-context"
+            ]
+          }
+        ]
+      }
+    ]
   },
-  "background": {
-    "style": "gradient"
-  },
-  "topbar": {
-    "style": "default"
-  },
-  "tabs": [
-    {
-      "tab": "Documentation",
-      "groups": [
-        {
-          "group": "Getting Started",
-          "pages": [
-            "introduction",
-            "quickstart",
-            "concepts"
-          ]
-        },
-        {
-          "group": "Core",
-          "pages": [
-            "core/tools",
-            "core/views",
-            "core/state-sync",
-            "core/hitl"
-          ]
-        },
-        {
-          "group": "Components",
-          "pages": [
-            "components/overview",
-            "components/chat",
-            "components/question",
-            "components/form",
-            "components/data-table",
-            "components/progress",
-            "components/media",
-            "components/code-block",
-            "components/toast",
-            "components/file-upload"
-          ]
-        },
-        {
-          "group": "Guides",
-          "pages": [
-            "guides/custom-views",
-            "guides/tool-grouping",
-            "guides/auto-respond",
-            "guides/providers",
-            "guides/server-adapters"
-          ]
-        }
-      ]
-    },
-    {
-      "tab": "API Reference",
-      "groups": [
-        {
-          "group": "Core API",
-          "pages": [
-            "api-reference/tool",
-            "api-reference/tool-class"
-          ]
-        },
-        {
-          "group": "React",
-          "pages": [
-            "api-reference/chat-provider",
-            "api-reference/thread",
-            "api-reference/panel",
-            "api-reference/composer",
-            "api-reference/message",
-            "api-reference/tool-result"
-          ]
-        },
-        {
-          "group": "Hooks",
-          "pages": [
-            "api-reference/use-tool",
-            "api-reference/use-tool-state",
-            "api-reference/use-tool-output",
-            "api-reference/use-chat-context"
-          ]
-        }
-      ]
-    }
-  ],
   "topbarLinks": [
     {
       "name": "GitHub",
