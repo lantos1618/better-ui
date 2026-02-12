@@ -15,7 +15,7 @@ export interface ThreadProps {
  * Renders messages from ChatContext, maps over messages, renders text parts and tool parts.
  */
 export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
-  const { messages, isLoading, sendMessage, tools, toolStateStore, getOnAction, confirmTool, rejectTool } = useChatContext();
+  const { messages, isLoading, sendMessage, tools, toolStateStore, getOnAction, confirmTool, rejectTool, retryTool } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom on new messages
@@ -30,8 +30,8 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
       <div className="p-6 space-y-6">
         {messages.length === 0 && (
           <div className="text-center py-16">
-            <div className="text-zinc-600 text-sm">
-              <p className="text-zinc-400 mb-4">
+            <div className="text-[var(--bui-fg-faint,#52525b)] text-sm">
+              <p className="text-[var(--bui-fg-secondary,#a1a1aa)] mb-4">
                 {emptyMessage || 'Send a message to get started'}
               </p>
               {suggestions && suggestions.length > 0 && (
@@ -40,7 +40,7 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
                     <button
                       key={suggestion}
                       onClick={() => sendMessage(suggestion)}
-                      className="px-3 py-1.5 text-xs text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-full hover:bg-zinc-700 hover:text-zinc-200 transition-colors"
+                      className="px-3 py-1.5 text-xs text-[var(--bui-fg-secondary,#a1a1aa)] bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-full hover:bg-[var(--bui-bg-hover,#3f3f46)] hover:text-[var(--bui-fg,#f4f4f5)] transition-colors"
                     >
                       {suggestion}
                     </button>
@@ -51,21 +51,22 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
           </div>
         )}
 
-        {messages.map((message) => (
+        {messages.map((message, i) => (
           <Message
-            key={message.id}
+            key={`${message.id}-${i}`}
             message={message}
             tools={tools}
             toolStateStore={toolStateStore}
             getOnAction={getOnAction}
             onConfirm={confirmTool}
             onReject={rejectTool}
+            onRetry={retryTool}
           />
         ))}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-zinc-500 text-sm">
-            <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
+          <div className="flex items-center gap-2 text-[var(--bui-fg-muted,#71717a)] text-sm">
+            <div className="w-1.5 h-1.5 bg-[var(--bui-fg-muted,#71717a)] rounded-full animate-pulse" />
             <span>Thinking</span>
           </div>
         )}

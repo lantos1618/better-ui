@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Pre-made chat components for Better UI
  */
@@ -36,6 +38,9 @@ export { useChatToolOutput } from './useChatToolOutput';
 
 export { createToolStateStore, useToolState } from './useToolStateStore';
 export type { ToolStateStore, ToolStateEntry } from './useToolStateStore';
+
+export { ThemeProvider } from './ThemeProvider';
+export type { ThemeProviderProps } from './ThemeProvider';
 
 // View building blocks — use these in your tool .view() functions
 export { QuestionView } from './Question';

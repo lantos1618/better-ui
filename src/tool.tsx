@@ -8,10 +8,6 @@
 import { z } from 'zod';
 import React, { ReactElement, memo } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 /** Behavioral hints for tools */
 export interface ToolHints {
   /** Tool performs destructive/irreversible actions (auto-implies requiresConfirmation) */
@@ -127,10 +123,6 @@ export type ViewComponent<TOutput, TInput = unknown> = (
   data: TOutput,
   state?: ViewState<TInput>
 ) => ReactElement | null;
-
-// ============================================
-// Tool Class
-// ============================================
 
 // Default generic parameters use `any` intentionally — this is an API boundary.
 // Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>
@@ -527,6 +519,7 @@ export class Tool<TInput = any, TOutput = any> {
    */
   shouldConfirm(input: TInput): boolean {
     if (typeof this.confirm === 'function') {
+      if (input == null) return false;
       return this.confirm(input);
     }
     if (typeof this.confirm === 'boolean') {
@@ -540,7 +533,7 @@ export class Tool<TInput = any, TOutput = any> {
    * Returns `"toolName:groupKey(input)"` if groupKey is defined, otherwise undefined.
    */
   getGroupKey(input: TInput): string | undefined {
-    if (!this.groupKey) return undefined;
+    if (!this.groupKey || input == null) return undefined;
     return `${this.name}:${this.groupKey(input)}`;
   }
 
@@ -591,10 +584,6 @@ export class Tool<TInput = any, TOutput = any> {
   }
 }
 
-// ============================================
-// Factory Functions
-// ============================================
-
 /**
  * Create a new tool with object config
  *
@@ -640,10 +629,6 @@ export function tool<TInput, TOutput = any>(
   }
   return new Tool(nameOrConfig);
 }
-
-// ============================================
-// Fluent Builder
-// ============================================
 
 // Default generic parameters use `any` intentionally — this is an API boundary.
 // Using `unknown` would break `Record<string, Tool>` patterns since Tool<unknown>

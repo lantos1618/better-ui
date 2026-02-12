@@ -2,10 +2,6 @@
 
 import React, { useState } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 export interface FormField {
   name: string;
   label: string;
@@ -36,11 +32,9 @@ export interface FormViewProps {
   onSubmit?: (values: Record<string, string>) => void;
   /** Loading state */
   loading?: boolean;
+  /** Additional CSS class for the root element */
+  className?: string;
 }
-
-// ============================================
-// Component
-// ============================================
 
 export function FormView({
   title,
@@ -51,6 +45,7 @@ export function FormView({
   submitLabel = 'Submit',
   onSubmit,
   loading = false,
+  className,
 }: FormViewProps) {
   const [values, setValues] = useState<Record<string, string>>(() => {
     const v: Record<string, string> = {};
@@ -91,19 +86,19 @@ export function FormView({
   // Submitted state
   if (submitted && initialValues) {
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
-        {title && <p className="text-zinc-400 text-xs uppercase tracking-wider mb-2">Submitted</p>}
-        {title && <p className="text-zinc-300 text-sm font-medium mb-3">{title}</p>}
+      <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl p-4 ${className || ''}`}>
+        {title && <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-xs uppercase tracking-wider mb-2">Submitted</p>}
+        {title && <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm font-medium mb-3">{title}</p>}
         <div className="space-y-2">
           {fields.map((f) => (
             <div key={f.name} className="flex items-baseline gap-2">
-              <span className="text-zinc-500 text-xs min-w-[80px]">{f.label}:</span>
-              <span className="text-zinc-300 text-sm">{initialValues[f.name] || '-'}</span>
+              <span className="text-[var(--bui-fg-muted,#71717a)] text-xs min-w-[80px]">{f.label}:</span>
+              <span className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">{initialValues[f.name] || '-'}</span>
             </div>
           ))}
         </div>
-        <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 bg-emerald-900/30 rounded text-xs text-emerald-400">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+        <div className="mt-3 inline-flex items-center gap-1.5 px-2 py-1 bg-[var(--bui-success-muted,rgba(16,185,129,0.12))] rounded text-xs text-[var(--bui-success-fg,#6ee7b7)]">
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--bui-success-fg,#6ee7b7)]" />
           Submitted
         </div>
       </div>
@@ -113,17 +108,17 @@ export function FormView({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`bg-zinc-800 border border-zinc-700 rounded-xl p-4 transition-opacity ${loading ? 'opacity-60' : ''}`}
+      className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl p-4 transition-opacity ${loading ? 'opacity-60' : ''} ${className || ''}`}
     >
-      {title && <p className="text-zinc-200 text-sm font-medium mb-1">{title}</p>}
-      {description && <p className="text-zinc-500 text-xs mb-4">{description}</p>}
+      {title && <p className="text-[var(--bui-fg,#f4f4f5)] text-sm font-medium mb-1">{title}</p>}
+      {description && <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mb-4">{description}</p>}
 
       <div className="space-y-3">
         {fields.map((field) => (
           <div key={field.name}>
-            <label className="block text-zinc-400 text-xs mb-1">
+            <label className="block text-[var(--bui-fg-secondary,#a1a1aa)] text-xs mb-1">
               {field.label}
-              {field.required && <span className="text-red-400 ml-0.5">*</span>}
+              {field.required && <span className="text-[var(--bui-error-fg,#f87171)] ml-0.5">*</span>}
             </label>
 
             {field.type === 'textarea' ? (
@@ -133,8 +128,8 @@ export function FormView({
                 placeholder={field.placeholder}
                 disabled={loading}
                 rows={3}
-                className={`w-full bg-zinc-900 border rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 resize-none ${
-                  errors[field.name] ? 'border-red-500/50' : 'border-zinc-700'
+                className={`w-full bg-[var(--bui-bg-surface,#18181b)] border rounded-lg px-3 py-2 text-sm text-[var(--bui-fg,#f4f4f5)] placeholder-[var(--bui-fg-faint,#52525b)] focus:outline-none focus:border-[var(--bui-border-strong,#3f3f46)] resize-none ${
+                  errors[field.name] ? 'border-[var(--bui-error-border,rgba(153,27,27,0.5))]' : 'border-[var(--bui-border-strong,#3f3f46)]'
                 }`}
               />
             ) : field.type === 'select' ? (
@@ -142,8 +137,8 @@ export function FormView({
                 value={values[field.name] || ''}
                 onChange={(e) => handleChange(field.name, e.target.value)}
                 disabled={loading}
-                className={`w-full bg-zinc-900 border rounded-lg px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 ${
-                  errors[field.name] ? 'border-red-500/50' : 'border-zinc-700'
+                className={`w-full bg-[var(--bui-bg-surface,#18181b)] border rounded-lg px-3 py-2 text-sm text-[var(--bui-fg,#f4f4f5)] focus:outline-none focus:border-[var(--bui-border-strong,#3f3f46)] ${
+                  errors[field.name] ? 'border-[var(--bui-error-border,rgba(153,27,27,0.5))]' : 'border-[var(--bui-border-strong,#3f3f46)]'
                 }`}
               >
                 <option value="">{field.placeholder || 'Select...'}</option>
@@ -159,13 +154,13 @@ export function FormView({
                 className="flex items-center gap-2"
               >
                 <div className={`w-8 h-4.5 rounded-full transition-colors ${
-                  values[field.name] === 'true' ? 'bg-blue-500' : 'bg-zinc-700'
+                  values[field.name] === 'true' ? 'bg-[var(--bui-primary-hover,#3b82f6)]' : 'bg-[var(--bui-bg-hover,#3f3f46)]'
                 }`}>
                   <div className={`w-3.5 h-3.5 rounded-full bg-white mt-0.5 transition-transform ${
                     values[field.name] === 'true' ? 'translate-x-4' : 'translate-x-0.5'
                   }`} />
                 </div>
-                <span className="text-zinc-400 text-xs">{values[field.name] === 'true' ? 'On' : 'Off'}</span>
+                <span className="text-[var(--bui-fg-secondary,#a1a1aa)] text-xs">{values[field.name] === 'true' ? 'On' : 'Off'}</span>
               </button>
             ) : (
               <input
@@ -174,17 +169,17 @@ export function FormView({
                 onChange={(e) => handleChange(field.name, e.target.value)}
                 placeholder={field.placeholder}
                 disabled={loading}
-                className={`w-full bg-zinc-900 border rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 ${
-                  errors[field.name] ? 'border-red-500/50' : 'border-zinc-700'
+                className={`w-full bg-[var(--bui-bg-surface,#18181b)] border rounded-lg px-3 py-2 text-sm text-[var(--bui-fg,#f4f4f5)] placeholder-[var(--bui-fg-faint,#52525b)] focus:outline-none focus:border-[var(--bui-border-strong,#3f3f46)] ${
+                  errors[field.name] ? 'border-[var(--bui-error-border,rgba(153,27,27,0.5))]' : 'border-[var(--bui-border-strong,#3f3f46)]'
                 }`}
               />
             )}
 
             {errors[field.name] && (
-              <p className="text-red-400 text-xs mt-1">{errors[field.name]}</p>
+              <p className="text-[var(--bui-error-fg,#f87171)] text-xs mt-1">{errors[field.name]}</p>
             )}
             {field.hint && !errors[field.name] && (
-              <p className="text-zinc-600 text-xs mt-1">{field.hint}</p>
+              <p className="text-[var(--bui-fg-faint,#52525b)] text-xs mt-1">{field.hint}</p>
             )}
           </div>
         ))}
@@ -193,7 +188,7 @@ export function FormView({
       <button
         type="submit"
         disabled={loading}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="mt-4 px-4 py-2 bg-[var(--bui-primary,#2563eb)] text-white text-sm rounded-lg hover:bg-[var(--bui-primary-hover,#3b82f6)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? 'Submitting...' : submitLabel}
       </button>

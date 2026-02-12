@@ -2,10 +2,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 export interface Toast {
   id: string;
   message: string;
@@ -19,10 +15,6 @@ interface ToastContextValue {
   dismiss: (id: string) => void;
 }
 
-// ============================================
-// Context
-// ============================================
-
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 /**
@@ -35,11 +27,7 @@ export function useToast(): ToastContextValue {
   return ctx;
 }
 
-// ============================================
-// Provider + Container
-// ============================================
-
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children, className }: { children: React.ReactNode; className?: string }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counterRef = useRef(0);
 
@@ -55,36 +43,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, dismiss }}>
       {children}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} className={className} />
     </ToastContext.Provider>
   );
 }
 
-// ============================================
-// Container
-// ============================================
-
 function ToastContainer({
   toasts,
   onDismiss,
+  className,
 }: {
   toasts: Toast[];
   onDismiss: (id: string) => void;
+  className?: string;
 }) {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className={`fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm ${className || ''}`}>
       {toasts.map(t => (
         <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />
       ))}
     </div>
   );
 }
-
-// ============================================
-// Individual toast
-// ============================================
 
 function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: string) => void }) {
   useEffect(() => {
@@ -95,29 +77,29 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: stri
   }, [t.id, t.duration, onDismiss]);
 
   const colors = {
-    success: 'border-emerald-700/50 bg-emerald-900/20',
-    error: 'border-red-700/50 bg-red-900/20',
-    warning: 'border-amber-700/50 bg-amber-900/20',
-    info: 'border-blue-700/50 bg-blue-900/20',
+    success: 'border-[var(--bui-success-border,rgba(4,120,87,0.3))] bg-[var(--bui-success-muted,rgba(16,185,129,0.12))]',
+    error: 'border-[var(--bui-error-border,rgba(153,27,27,0.5))] bg-[var(--bui-error-muted,rgba(220,38,38,0.08))]',
+    warning: 'border-[var(--bui-warning-border,rgba(180,83,9,0.5))] bg-[var(--bui-warning-muted,rgba(245,158,11,0.12))]',
+    info: 'border-[var(--bui-primary-border,#2563eb80)] bg-[var(--bui-primary-muted,#1e3a5f)]',
   };
 
   const dotColors = {
-    success: 'bg-emerald-400',
-    error: 'bg-red-400',
-    warning: 'bg-amber-400',
-    info: 'bg-blue-400',
+    success: 'bg-[var(--bui-success-fg,#6ee7b7)]',
+    error: 'bg-[var(--bui-error-fg,#f87171)]',
+    warning: 'bg-[var(--bui-warning-fg,#f59e0b)]',
+    info: 'bg-[var(--bui-primary-hover,#3b82f6)]',
   };
 
   const textColors = {
-    success: 'text-emerald-200',
-    error: 'text-red-200',
-    warning: 'text-amber-200',
-    info: 'text-blue-200',
+    success: 'text-[var(--bui-success-fg,#6ee7b7)]',
+    error: 'text-[var(--bui-error-fg,#f87171)]',
+    warning: 'text-[var(--bui-warning-fg,#f59e0b)]',
+    info: 'text-[var(--bui-primary-hover,#3b82f6)]',
   };
 
   return (
     <div
-      className={`border rounded-lg px-4 py-3 bg-zinc-900 shadow-lg animate-in slide-in-from-right ${colors[t.type]}`}
+      className={`border rounded-lg px-4 py-3 bg-[var(--bui-bg-surface,#18181b)] shadow-lg animate-in slide-in-from-right ${colors[t.type]}`}
       style={{ animation: 'slideIn 0.2s ease-out' }}
     >
       <div className="flex items-center gap-2">
@@ -125,7 +107,7 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: (id: stri
         <p className={`text-sm flex-1 ${textColors[t.type]}`}>{t.message}</p>
         <button
           onClick={() => onDismiss(t.id)}
-          className="text-zinc-500 hover:text-zinc-300 text-xs shrink-0 ml-2"
+          className="text-[var(--bui-fg-muted,#71717a)] hover:text-[var(--bui-fg-secondary,#a1a1aa)] text-xs shrink-0 ml-2"
         >
           &times;
         </button>

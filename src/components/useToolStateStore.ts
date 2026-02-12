@@ -2,10 +2,6 @@
 
 import { useSyncExternalStore, useCallback } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 export interface ToolStateEntry {
   output: unknown;
   loading: boolean;
@@ -31,10 +27,6 @@ export interface ToolStateStore {
   /** Returns Map with highest-seqNo entry per entityId + all ungrouped entries */
   getLatestPerEntity: () => Map<string, ToolStateEntry>;
 }
-
-// ============================================
-// Factory
-// ============================================
 
 export function createToolStateStore(): ToolStateStore {
   let state = new Map<string, ToolStateEntry>();
@@ -114,10 +106,6 @@ export function createToolStateStore(): ToolStateStore {
     },
   };
 }
-
-// ============================================
-// Hook
-// ============================================
 
 export function useToolState(
   store: ToolStateStore,

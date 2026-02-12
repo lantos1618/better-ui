@@ -2,10 +2,6 @@
 
 import React, { useState } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 export interface QuestionOption {
   label: string;
   value: string;
@@ -27,11 +23,9 @@ export interface QuestionViewProps {
   allowFreeform?: boolean;
   /** Loading state (e.g. after selection is submitted) */
   loading?: boolean;
+  /** Additional CSS class for the root element */
+  className?: string;
 }
-
-// ============================================
-// Component
-// ============================================
 
 export function QuestionView({
   question,
@@ -41,6 +35,7 @@ export function QuestionView({
   onSelect,
   allowFreeform = false,
   loading = false,
+  className,
 }: QuestionViewProps) {
   const [multiSelected, setMultiSelected] = useState<Set<string>>(
     () => new Set(Array.isArray(selected) ? selected : [])
@@ -85,20 +80,20 @@ export function QuestionView({
       : options.find(o => o.value === selected)?.label || selected;
 
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
-        <p className="text-zinc-400 text-xs uppercase tracking-wider mb-2">Answered</p>
-        <p className="text-zinc-300 text-sm">{question}</p>
-        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900/30 border border-emerald-700/30 rounded-lg">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span className="text-emerald-300 text-sm">{display}</span>
+      <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl p-4 ${className || ''}`}>
+        <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-xs uppercase tracking-wider mb-2">Answered</p>
+        <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">{question}</p>
+        <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--bui-success-muted,rgba(16,185,129,0.12))] border border-[var(--bui-success-border,rgba(4,120,87,0.3))] rounded-lg">
+          <div className="w-1.5 h-1.5 rounded-full bg-[var(--bui-success-fg,#6ee7b7)]" />
+          <span className="text-[var(--bui-success-fg,#6ee7b7)] text-sm">{display}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`bg-zinc-800 border border-zinc-700 rounded-xl p-4 transition-opacity ${loading ? 'opacity-60' : ''}`}>
-      <p className="text-zinc-200 text-sm font-medium mb-3">{question}</p>
+    <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl p-4 transition-opacity ${loading ? 'opacity-60' : ''} ${className || ''}`}>
+      <p className="text-[var(--bui-fg,#f4f4f5)] text-sm font-medium mb-3">{question}</p>
 
       <div className="space-y-2">
         {options.map((opt) => (
@@ -108,16 +103,16 @@ export function QuestionView({
             disabled={loading}
             className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
               isSelected(opt.value)
-                ? 'border-blue-500/50 bg-blue-500/10 text-zinc-100'
-                : 'border-zinc-700 bg-zinc-900/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-900'
+                ? 'border-[var(--bui-primary-border,#2563eb80)] bg-[var(--bui-primary-muted,#1e3a5f)] text-[var(--bui-fg,#f4f4f5)]'
+                : 'border-[var(--bui-border-strong,#3f3f46)] bg-[var(--bui-bg-surface,#18181b)]/50 text-[var(--bui-fg-secondary,#a1a1aa)] hover:border-[var(--bui-border-strong,#3f3f46)] hover:bg-[var(--bui-bg-surface,#18181b)]'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <div className="flex items-center gap-3">
               {/* Checkbox/radio indicator */}
               <div className={`shrink-0 w-4 h-4 rounded-${mode === 'multi' ? 'sm' : 'full'} border ${
                 isSelected(opt.value)
-                  ? 'border-blue-500 bg-blue-500'
-                  : 'border-zinc-600'
+                  ? 'border-[var(--bui-primary,#2563eb)] bg-[var(--bui-primary-hover,#3b82f6)]'
+                  : 'border-[var(--bui-border-strong,#3f3f46)]'
               } flex items-center justify-center`}>
                 {isSelected(opt.value) && (
                   <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -128,7 +123,7 @@ export function QuestionView({
               <div className="min-w-0 flex-1">
                 <span className="text-sm">{opt.label}</span>
                 {opt.description && (
-                  <p className="text-zinc-500 text-xs mt-0.5">{opt.description}</p>
+                  <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-0.5">{opt.description}</p>
                 )}
               </div>
             </div>
@@ -141,7 +136,7 @@ export function QuestionView({
         <button
           onClick={handleMultiSubmit}
           disabled={loading || multiSelected.size === 0}
-          className="mt-3 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="mt-3 px-4 py-2 bg-[var(--bui-primary,#2563eb)] text-white text-sm rounded-lg hover:bg-[var(--bui-primary-hover,#3b82f6)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Confirm ({multiSelected.size} selected)
         </button>
@@ -149,11 +144,11 @@ export function QuestionView({
 
       {/* Freeform input */}
       {allowFreeform && (
-        <div className="mt-3 pt-3 border-t border-zinc-700">
+        <div className="mt-3 pt-3 border-t border-[var(--bui-border-strong,#3f3f46)]">
           {!showFreeform ? (
             <button
               onClick={() => setShowFreeform(true)}
-              className="text-zinc-500 text-xs hover:text-zinc-400 transition-colors"
+              className="text-[var(--bui-fg-muted,#71717a)] text-xs hover:text-[var(--bui-fg-secondary,#a1a1aa)] transition-colors"
             >
               Or type your own answer...
             </button>
@@ -165,12 +160,12 @@ export function QuestionView({
                 onChange={(e) => setFreeformValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleFreeformSubmit()}
                 placeholder="Type your answer..."
-                className="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+                className="flex-1 bg-[var(--bui-bg-surface,#18181b)] border border-[var(--bui-border-strong,#3f3f46)] rounded-lg px-3 py-2 text-sm text-[var(--bui-fg,#f4f4f5)] placeholder-[var(--bui-fg-faint,#52525b)] focus:outline-none focus:border-[var(--bui-border-strong,#3f3f46)]"
               />
               <button
                 onClick={handleFreeformSubmit}
                 disabled={loading || !freeformValue.trim()}
-                className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-2 bg-[var(--bui-primary,#2563eb)] text-white text-sm rounded-lg hover:bg-[var(--bui-primary-hover,#3b82f6)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Send
               </button>

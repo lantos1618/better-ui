@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * React integrations for Better UI v2
  */

@@ -3,11 +3,10 @@
  *
  * A minimal, type-safe framework for building AI-powered tools
  * with seamless server/client execution and view integration.
+ *
+ * This entry point is server-safe (no React hooks).
+ * React hooks are available from '@lantos1618/better-ui/react'.
  */
-
-// ============================================
-// Core Tool API
-// ============================================
 
 export { tool, Tool, ToolBuilder } from './tool';
 export type {
@@ -23,17 +22,6 @@ export type {
   ClientFetchConfig,
 } from './tool';
 
-// ============================================
-// React Hooks
-// ============================================
-
-export { useTool, useTools, useToolStream } from './react';
-export type { UseToolOptions, UseToolResult, UseToolStreamResult } from './react';
-
-// ============================================
-// Providers
-// ============================================
-
 export { createProvider } from './providers';
 export {
   createOpenAIProvider,
@@ -43,9 +31,6 @@ export {
 } from './providers';
 export type { Provider, ProviderConfig, ProviderType } from './providers';
 
-// ============================================
-// Components
-// ============================================
 // Components are exported from a separate entry point to avoid
 // pulling browser-only dependencies (@ai-sdk/react, TransformStream)
 // into server-side code.
@@ -62,4 +47,5 @@ export type {
   ComposerProps,
   ToolResultProps,
   ChatProps,
+  ThemeProviderProps,
 } from './components';

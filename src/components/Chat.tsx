@@ -29,7 +29,7 @@ export function Chat({
 }: ChatProps) {
   return (
     <ChatProvider endpoint={endpoint} tools={tools}>
-      <div className={`bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col ${className || ''}`}>
+      <div className={`bg-[var(--bui-bg-surface,#18181b)] rounded-xl border border-[var(--bui-border,#27272a)] flex flex-col ${className || ''}`}>
         <Thread
           className="flex-1 overflow-y-auto"
           emptyMessage={emptyMessage}

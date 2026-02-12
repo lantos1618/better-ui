@@ -19,7 +19,7 @@ function ShikiCode({ code, language }: { code: string; language: string }) {
   if (html) {
     return <div dangerouslySetInnerHTML={{ __html: html }} />;
   }
-  return <code className="text-zinc-200">{code}</code>;
+  return <code className="text-[var(--bui-fg,#f4f4f5)]">{code}</code>;
 }
 
 export interface MarkdownProps {
@@ -39,7 +39,7 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={handleCopy}
-      className="absolute top-2 right-2 px-2 py-1 text-xs text-zinc-400 hover:text-zinc-200 bg-zinc-700 hover:bg-zinc-600 rounded transition-colors"
+      className="absolute top-2 right-2 px-2 py-1 text-xs text-[var(--bui-fg-secondary,#a1a1aa)] hover:text-[var(--bui-fg,#f4f4f5)] bg-[var(--bui-bg-hover,#3f3f46)] hover:bg-[var(--bui-bg-hover,#3f3f46)] rounded transition-colors"
     >
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -62,7 +62,7 @@ const components: Components = {
     return (
       <div className="relative group my-3">
         <CopyButton text={codeText} />
-        <pre className="bg-zinc-900 border border-zinc-700 rounded-lg p-4 overflow-x-auto text-sm" {...props}>
+        <pre className="bg-[var(--bui-bg-surface,#18181b)] border border-[var(--bui-border-strong,#3f3f46)] rounded-lg p-4 overflow-x-auto text-sm" {...props}>
           {children}
         </pre>
       </div>
@@ -77,20 +77,20 @@ const components: Components = {
       return <ShikiCode code={codeText} language={language} />;
     }
     return (
-      <code className="bg-zinc-700 text-zinc-200 px-1.5 py-0.5 rounded text-sm" {...props}>
+      <code className="bg-[var(--bui-bg-hover,#3f3f46)] text-[var(--bui-fg,#f4f4f5)] px-1.5 py-0.5 rounded text-sm" {...props}>
         {children}
       </code>
     );
   },
 
   h1({ children, ...props }) {
-    return <h1 className="text-xl font-bold text-zinc-100 mt-4 mb-2" {...props}>{children}</h1>;
+    return <h1 className="text-xl font-bold text-[var(--bui-fg,#f4f4f5)] mt-4 mb-2" {...props}>{children}</h1>;
   },
   h2({ children, ...props }) {
-    return <h2 className="text-lg font-semibold text-zinc-100 mt-3 mb-2" {...props}>{children}</h2>;
+    return <h2 className="text-lg font-semibold text-[var(--bui-fg,#f4f4f5)] mt-3 mb-2" {...props}>{children}</h2>;
   },
   h3({ children, ...props }) {
-    return <h3 className="text-base font-semibold text-zinc-200 mt-3 mb-1" {...props}>{children}</h3>;
+    return <h3 className="text-base font-semibold text-[var(--bui-fg,#f4f4f5)] mt-3 mb-1" {...props}>{children}</h3>;
   },
 
   p({ children, ...props }) {
@@ -104,12 +104,12 @@ const components: Components = {
     return <ol className="list-decimal list-inside mb-2 space-y-1" {...props}>{children}</ol>;
   },
   li({ children, ...props }) {
-    return <li className="text-zinc-300" {...props}>{children}</li>;
+    return <li className="text-[var(--bui-fg-secondary,#a1a1aa)]" {...props}>{children}</li>;
   },
 
   blockquote({ children, ...props }) {
     return (
-      <blockquote className="border-l-2 border-zinc-600 pl-3 my-2 text-zinc-400 italic" {...props}>
+      <blockquote className="border-l-2 border-[var(--bui-border-strong,#3f3f46)] pl-3 my-2 text-[var(--bui-fg-secondary,#a1a1aa)] italic" {...props}>
         {children}
       </blockquote>
     );
@@ -118,36 +118,36 @@ const components: Components = {
   table({ children, ...props }) {
     return (
       <div className="overflow-x-auto my-3">
-        <table className="min-w-full border border-zinc-700 text-sm" {...props}>
+        <table className="min-w-full border border-[var(--bui-border-strong,#3f3f46)] text-sm" {...props}>
           {children}
         </table>
       </div>
     );
   },
   thead({ children, ...props }) {
-    return <thead className="bg-zinc-800" {...props}>{children}</thead>;
+    return <thead className="bg-[var(--bui-bg-elevated,#27272a)]" {...props}>{children}</thead>;
   },
   th({ children, ...props }) {
-    return <th className="px-3 py-2 text-left text-zinc-300 font-medium border-b border-zinc-700" {...props}>{children}</th>;
+    return <th className="px-3 py-2 text-left text-[var(--bui-fg-secondary,#a1a1aa)] font-medium border-b border-[var(--bui-border-strong,#3f3f46)]" {...props}>{children}</th>;
   },
   td({ children, ...props }) {
-    return <td className="px-3 py-2 text-zinc-400 border-b border-zinc-800" {...props}>{children}</td>;
+    return <td className="px-3 py-2 text-[var(--bui-fg-secondary,#a1a1aa)] border-b border-[var(--bui-border,#27272a)]" {...props}>{children}</td>;
   },
 
   a({ children, href, ...props }) {
     return (
-      <a href={href} className="text-blue-400 hover:text-blue-300 underline" target="_blank" rel="noopener noreferrer" {...props}>
+      <a href={href} className="text-[var(--bui-primary-hover,#3b82f6)] hover:text-[var(--bui-primary-hover,#3b82f6)] underline" target="_blank" rel="noopener noreferrer" {...props}>
         {children}
       </a>
     );
   },
 
   hr(props) {
-    return <hr className="border-zinc-700 my-4" {...props} />;
+    return <hr className="border-[var(--bui-border-strong,#3f3f46)] my-4" {...props} />;
   },
 
   del({ children, ...props }) {
-    return <del className="text-zinc-500" {...props}>{children}</del>;
+    return <del className="text-[var(--bui-fg-muted,#71717a)]" {...props}>{children}</del>;
   },
 };
 

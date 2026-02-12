@@ -10,17 +10,16 @@ export interface ToolResultProps {
   output: unknown;
   toolInput?: unknown;
   hasResult: boolean;
+  /** Tool part state from the AI SDK (e.g. 'partial-call', 'call', 'output-available') */
+  toolPartState?: string;
   toolStateStore: ToolStateStore;
   tools: Record<string, Tool>;
   getOnAction: (toolCallId: string, toolName: string) => (input: Record<string, unknown>) => void;
   onConfirm?: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => void;
   onReject?: (toolCallId: string, toolName: string) => void;
+  onRetry?: (toolCallId: string, toolName: string, toolInput: unknown) => void;
   className?: string;
 }
-
-// ============================================
-// useIsCollapsed hook
-// ============================================
 
 /**
  * Returns true if this toolCallId is "collapsed" — i.e. there's another entry
@@ -52,10 +51,6 @@ function useIsCollapsed(
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
-// ============================================
-// ToolResult
-// ============================================
-
 /**
  * Renders a tool's View component given tool name and output.
  * Uses the tool state store for in-place updates (e.g. counter clicks),
@@ -73,11 +68,13 @@ export function ToolResult({
   output,
   toolInput,
   hasResult,
+  toolPartState,
   toolStateStore,
   tools,
   getOnAction,
   onConfirm,
   onReject,
+  onRetry,
   className,
 }: ToolResultProps) {
   const storeState = useToolState(toolStateStore, toolCallId);
@@ -99,7 +96,6 @@ export function ToolResult({
         toolInput,
       });
     } else if (hasResult && output != null && !existing.output && existing.loading) {
-      // Transition from loading → output available
       toolStateStore.set(toolCallId, {
         ...existing,
         output,
@@ -108,7 +104,6 @@ export function ToolResult({
         toolInput: existing.toolInput ?? toolInput,
       });
     } else if (!existing.entityId && entityId) {
-      // Patch entityId if not yet set
       toolStateStore.set(toolCallId, {
         ...existing,
         entityId,
@@ -120,74 +115,83 @@ export function ToolResult({
   // Collapsing: self-detect if a newer entry with same entityId exists
   const isCollapsed = useIsCollapsed(toolStateStore, toolCallId);
 
+  // HITL confirmation logic — computed before early returns so hooks below are always called
+  const isHITL = toolDef?.requiresConfirmation ?? false;
+  const needsUserConfirm = isHITL && toolDef!.shouldConfirm(toolInput);
+  const hasOutput = hasResult || !!storeState?.output;
+  const isRejected = storeState?.status === 'rejected';
+  const isConfirming = storeState?.loading && storeState?.status === 'confirmed';
+
+  // Auto-approve path: HITL tool but shouldConfirm returns false for this input.
+  // AI SDK v5 states: 'input-streaming' → 'input-available' → 'output-available' | 'output-error'
+  // Only act when args are fully available, not during streaming.
+  const argsComplete = toolPartState === 'input-available' || toolPartState === 'output-available';
+  const autoApprovedRef = useRef(false);
+  useEffect(() => {
+    if (isHITL && argsComplete && !needsUserConfirm && !hasOutput && !autoApprovedRef.current && toolInput != null) {
+      autoApprovedRef.current = true;
+      onConfirm?.(toolCallId, toolName, (toolInput ?? {}) as Record<string, unknown>);
+    }
+  }, [isHITL, argsComplete, needsUserConfirm, hasOutput, toolInput, toolCallId, toolName, onConfirm]);
+
+  // --- Early returns (all hooks are above this line) ---
+
   if (!toolDef) {
     return (
-      <div className={`text-sm text-zinc-500 px-4 py-2 bg-zinc-800/50 rounded-lg ${className || ''}`}>
+      <div className={`text-sm text-[var(--bui-fg-muted,#71717a)] px-4 py-2 bg-[var(--bui-bg-elevated,#27272a)]/50 rounded-lg ${className || ''}`}>
         Unknown tool: {toolName}
       </div>
     );
   }
 
-  // Collapsed chip — minimal representation for superseded grouped calls
   if (isCollapsed) {
     return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-800/50 rounded text-xs text-zinc-500 ${className || ''}`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 bg-[var(--bui-bg-elevated,#27272a)]/50 rounded text-xs text-[var(--bui-fg-muted,#71717a)] ${className || ''}`}>
+        <div className="w-1.5 h-1.5 rounded-full bg-[var(--bui-fg-faint,#52525b)]" />
         {toolName}
       </div>
     );
   }
 
-  // HITL confirmation logic
-  const isHITL = toolDef.requiresConfirmation;
-  const needsUserConfirm = isHITL && toolDef.shouldConfirm(toolInput);
-  const hasOutput = hasResult || !!storeState?.output;
-  const isRejected = storeState?.status === 'rejected';
-  const isConfirming = storeState?.loading && storeState?.status === 'confirmed';
-
-  // Auto-approve path: HITL tool but shouldConfirm returns false for this input
-  const autoApprovedRef = useRef(false);
-  useEffect(() => {
-    if (isHITL && !needsUserConfirm && !hasOutput && !autoApprovedRef.current && toolInput != null) {
-      autoApprovedRef.current = true;
-      onConfirm?.(toolCallId, toolName, (toolInput ?? {}) as Record<string, unknown>);
-    }
-  }, [isHITL, needsUserConfirm, hasOutput, toolInput, toolCallId, toolName, onConfirm]);
-
-  // Confirmation card: only shown when needsUserConfirm is true
-  if (needsUserConfirm && !hasOutput && !isRejected && !isConfirming) {
+  // Confirmation card: only shown when args are complete and needsUserConfirm is true
+  if (argsComplete && needsUserConfirm && !hasOutput && !isRejected && !isConfirming) {
     const inputObj = (toolInput && typeof toolInput === 'object') ? toolInput as Record<string, unknown> : null;
 
+    // Render simple key/value pairs, skipping arrays/objects to keep it clean
+    const simpleEntries = inputObj
+      ? Object.entries(inputObj).filter(([, v]) => typeof v !== 'object' || v === null)
+      : [];
+
     return (
-      <div className={`bg-zinc-800 border border-amber-700/50 rounded-xl p-4 ${className || ''}`}>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 bg-amber-500 rounded-full" />
-          <p className="text-zinc-300 text-sm font-medium">
+      <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-warning-border,rgba(180,83,9,0.5))] rounded-xl overflow-hidden ${className || ''}`}>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--bui-warning-border,rgba(180,83,9,0.5))]/50">
+          <div className="w-2 h-2 bg-[var(--bui-warning-fg,#f59e0b)] rounded-full" />
+          <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm font-medium">
             {toolName} requires confirmation
           </p>
         </div>
-        {inputObj != null && (
-          <div className="bg-zinc-900 rounded-lg p-3 mb-3 space-y-1">
-            {Object.entries(inputObj).map(([key, value]) => (
+        {simpleEntries.length > 0 && (
+          <div className="px-4 py-3 space-y-1">
+            {simpleEntries.map(([key, value]) => (
               <div key={key}>
-                <span className="text-zinc-500 text-xs">{key}: </span>
-                <span className="text-zinc-300 text-sm whitespace-pre-wrap">
-                  {typeof value === 'string' ? value : JSON.stringify(value)}
+                <span className="text-[var(--bui-fg-muted,#71717a)] text-xs">{key}: </span>
+                <span className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">
+                  {String(value)}
                 </span>
               </div>
             ))}
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="flex gap-2 px-4 py-3 border-t border-[var(--bui-border,#27272a)]">
           <button
             onClick={() => onConfirm?.(toolCallId, toolName, (toolInput ?? {}) as Record<string, unknown>)}
-            className="px-4 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-500 transition-colors"
+            className="px-4 py-2 bg-[var(--bui-success,#059669)] text-white text-sm rounded-lg hover:bg-[var(--bui-success,#059669)] transition-colors"
           >
             Approve
           </button>
           <button
             onClick={() => onReject?.(toolCallId, toolName)}
-            className="px-4 py-2 bg-zinc-700 text-zinc-300 text-sm rounded-lg hover:bg-zinc-600 transition-colors"
+            className="px-4 py-2 bg-[var(--bui-bg-hover,#3f3f46)] text-[var(--bui-fg-secondary,#a1a1aa)] text-sm rounded-lg hover:bg-[var(--bui-bg-hover,#3f3f46)] transition-colors"
           >
             Reject
           </button>
@@ -199,12 +203,12 @@ export function ToolResult({
   // HITL rejected state
   if (isHITL && isRejected) {
     return (
-      <div className={`bg-zinc-800 border border-red-900/50 rounded-xl p-4 ${className || ''}`}>
+      <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-error-border,rgba(153,27,27,0.5))] rounded-xl p-4 ${className || ''}`}>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-red-400 bg-red-900/30 px-2 py-0.5 rounded">
+          <span className="text-xs font-medium text-[var(--bui-error-fg,#f87171)] bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] px-2 py-0.5 rounded">
             Rejected
           </span>
-          <p className="text-zinc-400 text-sm">{toolName}</p>
+          <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">{toolName}</p>
         </div>
       </div>
     );
@@ -214,12 +218,36 @@ export function ToolResult({
   const resolvedOutput = storeState?.output ?? output;
   const resolvedLoading = storeState?.loading ?? !hasResult;
 
+  // Error fallback UI: show error card when tool failed and no output is available
+  if (storeState?.error && !resolvedOutput && !resolvedLoading) {
+    return (
+      <div className={`bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] border border-[var(--bui-error-border,rgba(153,27,27,0.5))] rounded-xl p-4 ${className || ''}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <svg className="w-4 h-4 text-[var(--bui-error-fg,#f87171)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span className="text-[var(--bui-error-fg,#f87171)] text-sm font-medium">{toolName} failed</span>
+        </div>
+        <p className="text-[var(--bui-error-fg,#f87171)]/70 text-xs mb-3">{storeState.error}</p>
+        {onRetry && (
+          <button
+            onClick={() => onRetry(toolCallId, toolName, storeState.toolInput ?? toolInput)}
+            className="px-3 py-1.5 bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] text-[var(--bui-error-fg,#f87171)] text-xs rounded-lg border border-[var(--bui-error-border,rgba(153,27,27,0.5))] hover:bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] transition-colors"
+          >
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className={className || ''}>
       <toolDef.View
         data={resolvedOutput}
         loading={resolvedLoading}
         onAction={getOnAction(toolCallId, toolName)}
+        error={storeState?.error ? new Error(storeState.error) : null}
       />
     </div>
   );

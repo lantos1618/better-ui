@@ -3,20 +3,12 @@
 import { useState, useEffect } from 'react';
 import type { ToolStateStore, ToolStateEntry } from './useToolStateStore';
 
-// ============================================
-// Types
-// ============================================
-
 export interface ToolOutputResult<T = unknown> {
   data: T | null;
   loading: boolean;
   error: string | null;
   toolCallId: string | null;
 }
-
-// ============================================
-// Helpers
-// ============================================
 
 function findBest(store: ToolStateStore, toolName: string): { toolCallId: string; entry: ToolStateEntry } | null {
   const snapshot = store.getSnapshot();
@@ -30,10 +22,6 @@ function findBest(store: ToolStateStore, toolName: string): { toolCallId: string
   }
   return best;
 }
-
-// ============================================
-// Hook
-// ============================================
 
 /**
  * Subscribe to the latest output for a specific tool by name.

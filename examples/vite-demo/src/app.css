@@ -1,0 +1,5 @@
+@import "tailwindcss";
+@import "@lantos1618/better-ui/theme.css";
+
+/* Tailwind v4: scan library source so component classes are generated */
+@source "../../../src/**/*.tsx";

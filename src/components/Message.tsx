@@ -19,6 +19,7 @@ export interface MessageProps {
   getOnAction: (toolCallId: string, toolName: string) => (input: Record<string, unknown>) => void;
   onConfirm?: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => void;
   onReject?: (toolCallId: string, toolName: string) => void;
+  onRetry?: (toolCallId: string, toolName: string, toolInput: unknown) => void;
   className?: string;
 }
 
@@ -28,7 +29,7 @@ export interface MessageProps {
  * - Assistant messages: left-aligned bubble (rendered markdown)
  * - Tool parts: renders tool.View automatically
  */
-export function Message({ message, tools, toolStateStore, getOnAction, onConfirm, onReject, className }: MessageProps) {
+export function Message({ message, tools, toolStateStore, getOnAction, onConfirm, onReject, onRetry, className }: MessageProps) {
   const rawTextContent = message.parts
     .filter(isTextUIPart)
     .map(part => part.text)
@@ -83,8 +84,8 @@ export function Message({ message, tools, toolStateStore, getOnAction, onConfirm
           <div
             className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${
               message.role === 'user'
-                ? 'bg-zinc-100 text-zinc-900'
-                : 'bg-zinc-800 text-zinc-200'
+                ? 'bg-[var(--bui-user-bg,#f4f4f5)] text-[var(--bui-user-fg,#18181b)]'
+                : 'bg-[var(--bui-bg-elevated,#27272a)] text-[var(--bui-fg,#f4f4f5)]'
             }`}
           >
             {message.role === 'assistant' ? (
@@ -104,11 +105,13 @@ export function Message({ message, tools, toolStateStore, getOnAction, onConfirm
           output={toolPart.output}
           toolInput={toolPart.input}
           hasResult={toolPart.state === 'output-available'}
+          toolPartState={toolPart.state}
           toolStateStore={toolStateStore}
           tools={tools}
           getOnAction={getOnAction}
           onConfirm={onConfirm}
           onReject={onReject}
+          onRetry={onRetry}
         />
       ))}
     </div>

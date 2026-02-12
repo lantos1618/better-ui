@@ -1,14 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useCallback, useRef, useState } from 'react';
+import React, { createContext, useContext, useCallback, useRef, useState, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, type UIMessage, type ChatStatus } from 'ai';
 import type { Tool } from '../tool';
 import { createToolStateStore, type ToolStateStore } from './useToolStateStore';
-
-// ============================================
-// Types
-// ============================================
+import type { PersistenceAdapter, Thread } from '../persistence/types';
 
 /** Parsed tool part from a UIMessage */
 export interface ToolPartInfo {
@@ -31,18 +28,30 @@ interface ChatContextValue {
   confirmTool: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => Promise<void>;
   /** Reject a HITL tool and notify AI */
   rejectTool: (toolCallId: string, toolName: string) => Promise<void>;
+  /** Retry a failed tool execution */
+  retryTool: (toolCallId: string, toolName: string, toolInput: unknown) => void;
+  /** Available threads (only when persistence is configured) */
+  threads?: Thread[];
+  /** Current thread ID */
+  threadId?: string;
+  /** Create a new thread (only when persistence is configured) */
+  createThread?: (title?: string) => Promise<Thread>;
+  /** Switch to a different thread (only when persistence is configured) */
+  switchThread?: (threadId: string) => Promise<void>;
+  /** Delete a thread (only when persistence is configured) */
+  deleteThread?: (threadId: string) => Promise<void>;
 }
 
 export interface ChatProviderProps {
   endpoint?: string;
   tools: Record<string, Tool>;
   toolStateStore?: ToolStateStore;
+  /** Persistence adapter for thread/message storage */
+  persistence?: PersistenceAdapter;
+  /** Active thread ID (used with persistence) */
+  threadId?: string;
   children: React.ReactNode;
 }
-
-// ============================================
-// Context
-// ============================================
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
@@ -57,17 +66,72 @@ export function useChatContext(): ChatContextValue {
   return ctx;
 }
 
-// ============================================
-// Provider
-// ============================================
-
-export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: externalStore, children }: ChatProviderProps) {
+export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: externalStore, persistence, threadId, children }: ChatProviderProps) {
   const transportRef = useRef(new DefaultChatTransport({ api: endpoint }));
-  const { messages, sendMessage, status, addToolOutput } = useChat({
+  const { messages, setMessages, sendMessage, status, addToolOutput } = useChat({
     transport: transportRef.current,
   });
 
   const isLoading = status === 'streaming' || status === 'submitted';
+
+  // Persistence: thread list
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | undefined>(threadId);
+
+  // Load thread list on mount when persistence is configured
+  useEffect(() => {
+    if (persistence) {
+      persistence.listThreads().then(setThreads).catch((err) => console.warn('[better-ui] persistence error:', err));
+    }
+  }, [persistence]);
+
+  // Load messages when threadId changes
+  useEffect(() => {
+    if (persistence && activeThreadId) {
+      persistence.getMessages(activeThreadId).then((msgs) => {
+        if (msgs.length > 0) {
+          setMessages(msgs);
+        }
+      }).catch((err) => console.warn('[better-ui] persistence error:', err));
+    }
+  }, [persistence, activeThreadId, setMessages]);
+
+  // Auto-save messages after AI finishes responding
+  const prevStatusRef = useRef<ChatStatus>(status);
+  useEffect(() => {
+    const wasStreaming = prevStatusRef.current === 'streaming' || prevStatusRef.current === 'submitted';
+    const isNowReady = status === 'ready';
+    prevStatusRef.current = status;
+
+    if (persistence && activeThreadId && wasStreaming && isNowReady && messages.length > 0) {
+      persistence.saveMessages(activeThreadId, messages).catch((err) => console.warn('[better-ui] persistence error:', err));
+    }
+  }, [status, persistence, activeThreadId, messages]);
+
+  // Persistence thread management
+  const createThreadFn = useCallback(async (title?: string) => {
+    if (!persistence) throw new Error('Persistence not configured');
+    const thread = await persistence.createThread(title);
+    setThreads(prev => [thread, ...prev]);
+    setActiveThreadId(thread.id);
+    setMessages([]);
+    return thread;
+  }, [persistence, setMessages]);
+
+  const switchThreadFn = useCallback(async (id: string) => {
+    if (!persistence) throw new Error('Persistence not configured');
+    setActiveThreadId(id);
+  }, [persistence]);
+
+  const deleteThreadFn = useCallback(async (id: string) => {
+    if (!persistence) throw new Error('Persistence not configured');
+    await persistence.deleteThread(id);
+    setThreads(prev => prev.filter(t => t.id !== id));
+    if (activeThreadId === id) {
+      setActiveThreadId(undefined);
+      setMessages([]);
+    }
+  }, [persistence, activeThreadId, setMessages]);
 
   const internalStoreRef = useRef<ToolStateStore>(createToolStateStore());
   const toolStateStore = externalStore || internalStoreRef.current;
@@ -121,7 +185,10 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
         body: JSON.stringify({ tool: toolName, input: toolInput }),
       });
 
-      if (!response.ok) throw new Error('Tool execution failed');
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.error || `Tool execution failed (${response.status})`);
+      }
 
       const { result } = await response.json();
 
@@ -188,7 +255,10 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
         body: JSON.stringify({ tool: toolName, input: toolInput }),
       });
 
-      if (!response.ok) throw new Error('Tool execution failed');
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.error || `Tool execution failed (${response.status})`);
+      }
 
       const { result } = await response.json();
 
@@ -250,6 +320,10 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     });
   }, [toolStateStore, addToolOutput]);
 
+  const retryTool = useCallback((toolCallId: string, toolName: string, toolInput: unknown) => {
+    executeToolDirect(toolName, (toolInput ?? {}) as Record<string, unknown>, toolCallId);
+  }, [executeToolDirect]);
+
   const callbackCacheRef = useRef<Map<string, (input: Record<string, unknown>) => void>>(new Map());
 
   const getOnAction = useCallback((toolCallId: string, toolName: string) => {
@@ -299,6 +373,14 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     toolStateStore,
     confirmTool,
     rejectTool,
+    retryTool,
+    ...(persistence ? {
+      threads,
+      threadId: activeThreadId,
+      createThread: createThreadFn,
+      switchThread: switchThreadFn,
+      deleteThread: deleteThreadFn,
+    } : {}),
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

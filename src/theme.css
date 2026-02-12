@@ -1,0 +1,101 @@
+/**
+ * Better UI — CSS Custom Property Theme
+ *
+ * Import this file to enable theme customization.
+ * Override any variable on :root or a wrapper element.
+ *
+ * Dark theme (default) is defined on :root.
+ * Light theme is activated with data-theme="light".
+ */
+
+:root {
+  /* Background */
+  --bui-bg: #09090b;
+  --bui-bg-surface: #18181b;
+  --bui-bg-elevated: #27272a;
+  --bui-bg-hover: #3f3f46;
+
+  /* Foreground / text */
+  --bui-fg: #f4f4f5;
+  --bui-fg-secondary: #a1a1aa;
+  --bui-fg-muted: #71717a;
+  --bui-fg-faint: #52525b;
+
+  /* Borders */
+  --bui-border: #27272a;
+  --bui-border-strong: #3f3f46;
+
+  /* Primary (blue) */
+  --bui-primary: #2563eb;
+  --bui-primary-hover: #3b82f6;
+  --bui-primary-fg: #ffffff;
+  --bui-primary-muted: #1e3a5f;
+  --bui-primary-border: #2563eb80;
+
+  /* Success (emerald) */
+  --bui-success: #059669;
+  --bui-success-fg: #6ee7b7;
+  --bui-success-muted: rgba(16, 185, 129, 0.12);
+  --bui-success-border: rgba(4, 120, 87, 0.3);
+
+  /* Error (red) */
+  --bui-error: #dc2626;
+  --bui-error-fg: #f87171;
+  --bui-error-muted: rgba(220, 38, 38, 0.08);
+  --bui-error-border: rgba(153, 27, 27, 0.5);
+
+  /* Warning (amber) */
+  --bui-warning-fg: #f59e0b;
+  --bui-warning-muted: rgba(245, 158, 11, 0.12);
+  --bui-warning-border: rgba(180, 83, 9, 0.5);
+
+  /* User message bubble */
+  --bui-user-bg: #f4f4f5;
+  --bui-user-fg: #18181b;
+}
+
+[data-theme="light"] {
+  /* Background */
+  --bui-bg: #ffffff;
+  --bui-bg-surface: #f4f4f5;
+  --bui-bg-elevated: #e4e4e7;
+  --bui-bg-hover: #d4d4d8;
+
+  /* Foreground / text */
+  --bui-fg: #18181b;
+  --bui-fg-secondary: #3f3f46;
+  --bui-fg-muted: #71717a;
+  --bui-fg-faint: #a1a1aa;
+
+  /* Borders */
+  --bui-border: #e4e4e7;
+  --bui-border-strong: #d4d4d8;
+
+  /* Primary (blue) */
+  --bui-primary: #2563eb;
+  --bui-primary-hover: #1d4ed8;
+  --bui-primary-fg: #ffffff;
+  --bui-primary-muted: #dbeafe;
+  --bui-primary-border: #93c5fd;
+
+  /* Success (emerald) */
+  --bui-success: #059669;
+  --bui-success-fg: #065f46;
+  --bui-success-muted: rgba(16, 185, 129, 0.1);
+  --bui-success-border: rgba(4, 120, 87, 0.3);
+
+  /* Error (red) */
+  --bui-error: #dc2626;
+  --bui-error-fg: #991b1b;
+  --bui-error-muted: rgba(220, 38, 38, 0.06);
+  --bui-error-border: rgba(220, 38, 38, 0.2);
+
+  /* Warning (amber) */
+  --bui-warning-fg: #d97706;
+  --bui-warning-muted: rgba(245, 158, 11, 0.1);
+  --bui-warning-border: rgba(180, 83, 9, 0.3);
+
+  /* User message bubble */
+  --bui-user-bg: #2563eb;
+  --bui-user-fg: #ffffff;
+}

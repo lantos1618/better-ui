@@ -2,10 +2,6 @@
 
 import React, { useState } from 'react';
 
-// ============================================
-// Types
-// ============================================
-
 export interface MediaItem {
   url: string;
   type: 'image' | 'video' | 'audio';
@@ -22,25 +18,24 @@ export interface MediaDisplayViewProps {
   title?: string;
   /** Loading state */
   loading?: boolean;
+  /** Additional CSS class for the root element */
+  className?: string;
 }
-
-// ============================================
-// Component
-// ============================================
 
 export function MediaDisplayView({
   items,
   layout = 'grid',
   title,
   loading = false,
+  className,
 }: MediaDisplayViewProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   if (loading && items.length === 0) {
     return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
-        <div className="flex items-center gap-2 text-zinc-400 text-sm">
-          <div className="w-1.5 h-1.5 bg-zinc-500 rounded-full animate-pulse" />
+      <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl p-4 ${className || ''}`}>
+        <div className="flex items-center gap-2 text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">
+          <div className="w-1.5 h-1.5 bg-[var(--bui-fg-muted,#71717a)] rounded-full animate-pulse" />
           <span>Loading media...</span>
         </div>
       </div>
@@ -54,12 +49,12 @@ export function MediaDisplayView({
     items.length <= 4 ? 'grid-cols-2' : 'grid-cols-3';
 
   return (
-    <div className={`bg-zinc-800 border border-zinc-700 rounded-xl overflow-hidden transition-opacity ${loading ? 'opacity-60' : ''}`}>
+    <div className={`bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-xl overflow-hidden transition-opacity ${loading ? 'opacity-60' : ''} ${className || ''}`}>
       {title && (
-        <div className="px-4 py-3 border-b border-zinc-700">
+        <div className="px-4 py-3 border-b border-[var(--bui-border-strong,#3f3f46)]">
           <div className="flex items-center justify-between">
-            <p className="text-zinc-300 text-sm font-medium">{title}</p>
-            <span className="text-zinc-500 text-xs">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+            <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm font-medium">{title}</p>
+            <span className="text-[var(--bui-fg-muted,#71717a)] text-xs">{items.length} item{items.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
       )}
@@ -136,10 +131,6 @@ export function MediaDisplayView({
   );
 }
 
-// ============================================
-// Individual item renderer
-// ============================================
-
 function MediaItemRenderer({
   item,
   onImageClick,
@@ -162,7 +153,7 @@ function MediaItemRenderer({
           onClick={onImageClick}
         />
         {item.caption && !compact && (
-          <p className="text-zinc-500 text-xs mt-1">{item.caption}</p>
+          <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1">{item.caption}</p>
         )}
       </div>
     );
@@ -179,7 +170,7 @@ function MediaItemRenderer({
           <track kind="captions" />
         </video>
         {item.caption && !compact && (
-          <p className="text-zinc-500 text-xs mt-1">{item.caption}</p>
+          <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1">{item.caption}</p>
         )}
       </div>
     );
@@ -187,10 +178,10 @@ function MediaItemRenderer({
 
   if (item.type === 'audio') {
     return (
-      <div className="bg-zinc-900 rounded-lg p-3">
+      <div className="bg-[var(--bui-bg-surface,#18181b)] rounded-lg p-3">
         <audio src={item.url} controls className="w-full" />
         {item.caption && (
-          <p className="text-zinc-500 text-xs mt-2">{item.caption}</p>
+          <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-2">{item.caption}</p>
         )}
       </div>
     );
