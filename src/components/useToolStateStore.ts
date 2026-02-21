@@ -21,11 +21,15 @@ export interface ToolStateEntry {
 export interface ToolStateStore {
   get: (toolCallId: string) => ToolStateEntry | undefined;
   set: (toolCallId: string, entry: ToolStateEntry) => void;
+  /** Remove all entries (e.g. when switching threads) */
+  clear: () => void;
   subscribe: (toolCallId: string, listener: () => void) => () => void;
   subscribeAll: (listener: () => void) => () => void;
   getSnapshot: () => Map<string, ToolStateEntry>;
   /** Returns Map with highest-seqNo entry per entityId + all ungrouped entries */
   getLatestPerEntity: () => Map<string, ToolStateEntry>;
+  /** Returns the oldest (lowest seqNo) entry with the given entityId — the "anchor" */
+  findAnchor: (entityId: string) => { toolCallId: string; entry: ToolStateEntry } | undefined;
 }
 
 export function createToolStateStore(): ToolStateStore {
@@ -56,6 +60,12 @@ export function createToolStateStore(): ToolStateStore {
       notifyKey(toolCallId);
     },
 
+    clear() {
+      state = new Map();
+      seqCounter = 0;
+      for (const l of globalListeners) l();
+    },
+
     subscribe(toolCallId: string, listener: () => void) {
       let listeners = keyListeners.get(toolCallId);
       if (!listeners) {
@@ -80,6 +90,18 @@ export function createToolStateStore(): ToolStateStore {
 
     getSnapshot() {
       return state;
+    },
+
+    findAnchor(entityId: string) {
+      let oldest: { toolCallId: string; entry: ToolStateEntry } | undefined;
+      for (const [toolCallId, entry] of state) {
+        if (entry.entityId === entityId) {
+          if (!oldest || (entry.seqNo ?? 0) < (oldest.entry.seqNo ?? 0)) {
+            oldest = { toolCallId, entry };
+          }
+        }
+      }
+      return oldest;
     },
 
     getLatestPerEntity() {

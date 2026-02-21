@@ -45,4 +45,6 @@ examples/*/build
 examples/*/out
 examples/*/.env
 examples/*/.env.local
+examples/*/sqlite.db*
+examples/*/drizzle/
 

@@ -1,7 +1,11 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
-import { weatherTool, searchTool, counterTool, artifactTool, navigateTool, setThemeTool, stockQuoteTool, sendEmailTool, taskListTool, questionTool, formTool, dataTableTool, progressTool, mediaTool, codeTool, fileUploadTool } from '@/lib/tools';
+import { weatherTool, searchTool, counterTool, artifactTool, navigateTool, setThemeTool, stockQuoteTool, sendEmailTool, taskListTool, questionTool, formTool, dataTableTool, progressTool, mediaTool, codeTool, fileUploadTool, setSearchProvider, createExaProvider } from '@/lib/tools';
 import { rateLimiter } from '@/lib/rate-limiter';
+
+// Wire up search provider — set EXA_API_KEY in .env.local to enable real search
+const exaKey = process.env.EXA_API_KEY;
+if (exaKey) setSearchProvider(createExaProvider(exaKey));
 
 export async function POST(req: Request) {
   const forwardedFor = req.headers.get('x-forwarded-for');
@@ -76,15 +80,22 @@ export async function POST(req: Request) {
     system: `You are a helpful assistant with access to tools. When the user asks you to perform an action that matches a tool, always call the tool directly — never ask for textual confirmation. Tools that need user approval have a built-in confirmation UI; just invoke them and the user will be prompted automatically.
 
 IMPORTANT: Every tool renders its own UI. When you call a tool, do NOT repeat or narrate what the tool already shows. For example:
+- search tool: just call it — do NOT list the results in text, the UI already shows them
 - question tool: just call it — do NOT write "Let me ask you..." or repeat the question in text
 - form tool: just call it — do NOT describe the form fields in text
 - dataTable tool: just call it — do NOT list the data in text
 - weather/stockQuote: just call it — do NOT say "Let me check..."
 Only add text when it provides information beyond what the tool UI shows (e.g. summarizing results, explaining next steps after the user answers).
+When a tool result is self-explanatory, you can respond with JUST the tool call and no text at all.
 
 When calling tools, always fill in ALL fields with sensible content. Never leave required fields empty — e.g. when sending an email, write a proper subject and body even if the user didn't specify them.
 
-When the user asks for something that involves multiple steps (e.g. "get weather for 3 cities and send an email summary"), create a task list first with the taskList tool, then work through each task — updating status to 'running' before starting and 'done' (with a brief result summary) after completing each one. Always complete all tasks before stopping.${stateContextBlock}`,
+When the user asks for something that involves multiple steps (e.g. "get weather for 3 cities and send an email summary"), create a task list first with the taskList tool, then work through every task:
+1. Mark the current task as 'running' (taskList update)
+2. Execute it by calling the appropriate tool
+3. Mark it as 'done' with a brief result summary (taskList update)
+4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
+5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
     tools: {
       // Use Better UI's toAITool() - that's it!

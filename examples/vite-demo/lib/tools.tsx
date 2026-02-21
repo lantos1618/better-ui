@@ -67,6 +67,52 @@ weatherTool.view((data, state) => {
 });
 
 
+// ---------------------------------------------------------------------------
+// Search tool with pluggable provider
+// ---------------------------------------------------------------------------
+export type SearchResult = { title: string; snippet: string; url?: string; score: number };
+export type SearchProvider = (query: string) => Promise<SearchResult[]>;
+
+let _searchProvider: SearchProvider | null = null;
+
+/** Plug in a search backend (Exa, Tavily, etc.). Call once at server startup. */
+export function setSearchProvider(provider: SearchProvider) {
+  _searchProvider = provider;
+}
+
+/** Ready-made Exa (exa.ai) search provider. */
+export function createExaProvider(apiKey: string): SearchProvider {
+  return async (query) => {
+    const res = await fetch('https://api.exa.ai/search', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, numResults: 5, useAutoprompt: true, contents: { text: { maxCharacters: 300 } } }),
+    });
+    if (!res.ok) throw new Error(`Exa search failed: ${res.status}`);
+    const data = await res.json();
+    const results = data.results ?? [];
+    // Normalize scores: Exa scores vary, so scale relative to the best result
+    const maxScore = Math.max(...results.map((r: any) => r.score ?? 0), 1);
+    return results.map((r: any) => ({
+      title: r.title || r.url,
+      snippet: cleanSnippet(r.text || ''),
+      url: r.url,
+      score: maxScore > 0 ? (r.score ?? 0) / maxScore : 0,
+    }));
+  };
+}
+
+/** Strip markdown artifacts, nav junk, and excessive whitespace from scraped text. */
+function cleanSnippet(text: string): string {
+  return text
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')  // [text](url) → text
+    .replace(/\[([^\]]*)\]/g, '$1')               // [text] → text
+    .replace(/[#*_~`>]/g, '')                      // strip markdown chars
+    .replace(/\s{2,}/g, ' ')                       // collapse whitespace
+    .trim()
+    .slice(0, 200);
+}
+
 export const searchTool = tool({
   name: 'search',
   description: 'Search for information',
@@ -77,18 +123,22 @@ export const searchTool = tool({
       id: z.number(),
       title: z.string(),
       snippet: z.string(),
+      url: z.string().optional(),
       score: z.number(),
     })),
   }),
 });
 
 searchTool.server(async ({ query }) => {
+  if (_searchProvider) {
+    const results = await _searchProvider(query);
+    return { query, results: results.map((r, i) => ({ id: i + 1, ...r })) };
+  }
+  // No provider configured
   return {
     query,
     results: [
-      { id: 1, title: `Result for "${query}" 1`, snippet: `This is a relevant excerpt about ${query} from the first source.`, score: 0.95 },
-      { id: 2, title: `Result for "${query}" 2`, snippet: `Another passage discussing ${query} in detail.`, score: 0.87 },
-      { id: 3, title: `Result for "${query}" 3`, snippet: `A brief mention of ${query} found in this document.`, score: 0.76 },
+      { id: 1, title: 'Search not configured', snippet: 'Add EXA_API_KEY to your .env.local to enable real search via exa.ai', score: 0 },
     ],
   };
 });
@@ -120,9 +170,14 @@ searchTool.view((data, state) => {
         {data.results.map((r) => (
           <div key={r.id} className="px-4 py-3 hover:bg-[var(--bui-bg-hover,#3f3f46)]/30 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[var(--bui-fg,#f4f4f5)] text-sm">{r.title}</span>
+              {r.url ? (
+                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--bui-fg,#f4f4f5)] text-sm hover:underline">{r.title}</a>
+              ) : (
+                <span className="text-[var(--bui-fg,#f4f4f5)] text-sm">{r.title}</span>
+              )}
               <span className="text-[var(--bui-fg-muted,#71717a)] text-xs font-mono">{(r.score * 100).toFixed(0)}%</span>
             </div>
+            {r.url && <p className="text-[var(--bui-fg-faint,#52525b)] text-[10px] truncate mt-0.5">{r.url}</p>}
             <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1 line-clamp-2">{r.snippet}</p>
           </div>
         ))}

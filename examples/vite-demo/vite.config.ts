@@ -13,5 +13,8 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:3001',
     },
+    watch: {
+      ignored: ['**/sqlite.db*'],
+    },
   },
 });

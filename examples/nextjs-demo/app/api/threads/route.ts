@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { threads, messages } from '@/db/schema';
+import { threads } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -14,13 +14,12 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const body = await req.json() as { title?: string };
+  const body = (await req.json()) as { title?: string };
   const id = randomUUID();
 
-  db.insert(threads).values({
-    id,
-    title: body.title || 'New Chat',
-  }).run();
+  db.insert(threads)
+    .values({ id, title: body.title || 'New Chat' })
+    .run();
 
   const thread = db.select().from(threads).where(eq(threads.id, id)).get();
   return Response.json(thread, { status: 201 });

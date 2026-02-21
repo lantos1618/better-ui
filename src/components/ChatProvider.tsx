@@ -89,9 +89,7 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
   useEffect(() => {
     if (persistence && activeThreadId) {
       persistence.getMessages(activeThreadId).then((msgs) => {
-        if (msgs.length > 0) {
-          setMessages(msgs);
-        }
+        setMessages(msgs);
       }).catch((err) => console.warn('[better-ui] persistence error:', err));
     }
   }, [persistence, activeThreadId, setMessages]);
@@ -108,6 +106,9 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     }
   }, [status, persistence, activeThreadId, messages]);
 
+  const internalStoreRef = useRef<ToolStateStore>(createToolStateStore());
+  const toolStateStore = externalStore || internalStoreRef.current;
+
   // Persistence thread management
   const createThreadFn = useCallback(async (title?: string) => {
     if (!persistence) throw new Error('Persistence not configured');
@@ -115,13 +116,16 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
     setThreads(prev => [thread, ...prev]);
     setActiveThreadId(thread.id);
     setMessages([]);
+    toolStateStore.clear();
     return thread;
-  }, [persistence, setMessages]);
+  }, [persistence, setMessages, toolStateStore]);
 
   const switchThreadFn = useCallback(async (id: string) => {
     if (!persistence) throw new Error('Persistence not configured');
     setActiveThreadId(id);
-  }, [persistence]);
+    setMessages([]);
+    toolStateStore.clear();
+  }, [persistence, setMessages, toolStateStore]);
 
   const deleteThreadFn = useCallback(async (id: string) => {
     if (!persistence) throw new Error('Persistence not configured');
@@ -132,9 +136,6 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
       setMessages([]);
     }
   }, [persistence, activeThreadId, setMessages]);
-
-  const internalStoreRef = useRef<ToolStateStore>(createToolStateStore());
-  const toolStateStore = externalStore || internalStoreRef.current;
 
   const versionRef = useRef<Map<string, number>>(new Map());
   /** Track toolCallIds whose state was changed by user UI actions (dirty for AI sync) */

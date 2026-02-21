@@ -22,10 +22,11 @@ export interface ToolResultProps {
 }
 
 /**
- * Returns true if this toolCallId is "collapsed" — i.e. there's another entry
- * with the same entityId and a higher seqNo, meaning a newer version supersedes it.
+ * Returns true if this toolCallId is a "followup" — i.e. there's an older entry
+ * (lower seqNo) with the same entityId, meaning an anchor already exists.
+ * Followups hide themselves and instead update the anchor's data.
  */
-function useIsCollapsed(
+function useIsFollowup(
   toolStateStore: ToolStateStore,
   toolCallId: string,
 ): boolean {
@@ -35,17 +36,11 @@ function useIsCollapsed(
   );
 
   const getSnapshot = useCallback(() => {
-    const snapshot = toolStateStore.getSnapshot();
-    const myEntry = snapshot.get(toolCallId);
+    const myEntry = toolStateStore.get(toolCallId);
     if (!myEntry?.entityId) return false;
 
-    const mySeqNo = myEntry.seqNo ?? 0;
-    for (const [id, entry] of snapshot) {
-      if (id !== toolCallId && entry.entityId === myEntry.entityId && (entry.seqNo ?? 0) > mySeqNo) {
-        return true;
-      }
-    }
-    return false;
+    const anchor = toolStateStore.findAnchor(myEntry.entityId);
+    return !!anchor && anchor.toolCallId !== toolCallId;
   }, [toolStateStore, toolCallId]);
 
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -59,8 +54,8 @@ function useIsCollapsed(
  * For HITL tools (confirm: true), renders a confirmation card when
  * the tool is awaiting user approval.
  *
- * Supports groupKey-based collapsing: when a newer call with the same
- * entityId exists, renders a minimal chip instead of the full view.
+ * Supports groupKey-based in-place updates: when an older call (anchor) with
+ * the same entityId exists, followup calls update the anchor's data and render nothing.
  */
 export function ToolResult({
   toolName,
@@ -82,19 +77,60 @@ export function ToolResult({
 
   // Seed the store from message part state so Panel/useToolOutput can find entries.
   // Also compute + store entityId and toolInput for grouping/conditional confirm.
+  // For followups (an anchor with the same entityId already exists), update the
+  // anchor's output and seed this entry as invisible (output: null, loading: false).
   useEffect(() => {
     const existing = toolStateStore.get(toolCallId);
     const entityId = toolDef?.getGroupKey?.(toolInput);
+
+    // Check if an anchor already exists for this entityId
+    const anchor = entityId ? toolStateStore.findAnchor(entityId) : undefined;
+    const isFollowup = anchor && anchor.toolCallId !== toolCallId;
+
     if (!existing) {
-      toolStateStore.set(toolCallId, {
-        output: hasResult ? output : null,
-        loading: !hasResult,
-        error: null,
-        version: 1,
-        toolName,
-        entityId,
-        toolInput,
-      });
+      if (isFollowup) {
+        // Followup: update anchor's output, seed self as invisible
+        if (hasResult && output != null) {
+          toolStateStore.set(anchor.toolCallId, {
+            ...anchor.entry,
+            output,
+            loading: false,
+          });
+        }
+        toolStateStore.set(toolCallId, {
+          output: null,
+          loading: false,
+          error: null,
+          version: 1,
+          toolName,
+          entityId,
+          toolInput,
+        });
+      } else {
+        toolStateStore.set(toolCallId, {
+          output: hasResult ? output : null,
+          loading: !hasResult,
+          error: null,
+          version: 1,
+          toolName,
+          entityId,
+          toolInput,
+        });
+      }
+    } else if (isFollowup) {
+      // Followup received new output after initial seed
+      if (hasResult && output != null && existing.output == null) {
+        toolStateStore.set(anchor.toolCallId, {
+          ...toolStateStore.get(anchor.toolCallId)!,
+          output,
+          loading: false,
+        });
+        toolStateStore.set(toolCallId, {
+          ...existing,
+          output: null,
+          loading: false,
+        });
+      }
     } else if (hasResult && output != null && !existing.output && existing.loading) {
       toolStateStore.set(toolCallId, {
         ...existing,
@@ -112,8 +148,8 @@ export function ToolResult({
     }
   }, [hasResult, output, toolCallId, toolName, toolInput, toolStateStore, toolDef]);
 
-  // Collapsing: self-detect if a newer entry with same entityId exists
-  const isCollapsed = useIsCollapsed(toolStateStore, toolCallId);
+  // Followup detection: hide if an older entry (anchor) with same entityId exists
+  const isFollowup = useIsFollowup(toolStateStore, toolCallId);
 
   // HITL confirmation logic — computed before early returns so hooks below are always called
   const isHITL = toolDef?.requiresConfirmation ?? false;
@@ -144,13 +180,8 @@ export function ToolResult({
     );
   }
 
-  if (isCollapsed) {
-    return (
-      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 bg-[var(--bui-bg-elevated,#27272a)]/50 rounded text-xs text-[var(--bui-fg-muted,#71717a)] ${className || ''}`}>
-        <div className="w-1.5 h-1.5 rounded-full bg-[var(--bui-fg-faint,#52525b)]" />
-        {toolName}
-      </div>
-    );
+  if (isFollowup) {
+    return null;
   }
 
   // Confirmation card: only shown when args are complete and needsUserConfirm is true

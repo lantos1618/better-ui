@@ -1,15 +1,26 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { openai } from '@ai-sdk/openai';
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { Readable } from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import {
   weatherTool, searchTool, counterTool, artifactTool, navigateTool,
   setThemeTool, stockQuoteTool, sendEmailTool, taskListTool, questionTool,
   formTool, dataTableTool, progressTool, mediaTool, codeTool, fileUploadTool,
   tools as toolMap,
+  setSearchProvider, createExaProvider,
 } from './lib/tools.tsx';
+
+// Wire up search provider — set EXA_API_KEY in .env.local to enable real search
+const exaKey = process.env.EXA_API_KEY;
+if (exaKey) setSearchProvider(createExaProvider(exaKey));
+import { db } from './db/index.js';
+import { threads, messages } from './db/schema.js';
+import { eq, desc } from 'drizzle-orm';
 
 const app = express();
 app.use(cors());
@@ -73,15 +84,22 @@ app.post('/api/chat', async (req, res) => {
     system: `You are a helpful assistant with access to tools. When the user asks you to perform an action that matches a tool, always call the tool directly — never ask for textual confirmation. Tools that need user approval have a built-in confirmation UI; just invoke them and the user will be prompted automatically.
 
 IMPORTANT: Every tool renders its own UI. When you call a tool, do NOT repeat or narrate what the tool already shows. For example:
+- search tool: just call it — do NOT list the results in text, the UI already shows them
 - question tool: just call it — do NOT write "Let me ask you..." or repeat the question in text
 - form tool: just call it — do NOT describe the form fields in text
 - dataTable tool: just call it — do NOT list the data in text
 - weather/stockQuote: just call it — do NOT say "Let me check..."
 Only add text when it provides information beyond what the tool UI shows (e.g. summarizing results, explaining next steps after the user answers).
+When a tool result is self-explanatory, you can respond with JUST the tool call and no text at all.
 
 When calling tools, always fill in ALL fields with sensible content. Never leave required fields empty — e.g. when sending an email, write a proper subject and body even if the user didn't specify them.
 
-When the user asks for something that involves multiple steps (e.g. "get weather for 3 cities and send an email summary"), create a task list first with the taskList tool, then work through each task — updating status to 'running' before starting and 'done' (with a brief result summary) after completing each one. Always complete all tasks before stopping.${stateContextBlock}`,
+When the user asks for something that involves multiple steps (e.g. "get weather for 3 cities and send an email summary"), create a task list first with the taskList tool, then work through every task:
+1. Mark the current task as 'running' (taskList update)
+2. Execute it by calling the appropriate tool
+3. Mark it as 'done' with a brief result summary (taskList update)
+4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
+5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
     tools: {
       weather: weatherTool.toAITool(),
@@ -172,6 +190,93 @@ app.post('/api/tools/confirm', async (req, res) => {
       error: error instanceof Error ? error.message : 'Tool execution failed',
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/threads — List all threads
+// ---------------------------------------------------------------------------
+app.get('/api/threads', (_req, res) => {
+  const allThreads = db
+    .select()
+    .from(threads)
+    .orderBy(desc(threads.updatedAt))
+    .all();
+
+  res.json(allThreads);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/threads — Create a new thread
+// ---------------------------------------------------------------------------
+app.post('/api/threads', async (req, res) => {
+  const { title } = req.body as { title?: string };
+  const id = randomUUID();
+
+  db.insert(threads)
+    .values({ id, title: title || 'New Chat' })
+    .run();
+
+  const thread = db.select().from(threads).where(eq(threads.id, id)).get();
+  res.status(201).json(thread);
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/threads — Delete a thread by ?id=
+// ---------------------------------------------------------------------------
+app.delete('/api/threads', (req, res) => {
+  const id = req.query.id as string;
+  if (!id) {
+    res.status(400).json({ error: 'Missing thread id' });
+    return;
+  }
+
+  db.delete(threads).where(eq(threads.id, id)).run();
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/threads/:id/messages — Get messages for a thread
+// ---------------------------------------------------------------------------
+app.get('/api/threads/:id/messages', (req, res) => {
+  const { id } = req.params;
+
+  const rows = db
+    .select()
+    .from(messages)
+    .where(eq(messages.threadId, id))
+    .all();
+
+  const parsed = rows.map((r) => JSON.parse(r.data));
+  res.json(parsed);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/threads/:id/messages — Save messages for a thread (replaces all)
+// ---------------------------------------------------------------------------
+app.post('/api/threads/:id/messages', async (req, res) => {
+  const { id } = req.params;
+  const { messages: msgs } = req.body as { messages: any[] };
+
+  // Replace all messages for this thread
+  db.delete(messages).where(eq(messages.threadId, id)).run();
+
+  for (const msg of msgs) {
+    db.insert(messages)
+      .values({
+        id: msg.id,
+        threadId: id,
+        data: JSON.stringify(msg),
+      })
+      .run();
+  }
+
+  // Touch thread updatedAt
+  db.update(threads)
+    .set({ updatedAt: new Date() })
+    .where(eq(threads.id, id))
+    .run();
+
+  res.json({ ok: true });
 });
 
 const PORT = 3001;
