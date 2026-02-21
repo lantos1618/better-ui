@@ -54,6 +54,7 @@
               "guides/custom-views",
               "guides/tool-grouping",
               "guides/auto-respond",
+              "guides/persistence",
               "guides/providers",
               "guides/server-adapters"
             ]

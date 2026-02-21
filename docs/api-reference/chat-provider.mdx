@@ -37,6 +37,14 @@ Provides chat state, message sending, and tool execution to all child components
   Optional external tool state store. If not provided, an internal store is created.
 </ParamField>
 
+<ParamField path="persistence" type="PersistenceAdapter">
+  Optional persistence adapter for saving/loading chat threads and messages. See [Persistence](/guides/persistence).
+</ParamField>
+
+<ParamField path="threadId" type="string">
+  Initial thread ID to load when persistence is configured.
+</ParamField>
+
 <ParamField path="children" type="React.ReactNode" required>
   Child components that need access to chat context
 </ParamField>
@@ -57,6 +65,13 @@ function MyComponent() {
     getOnAction,
     confirmTool,
     rejectTool,
+    retryTool,
+    // Persistence (only when persistence prop is set)
+    threads,
+    threadId,
+    createThread,
+    switchThread,
+    deleteThread,
   } = useChatContext();
 
   return <div>...</div>;
@@ -73,6 +88,20 @@ function MyComponent() {
 | `status` | `ChatStatus` | Detailed status: `'ready' \| 'streaming' \| 'submitted' \| 'error'` |
 | `tools` | `Record<string, Tool>` | Tool registry |
 | `toolStateStore` | `ToolStateStore` | Tool state store |
+| `executeToolDirect` | `(toolName, input, toolCallId) => Promise<void>` | Execute a tool directly (used internally by onAction) |
 | `getOnAction` | `(toolCallId, toolName) => (input) => void` | Get stable callback for tool re-execution |
 | `confirmTool` | `(toolCallId, toolName, input) => Promise<void>` | Approve a HITL tool call |
 | `rejectTool` | `(toolCallId, toolName) => Promise<void>` | Reject a HITL tool call |
+| `retryTool` | `(toolCallId, toolName, toolInput) => void` | Retry a failed tool execution |
+
+### Persistence Fields
+
+These fields are only present when the `persistence` prop is configured:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `threads` | `Thread[]` | All available threads |
+| `threadId` | `string \| undefined` | Currently active thread ID |
+| `createThread` | `(title?: string) => Promise<Thread>` | Create a new thread and switch to it |
+| `switchThread` | `(threadId: string) => Promise<void>` | Switch to a different thread |
+| `deleteThread` | `(threadId: string) => Promise<void>` | Delete a thread and its messages |

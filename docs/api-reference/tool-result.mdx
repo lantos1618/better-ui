@@ -31,6 +31,10 @@ import { ToolResult } from '@lantos1618/better-ui/components';
   Whether the tool has completed execution
 </ParamField>
 
+<ParamField path="toolPartState" type="string">
+  Tool part state from the AI SDK (e.g. `'partial-call'`, `'call'`, `'input-available'`, `'output-available'`). Used to determine when tool arguments are fully available for HITL auto-approve logic.
+</ParamField>
+
 <ParamField path="tools" type="Record<string, Tool>" required>
   Tool registry
 </ParamField>
@@ -51,13 +55,22 @@ import { ToolResult } from '@lantos1618/better-ui/components';
   HITL rejection callback
 </ParamField>
 
+<ParamField path="onRetry" type="(toolCallId, toolName, toolInput) => void">
+  Retry callback for failed tool executions
+</ParamField>
+
+<ParamField path="className" type="string">
+  CSS class for the outer container
+</ParamField>
+
 ## Behavior
 
 ToolResult handles several concerns:
 
-1. **View resolution**: Looks up `tools[toolName]` and renders its `.View`
-2. **State store seeding**: Seeds the store with `entityId`, `toolInput`, `seqNo`
-3. **Grouping collapse**: Uses `useIsCollapsed` — renders a chip if superseded by a newer call
-4. **HITL flow**: Shows Approve/Reject when `shouldConfirm(input)` returns true
-5. **Auto-approve**: When `shouldConfirm(input)` returns false but `requiresConfirmation` is true, auto-approves
-6. **Loading state**: Shows tool name with loading indicator during execution
+1. **View resolution**: Looks up `tools[toolName]` and renders its `.View` component
+2. **State store seeding**: Seeds the store with `entityId`, `toolInput`, and `seqNo`
+3. **Grouping (anchor/followup)**: When `groupKey` is set, earlier calls with the same `entityId` become "anchors". Newer calls (followups) update the anchor's output data in-place and render nothing — the anchor always shows the latest data
+4. **HITL flow**: Shows an Approve/Reject card when `shouldConfirm(input)` returns true and args are fully available
+5. **Auto-approve**: When `shouldConfirm(input)` returns false but `requiresConfirmation` is true, automatically approves and executes
+6. **Error state**: Shows an error card with a Retry button when a tool execution fails
+7. **Loading state**: Shows the tool name with a loading indicator during execution

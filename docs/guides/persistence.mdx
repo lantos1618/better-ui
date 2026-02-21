@@ -1,0 +1,190 @@
+---
+title: "Persistence"
+description: "Save and load chat threads and messages across sessions"
+---
+
+## Overview
+
+Better UI supports persisting chat conversations via a `PersistenceAdapter` interface. This lets users create, switch between, and delete threads — with messages automatically saved and restored.
+
+## Quick Setup
+
+### In-Memory (Development)
+
+For quick prototyping, use the built-in memory adapter. Data is lost on refresh.
+
+```tsx
+import { createMemoryAdapter } from '@lantos1618/better-ui/persistence';
+
+const persistence = createMemoryAdapter();
+
+<ChatProvider endpoint="/api/chat" tools={tools} persistence={persistence}>
+  <Thread />
+  <Composer />
+</ChatProvider>
+```
+
+### Database-Backed (Production)
+
+For production, implement the `PersistenceAdapter` interface with your database. The most common pattern is a fetch-based adapter that calls API routes:
+
+```tsx
+import type { PersistenceAdapter, Thread } from '@lantos1618/better-ui/persistence';
+import type { UIMessage } from 'ai';
+
+function createFetchPersistence(): PersistenceAdapter {
+  return {
+    async listThreads(): Promise<Thread[]> {
+      const res = await fetch('/api/threads');
+      const data = await res.json();
+      return data.map((t: any) => ({
+        ...t,
+        createdAt: new Date(t.createdAt),
+        updatedAt: new Date(t.updatedAt),
+      }));
+    },
+
+    async getThread(id: string): Promise<Thread | null> {
+      const threads = await this.listThreads();
+      return threads.find((t) => t.id === id) ?? null;
+    },
+
+    async createThread(title?: string): Promise<Thread> {
+      const res = await fetch('/api/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const t = await res.json();
+      return { ...t, createdAt: new Date(t.createdAt), updatedAt: new Date(t.updatedAt) };
+    },
+
+    async deleteThread(id: string): Promise<void> {
+      await fetch(`/api/threads?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    },
+
+    async getMessages(threadId: string): Promise<UIMessage[]> {
+      const res = await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`);
+      return res.json();
+    },
+
+    async saveMessages(threadId: string, messages: UIMessage[]): Promise<void> {
+      await fetch(`/api/threads/${encodeURIComponent(threadId)}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+      });
+    },
+  };
+}
+```
+
+## PersistenceAdapter Interface
+
+```typescript
+interface PersistenceAdapter {
+  /** List all threads, ordered by most recently updated */
+  listThreads(): Promise<Thread[]>;
+  /** Get a single thread by ID */
+  getThread(id: string): Promise<Thread | null>;
+  /** Create a new thread */
+  createThread(title?: string): Promise<Thread>;
+  /** Delete a thread and its messages */
+  deleteThread(id: string): Promise<void>;
+  /** Get all messages for a thread */
+  getMessages(threadId: string): Promise<UIMessage[]>;
+  /** Save messages for a thread (replaces existing) */
+  saveMessages(threadId: string, messages: UIMessage[]): Promise<void>;
+}
+
+interface Thread {
+  id: string;
+  title?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+## Using Persistence in ChatProvider
+
+Pass the adapter and optionally an initial `threadId`:
+
+```tsx
+const persistence = createFetchPersistence();
+
+<ChatProvider
+  endpoint="/api/chat"
+  tools={tools}
+  persistence={persistence}
+  threadId="thread-1"  // optional: start on a specific thread
+>
+  <ThreadSidebar />
+  <Thread />
+  <Composer />
+</ChatProvider>
+```
+
+When persistence is configured, `useChatContext()` exposes additional fields:
+
+```tsx
+const {
+  threads,       // Thread[] — all threads
+  threadId,      // string | undefined — current thread ID
+  createThread,  // (title?: string) => Promise<Thread>
+  switchThread,  // (threadId: string) => Promise<void>
+  deleteThread,  // (threadId: string) => Promise<void>
+} = useChatContext();
+```
+
+## Auto-Save Behavior
+
+Messages are automatically saved when the AI finishes responding (status transitions from `streaming`/`submitted` to `ready`). You don't need to call `saveMessages` manually.
+
+## Thread Sidebar Example
+
+```tsx
+function ThreadSidebar() {
+  const { threads, threadId, createThread, switchThread, deleteThread } = useChatContext();
+
+  return (
+    <div className="w-64 border-r p-4 space-y-2">
+      <button
+        onClick={() => createThread?.()}
+        className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg"
+      >
+        New Thread
+      </button>
+
+      {threads?.map((thread) => (
+        <div
+          key={thread.id}
+          className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer ${
+            thread.id === threadId ? 'bg-zinc-700' : 'hover:bg-zinc-800'
+          }`}
+          onClick={() => switchThread?.(thread.id)}
+        >
+          <span className="text-sm truncate">
+            {thread.title || `Thread ${thread.id}`}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); deleteThread?.(thread.id); }}
+            className="text-xs text-zinc-500 hover:text-red-400"
+          >
+            Delete
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Database Example (Drizzle + SQLite)
+
+Both the `nextjs-demo` and `vite-demo` examples include a full Drizzle + SQLite implementation. The pattern is:
+
+1. Define a schema with `threads` and `messages` tables
+2. Create API routes that perform CRUD operations
+3. Create a fetch-based adapter on the client that calls those routes
+
+See `examples/nextjs-demo/db/schema.ts` and `examples/nextjs-demo/app/api/threads/` for a complete implementation.

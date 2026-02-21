@@ -39,8 +39,17 @@ interface ChatContextValue {
   toolStateStore: ToolStateStore;
   confirmTool: (toolCallId: string, toolName: string, toolInput: Record<string, unknown>) => Promise<void>;
   rejectTool: (toolCallId: string, toolName: string) => Promise<void>;
+  retryTool: (toolCallId: string, toolName: string, toolInput: unknown) => void;
+  // Persistence fields (only when persistence prop is configured)
+  threads?: Thread[];
+  threadId?: string;
+  createThread?: (title?: string) => Promise<Thread>;
+  switchThread?: (threadId: string) => Promise<void>;
+  deleteThread?: (threadId: string) => Promise<void>;
 }
 ```
+
+### Core Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -54,6 +63,19 @@ interface ChatContextValue {
 | `toolStateStore` | `ToolStateStore` | The shared tool state store |
 | `confirmTool` | `(id, name, input) => Promise` | Approve a HITL tool call |
 | `rejectTool` | `(id, name) => Promise` | Reject a HITL tool call |
+| `retryTool` | `(id, name, input) => void` | Retry a failed tool execution |
+
+### Persistence Fields
+
+Only present when `ChatProvider` has a `persistence` prop:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `threads` | `Thread[]` | All available threads, ordered by most recently updated |
+| `threadId` | `string \| undefined` | Currently active thread ID |
+| `createThread` | `(title?) => Promise<Thread>` | Create a new thread, switch to it, and clear messages |
+| `switchThread` | `(id) => Promise<void>` | Switch to a different thread and load its messages |
+| `deleteThread` | `(id) => Promise<void>` | Delete a thread and its messages |
 
 ## Requirements
 

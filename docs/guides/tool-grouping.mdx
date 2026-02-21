@@ -1,6 +1,6 @@
 ---
 title: "Tool Grouping"
-description: "Collapse repeated tool calls into a single card"
+description: "Collapse repeated tool calls into a single, always-up-to-date card"
 ---
 
 ## The Problem
@@ -9,7 +9,7 @@ When the AI calls the same tool multiple times (e.g., updating a task list 10 ti
 
 ## The Solution
 
-Add a `groupKey` to your tool. Calls with the same group key collapse — only the latest renders fully. Earlier calls become minimal chips.
+Add a `groupKey` to your tool. Calls with the same group key are grouped — the first call (the "anchor") stays visible and is automatically updated with the latest data. Subsequent calls (followups) render nothing.
 
 ```tsx
 const taskList = tool({
@@ -29,33 +29,34 @@ const taskList = tool({
 1. Each tool call gets an `entityId` computed as `"toolName:groupKey(input)"`
 2. Tool calls with the same `entityId` belong to the same group
 3. Each call gets an auto-incrementing `seqNo` (sequence number)
-4. In the thread, only the highest `seqNo` per group renders the full view
-5. Earlier calls render as collapsed chips
+4. The first call in a group is the **anchor** — it remains visible in the thread
+5. Later calls are **followups** — they update the anchor's output data in-place and render nothing
 
 ### Visual
 
 ```
-AI calls taskList({ listId: 'tasks', action: 'create', tasks: [...] })
-  → Full card: "taskList" with task list UI
+AI calls taskList({ listId: 'tasks', action: 'create', tasks: [A] })
+  → Anchor renders: taskList card showing [A]
 
-AI calls taskList({ listId: 'tasks', action: 'update', tasks: [...] })
-  → Previous card collapses to chip: ● taskList
-  → New full card: "taskList" with updated task list UI
+AI calls taskList({ listId: 'tasks', action: 'update', tasks: [A, B] })
+  → Anchor updates in-place: taskList card now shows [A, B]
+  → Followup renders nothing
 
-AI calls taskList({ listId: 'tasks', action: 'update', tasks: [...] })
-  → Two collapsed chips: ● taskList  ● taskList
-  → One full card: latest task list UI
+AI calls taskList({ listId: 'tasks', action: 'update', tasks: [A, B, C] })
+  → Anchor updates in-place: taskList card now shows [A, B, C]
+  → Both followups render nothing
 ```
 
-## Collapsed Chip
+The user sees a single card that always shows the latest state — no stacking, no collapsed chips.
 
-Collapsed tool calls render as a minimal inline element:
+## Anchor / Followup Pattern
 
-```
-● taskList
-```
+Internally, `ToolResult` uses the store's `findAnchor(entityId)` method:
 
-This keeps the thread readable while preserving the history.
+- **Anchor**: The oldest entry (lowest `seqNo`) with a given `entityId`. This is the component that renders the view.
+- **Followup**: Any entry with the same `entityId` but a higher `seqNo`. On mount, it updates the anchor's output and renders `null`.
+
+This means the anchor card stays in its original position in the thread and always reflects the latest data.
 
 ## When to Use
 
@@ -78,14 +79,14 @@ const taskList = tool({
   groupKey: (input) => input.listId || 'default',
 });
 
-// These are separate groups — both render fully:
+// These are separate groups — both render as anchors:
 taskList({ listId: 'shopping', action: 'create', tasks: [...] })
 taskList({ listId: 'work', action: 'create', tasks: [...] })
 
-// This collapses the first shopping call:
+// This updates the "shopping" anchor in-place:
 taskList({ listId: 'shopping', action: 'update', tasks: [...] })
 ```
 
 ## Panel Behavior
 
-The multi-item Panel also uses entity grouping. It shows the latest state per entity, so users see one task list card, one weather card, etc. — not duplicates.
+The multi-item Panel also uses entity grouping. It calls `getLatestPerEntity()` to show one entry per entity — so users see one task list card, one weather card, etc. — not duplicates.

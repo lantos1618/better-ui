@@ -23,10 +23,12 @@ const store = createToolStateStore();
 |--------|-------------|
 | `get(toolCallId)` | Get state entry for a tool call |
 | `set(toolCallId, entry)` | Set state entry (auto-assigns `seqNo`) |
+| `clear()` | Remove all entries (e.g. when switching threads) |
 | `subscribe(toolCallId, callback)` | Subscribe to changes for a specific tool call |
 | `subscribeAll(callback)` | Subscribe to all changes |
 | `getSnapshot()` | Get all entries as a Map |
-| `getLatestPerEntity()` | Get latest entry per entity group |
+| `getLatestPerEntity()` | Get latest entry per entity group (plus all ungrouped entries) |
+| `findAnchor(entityId)` | Find the oldest entry (lowest seqNo) with the given entityId |
 
 ## ToolStateEntry
 
@@ -37,7 +39,7 @@ interface ToolStateEntry {
   error: string | null;
   version: number;
   toolName?: string;
-  status?: 'confirmed' | 'rejected';
+  status?: 'pending' | 'confirmed' | 'rejected';
   entityId?: string;    // "toolName:groupKey(input)"
   toolInput?: unknown;
   seqNo?: number;       // Auto-incrementing insertion order
@@ -56,6 +58,17 @@ function MyComponent({ toolCallId }: { toolCallId: string }) {
   if (state?.error) return <Error message={state.error} />;
 
   return <div>{JSON.stringify(state?.output)}</div>;
+}
+```
+
+## findAnchor
+
+Find the oldest entry with a given `entityId`. Used internally by ToolResult to implement the anchor/followup grouping pattern:
+
+```tsx
+const anchor = store.findAnchor('taskList:shopping');
+if (anchor) {
+  console.log(anchor.toolCallId, anchor.entry.output);
 }
 ```
 

@@ -77,7 +77,7 @@ AI responds: "The current count is 16"
 
 ## Tool Grouping
 
-When the AI calls the same tool multiple times with the same `groupKey`, earlier calls collapse into minimal chips. Only the latest renders fully.
+When the AI calls the same tool multiple times with the same `groupKey`, the first call (the "anchor") stays visible and is automatically updated with the latest data. Later calls render nothing.
 
 ```tsx
 const taskList = tool({
@@ -87,7 +87,7 @@ const taskList = tool({
 });
 ```
 
-AI calls `taskList` 10 times to update tasks → user sees 1 full card + 9 collapsed chips.
+AI calls `taskList` 10 times to update tasks → user sees 1 card that always shows the latest state.
 
 ## Human-in-the-Loop (HITL)
 

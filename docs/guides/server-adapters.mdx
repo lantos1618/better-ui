@@ -1,6 +1,6 @@
 ---
 title: "Server Adapters"
-description: "Use Better UI with Express, Next.js, or any Node.js framework"
+description: "Use Better UI with Next.js, Express, Vite, or any Node.js framework"
 ---
 
 ## Next.js (App Router)
@@ -28,46 +28,131 @@ export async function POST(req: Request) {
 
 ### Tool Execution Route
 
+Create a route that executes tools server-side when the client calls `onAction`:
+
 ```ts
 // app/api/tools/execute/route.ts
-import { createNextToolHandler } from '@lantos1618/better-ui/adapters/nextjs';
 import { weatherTool, searchTool } from '@/lib/tools';
+import type { Tool } from '@lantos1618/better-ui';
 
-const tools = { weather: weatherTool, search: searchTool };
-const handler = createNextToolHandler(tools);
+const tools: Record<string, Tool> = {
+  weather: weatherTool,
+  search: searchTool,
+};
 
-export const POST = handler;
+export async function POST(req: Request) {
+  const { tool: toolName, input } = await req.json();
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return Response.json({ error: 'Unknown tool' }, { status: 400 });
+  }
+
+  const result = await toolDef.run(input, { isServer: true });
+  return Response.json({ result });
+}
 ```
 
-## Express
+### HITL Confirmation Route
+
+If you use tools with `confirm: true`, add a separate confirmation endpoint:
+
+```ts
+// app/api/tools/confirm/route.ts
+import { weatherTool, sendEmailTool } from '@/lib/tools';
+import type { Tool } from '@lantos1618/better-ui';
+
+const tools: Record<string, Tool> = {
+  weather: weatherTool,
+  sendEmail: sendEmailTool,
+};
+
+export async function POST(req: Request) {
+  const { tool: toolName, input } = await req.json();
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return Response.json({ error: 'Unknown tool' }, { status: 400 });
+  }
+
+  // Optional: add audit logging for confirmed actions
+  console.log(`[audit] Tool confirmed: ${toolName}`);
+
+  const result = await toolDef.run(input, { isServer: true });
+  return Response.json({ result });
+}
+```
+
+## Express / Vite
+
+For Express, Vite, or any Node.js server, use the tool's `.run()` method directly:
 
 ```ts
 import express from 'express';
-import { createExpressToolHandler } from '@lantos1618/better-ui/adapters/express';
-import { weatherTool, searchTool } from './tools';
+import { weatherTool, searchTool } from './lib/tools';
+import type { Tool } from '@lantos1618/better-ui';
 
 const app = express();
 app.use(express.json());
 
-const tools = { weather: weatherTool, search: searchTool };
+const tools: Record<string, Tool> = {
+  weather: weatherTool,
+  search: searchTool,
+};
 
-app.post('/api/tools/execute', createExpressToolHandler(tools));
+// Tool execution endpoint
+app.post('/api/tools/execute', async (req, res) => {
+  const { tool: toolName, input } = req.body;
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return res.status(400).json({ error: 'Unknown tool' });
+  }
+
+  try {
+    const result = await toolDef.run(input, {
+      isServer: true,
+      headers: req.headers as any,
+      user: (req as any).user,
+    });
+    return res.json({ result });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// HITL confirmation endpoint
+app.post('/api/tools/confirm', async (req, res) => {
+  const { tool: toolName, input } = req.body;
+  const toolDef = tools[toolName];
+
+  if (!toolDef) {
+    return res.status(400).json({ error: 'Unknown tool' });
+  }
+
+  try {
+    const result = await toolDef.run(input, { isServer: true });
+    return res.json({ result });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
 
 app.listen(3001);
 ```
 
 ## Custom Server
 
-For any server framework, use the tool's `.run()` method directly:
+For any framework, the pattern is the same — parse the request, look up the tool, and call `.run()`:
 
 ```ts
 import { weatherTool } from './tools';
+import type { Tool } from '@lantos1618/better-ui';
 
-// Your framework's route handler
-async function handleToolExecution(req, res) {
+const tools: Record<string, Tool> = { weather: weatherTool };
+
+async function handleToolExecution(req: any, res: any) {
   const { tool: toolName, input } = req.body;
-
-  const tools = { weather: weatherTool };
   const toolDef = tools[toolName];
 
   if (!toolDef) {
@@ -81,7 +166,7 @@ async function handleToolExecution(req, res) {
       user: req.user,
     });
     return res.json({ result });
-  } catch (error) {
+  } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
 }
@@ -110,3 +195,23 @@ weatherTool.server(async (input, ctx) => {
 ```
 
 These fields are automatically stripped on the client to prevent accidental leakage of server secrets.
+
+## Required Endpoints
+
+Better UI expects these endpoints by default:
+
+| Endpoint | Purpose | When needed |
+|----------|---------|-------------|
+| `/api/chat` | Chat streaming (via AI SDK) | Always |
+| `/api/tools/execute` | Tool execution from `onAction` | When tools have interactive views |
+| `/api/tools/confirm` | HITL tool confirmation | When tools use `confirm: true` |
+
+The tool execution endpoint can be customized per-tool via `clientFetch`:
+
+```tsx
+const weather = tool({
+  name: 'weather',
+  clientFetch: { endpoint: '/api/custom/tools' },
+  // ...
+});
+```

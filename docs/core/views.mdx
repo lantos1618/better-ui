@@ -42,7 +42,7 @@ type ViewState<TInput> = {
 |-------|------|-------------|
 | `data` | `TOutput` | The tool's output data |
 | `state.loading` | `boolean` | True while the tool is executing |
-| `state.streaming` | `boolean` | True while receiving streaming updates |
+| `state.streaming` | `boolean` | True while receiving streaming updates (requires stream handler) |
 | `state.error` | `Error \| null` | Error if execution failed |
 | `state.onAction` | `(input) => void` | Callback to re-execute the tool with new input |
 
