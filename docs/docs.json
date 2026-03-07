@@ -56,7 +56,11 @@
               "guides/auto-respond",
               "guides/persistence",
               "guides/providers",
-              "guides/server-adapters"
+              "guides/server-adapters",
+              "guides/mcp",
+              "guides/agui",
+              "guides/auth",
+              "guides/security"
             ]
           }
         ]
@@ -68,7 +72,8 @@
             "group": "Core API",
             "pages": [
               "api-reference/tool",
-              "api-reference/tool-class"
+              "api-reference/tool-class",
+              "api-reference/mcp-server"
             ]
           },
           {

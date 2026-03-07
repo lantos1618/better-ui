@@ -1,0 +1,117 @@
+---
+title: "MCP Server"
+description: "API reference for createMCPServer and MCPServer class"
+---
+
+## `createMCPServer(config)`
+
+Factory function to create an MCP server instance.
+
+```typescript
+import { createMCPServer } from '@lantos1618/better-ui/mcp';
+```
+
+### Parameters
+
+<ParamField path="config" type="MCPServerConfig" required>
+  <Expandable>
+    <ParamField path="name" type="string" required>
+      Server name exposed to MCP clients.
+    </ParamField>
+    <ParamField path="version" type="string" required>
+      Server version string.
+    </ParamField>
+    <ParamField path="tools" type="Record<string, Tool>" required>
+      Tool registry — keys are tool names.
+    </ParamField>
+    <ParamField path="context" type="Partial<ToolContext>">
+      Optional context passed to every tool execution.
+    </ParamField>
+    <ParamField path="onStart" type="() => void">
+      Called when the server starts listening.
+    </ParamField>
+    <ParamField path="onError" type="(error: Error) => void">
+      Called on errors during message handling.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+`MCPServer` instance.
+
+---
+
+## `MCPServer`
+
+### `.start()`
+
+Start listening on stdin for JSON-RPC messages (stdio transport).
+
+```typescript
+server.start();
+```
+
+### `.stop()`
+
+Stop the server.
+
+### `.httpHandler()`
+
+Create a Web Request handler for HTTP-based MCP transport. Compatible with Next.js route handlers, Deno, Bun, Cloudflare Workers.
+
+```typescript
+const handler = server.httpHandler();
+// → (req: Request) => Promise<Response>
+
+// Next.js: export const POST = handler;
+```
+
+### `.listTools()`
+
+Get all tools as MCP tool schemas.
+
+```typescript
+const tools = server.listTools();
+// → [{ name: string, description: string, inputSchema: JsonSchema }]
+```
+
+### `.callTool(name, args)`
+
+Execute a tool by name.
+
+```typescript
+const result = await server.callTool('weather', { city: 'Tokyo' });
+// → { content: [{ type: 'text', text: '...' }] }
+```
+
+### `.handleMessage(message)`
+
+Handle a single JSON-RPC 2.0 message. Returns a response or `null` for notifications.
+
+```typescript
+const response = await server.handleMessage({
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'tools/list',
+});
+```
+
+Supported methods: `initialize`, `tools/list`, `tools/call`, `ping`.
+
+---
+
+## `zodToJsonSchema(schema)`
+
+Convert a Zod schema to JSON Schema format. Zero external dependencies.
+
+```typescript
+import { zodToJsonSchema } from '@lantos1618/better-ui/mcp';
+
+const jsonSchema = zodToJsonSchema(z.object({ name: z.string() }));
+// → { type: 'object', properties: { name: { type: 'string' } }, required: ['name'] }
+```
+
+### Supported Zod Types
+
+`ZodString`, `ZodNumber`, `ZodBoolean`, `ZodObject`, `ZodArray`, `ZodEnum`, `ZodLiteral`, `ZodNullable`, `ZodUnion`, `ZodDiscriminatedUnion`, `ZodRecord`, `ZodOptional`, `ZodDefault`, `ZodEffects`, `ZodLazy`, `ZodTuple`

@@ -138,8 +138,8 @@ describe('zodToJsonSchema', () => {
 // ─── MCPServer tests ───────────────────────────────────────────────────────
 
 describe('MCPServer', () => {
-  let weatherTool: ReturnType<typeof tool>;
-  let calcTool: ReturnType<typeof tool>;
+  let weatherTool: any;
+  let calcTool: any;
   let server: MCPServer;
 
   beforeEach(() => {
@@ -149,7 +149,7 @@ describe('MCPServer', () => {
       input: z.object({ city: z.string() }),
       output: z.object({ temp: z.number(), city: z.string() }),
     });
-    weatherTool.server(async ({ city }) => ({
+    weatherTool.server(async ({ city }: { city: string }) => ({
       temp: 72,
       city,
     }));
@@ -160,7 +160,7 @@ describe('MCPServer', () => {
       input: z.object({ a: z.number(), b: z.number() }),
       output: z.object({ result: z.number() }),
     });
-    calcTool.server(({ a, b }) => ({ result: a + b }));
+    calcTool.server(({ a, b }: { a: number; b: number }) => ({ result: a + b }));
 
     server = createMCPServer({
       name: 'test-server',

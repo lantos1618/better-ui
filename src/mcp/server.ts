@@ -340,6 +340,87 @@ export class MCPServer {
       return Response.json(response);
     };
   }
+
+  /**
+   * Create a Streamable HTTP handler (MCP spec 2025-03-26).
+   * Supports both single JSON-RPC requests and SSE streaming for long-running operations.
+   * Compatible with Next.js route handlers, Deno, Bun, Cloudflare Workers.
+   *
+   * @example
+   * ```typescript
+   * // Next.js route: app/api/mcp/route.ts
+   * import { server } from '@/lib/mcp';
+   * export const POST = server.streamableHttpHandler();
+   * ```
+   */
+  streamableHttpHandler(): (req: Request) => Promise<Response> {
+    return async (req: Request): Promise<Response> => {
+      const accept = req.headers.get('accept') || '';
+      const contentType = req.headers.get('content-type') || '';
+
+      if (!contentType.includes('application/json')) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Content-Type must be application/json' } },
+          { status: 400 },
+        );
+      }
+
+      let message: JsonRpcRequest;
+      try {
+        message = await req.json();
+      } catch {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Parse error' } },
+          { status: 400 },
+        );
+      }
+
+      if (!message.jsonrpc || message.jsonrpc !== '2.0') {
+        return Response.json(
+          { jsonrpc: '2.0', id: message.id ?? null, error: { code: INVALID_REQUEST, message: 'Invalid JSON-RPC version' } },
+          { status: 400 },
+        );
+      }
+
+      // If client accepts SSE, stream the response
+      if (accept.includes('text/event-stream')) {
+        const encoder = new TextEncoder();
+        const self = this;
+        const sseStream = new ReadableStream({
+          async start(controller) {
+            try {
+              const response = await self.handleMessage(message);
+              if (response) {
+                controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(response)}\n\n`));
+              }
+            } catch (err) {
+              const errorResponse: JsonRpcResponse = {
+                jsonrpc: '2.0',
+                id: message.id ?? null,
+                error: { code: INTERNAL_ERROR, message: err instanceof Error ? err.message : 'Internal error' },
+              };
+              controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(errorResponse)}\n\n`));
+            }
+            controller.close();
+          },
+        });
+
+        return new Response(sseStream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+          },
+        });
+      }
+
+      // Standard JSON response
+      const response = await this.handleMessage(message);
+      if (!response) {
+        return new Response(null, { status: 204 });
+      }
+      return Response.json(response);
+    };
+  }
 }
 
 class McpError extends Error {

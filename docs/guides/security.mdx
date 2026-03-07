@@ -1,0 +1,114 @@
+---
+title: "Security"
+description: "Security model, boundaries, and best practices"
+---
+
+## Overview
+
+Better UI enforces security boundaries between server and client to prevent accidental data exposure and common attack vectors.
+
+## Server/Client Boundary
+
+### Context Stripping
+
+When a tool runs on the client (`isServer: false`), sensitive context fields are automatically removed:
+
+```typescript
+// These fields are STRIPPED on client execution:
+// ctx.env, ctx.headers, ctx.cookies, ctx.user, ctx.session
+
+// These fields are AVAILABLE everywhere:
+// ctx.cache, ctx.fetch, ctx.isServer
+```
+
+### Server Handler Isolation
+
+Server handlers **never** run on the client. When `tool.run()` is called client-side with no `.client()` handler defined, it auto-fetches to `/api/tools/execute` instead:
+
+```typescript
+myTool.server(async (input, ctx) => {
+  // This code ONLY runs server-side
+  return await db.query(input.query);
+});
+
+// Client-side: auto-fetches, never exposes server code
+await myTool.run(input, { isServer: false });
+```
+
+## Input/Output Validation
+
+### Input Validation
+
+Zod schemas validate and strip unknown keys before execution:
+
+```typescript
+const myTool = tool({
+  input: z.object({ query: z.string().max(1000) }),
+  // Extra fields in input are silently stripped
+});
+```
+
+### Output Validation
+
+Output schemas prevent accidental data leakage:
+
+```typescript
+const myTool = tool({
+  output: z.object({ name: z.string() }),
+  // If server returns { name: 'Bob', ssn: '123-45-6789' },
+  // the ssn field is stripped from the output
+});
+```
+
+## Serialization Safety
+
+`toJSON()` excludes handlers, schemas, and internal config — only safe metadata is serialized:
+
+```typescript
+JSON.stringify(myTool);
+// → { name, description, tags, hints, confirm }
+// Handlers, schemas, and context are NEVER serialized
+```
+
+## Prototype Pollution Protection
+
+State context merging uses safe object operations:
+
+```typescript
+// The mergeStateContext function:
+// 1. Creates target with Object.create(null) — no prototype
+// 2. Rejects __proto__, constructor, prototype keys
+// 3. Only copies own enumerable properties
+```
+
+MCP server tool lookup uses `hasOwnProperty` to prevent prototype chain traversal.
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Validate at boundaries" icon="shield-check">
+    Always validate user input with Zod schemas. Add `.max()` constraints to strings and arrays to prevent abuse.
+  </Card>
+  <Card title="Use auth on endpoints" icon="lock">
+    Wire up `jwtAuth()` or `sessionAuth()` on your tool execution and confirmation endpoints.
+  </Card>
+  <Card title="Limit request bodies" icon="ruler">
+    Set body size limits on your server (`express.json({ limit: '1mb' })`).
+  </Card>
+  <Card title="Don't leak errors" icon="eye-slash">
+    Only expose Zod validation errors to clients. Return generic messages for internal errors.
+  </Card>
+</CardGroup>
+
+## Rate Limiting
+
+Better UI includes a pluggable rate limiter:
+
+```typescript
+import { createRateLimiter } from '@lantos1618/better-ui';
+
+const limiter = createRateLimiter({
+  windowMs: 60_000,    // 1 minute window
+  max: 100,            // max 100 requests per window
+});
+```

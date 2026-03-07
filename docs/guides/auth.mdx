@@ -1,0 +1,89 @@
+---
+title: "Authentication"
+description: "Secure your tool endpoints with JWT, session cookies, or BetterAuth"
+---
+
+## Overview
+
+Better UI provides auth helpers that extract and verify user identity from incoming requests. Use them in your API routes to gate tool execution behind authentication.
+
+## JWT Bearer Tokens
+
+```typescript
+import { jwtAuth } from '@lantos1618/better-ui/auth';
+
+const auth = jwtAuth({
+  secret: process.env.JWT_SECRET!,
+  issuer: 'my-app',        // optional: validate issuer claim
+  audience: 'my-api',      // optional: validate audience claim
+});
+
+// In your API route:
+const user = await auth(req.headers);
+// → { sub: 'user-123', email: 'user@example.com', ... }
+```
+
+The `jwtAuth` helper:
+- Extracts the token from the `Authorization: Bearer <token>` header
+- Verifies the signature using HMAC SHA-256
+- Validates `exp`, `iss`, and `aud` claims
+- Returns the decoded payload
+
+## Session Cookies
+
+```typescript
+import { sessionAuth } from '@lantos1618/better-ui/auth';
+
+const auth = sessionAuth({
+  cookieName: 'session',
+  verify: async (token) => {
+    const session = await db.sessions.findUnique({ where: { token } });
+    if (!session || session.expiresAt < new Date()) return null;
+    return { userId: session.userId, role: session.role };
+  },
+});
+```
+
+## BetterAuth Integration
+
+```typescript
+import { betterAuth } from '@lantos1618/better-ui/auth';
+import { auth as authInstance } from '@/lib/auth'; // your BetterAuth instance
+
+const auth = betterAuth(authInstance);
+
+// Returns { session, user } from BetterAuth
+const { session, user } = await auth(req.headers);
+```
+
+## Using Auth in Routes
+
+All auth helpers return an async function `(headers: Headers) => Promise<UserData>` that throws on invalid auth. Use in your tool execution routes:
+
+```typescript
+// app/api/tools/execute/route.ts
+import { jwtAuth } from '@lantos1618/better-ui/auth';
+
+const auth = jwtAuth({ secret: process.env.JWT_SECRET! });
+
+export async function POST(req: Request) {
+  const user = await auth(new Headers(req.headers));
+
+  const { tool: toolName, input } = await req.json();
+  const result = await tools[toolName].run(input, {
+    isServer: true,
+    user,
+  });
+
+  return Response.json({ result });
+}
+```
+
+The `user` object is available in server handlers via `ctx.user`:
+
+```typescript
+myTool.server(async (input, ctx) => {
+  console.log(ctx.user); // { sub: 'user-123', ... }
+  return await db.query(input.query);
+});
+```

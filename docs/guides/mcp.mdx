@@ -1,0 +1,116 @@
+---
+title: "MCP Server"
+description: "Expose your tools to Claude Desktop, Cursor, VS Code, and any MCP-compatible client"
+---
+
+## Overview
+
+Better UI tools can be exposed as an [MCP (Model Context Protocol)](https://modelcontextprotocol.io) server with zero additional code. Any tool registry becomes a standards-compliant MCP server that works with Claude Desktop, Cursor, VS Code, and other MCP clients.
+
+## Quick Start
+
+```typescript
+import { createMCPServer } from '@lantos1618/better-ui/mcp';
+import { weatherTool, searchTool } from './tools';
+
+const server = createMCPServer({
+  name: 'my-tools',
+  version: '1.0.0',
+  tools: { weather: weatherTool, search: searchTool },
+});
+
+// stdio transport — works with Claude Desktop
+server.start();
+```
+
+## Transports
+
+### stdio (Claude Desktop, Cursor, VS Code)
+
+```typescript
+server.start();
+```
+
+Add to Claude Desktop config (`~/.claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "my-tools": {
+      "command": "npx",
+      "args": ["tsx", "path/to/mcp-server.ts"]
+    }
+  }
+}
+```
+
+### HTTP (Next.js, Express, Cloudflare Workers)
+
+```typescript
+// app/api/mcp/route.ts
+import { server } from '@/lib/mcp';
+
+export const POST = server.httpHandler();
+```
+
+The HTTP handler validates `Content-Type: application/json`, parses JSON-RPC 2.0 messages, and returns proper responses.
+
+## Programmatic Use
+
+```typescript
+// List tools with JSON schemas
+const tools = server.listTools();
+// → [{ name: 'weather', description: '...', inputSchema: { type: 'object', ... } }]
+
+// Call a tool directly
+const result = await server.callTool('weather', { city: 'Tokyo' });
+// → { content: [{ type: 'text', text: '{"temp":21,"condition":"sunny"}' }] }
+
+// Handle raw JSON-RPC messages
+const response = await server.handleMessage({
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'tools/call',
+  params: { name: 'weather', arguments: { city: 'Tokyo' } },
+});
+```
+
+## Schema Conversion
+
+Better UI includes a built-in `zodToJsonSchema` converter that handles common Zod types without extra dependencies:
+
+```typescript
+import { zodToJsonSchema } from '@lantos1618/better-ui/mcp';
+
+zodToJsonSchema(z.object({
+  name: z.string().min(1).max(100),
+  age: z.number().int().min(0),
+  role: z.enum(['admin', 'user']),
+}));
+// → { type: 'object', properties: { ... }, required: [...] }
+```
+
+Supported types: string, number, boolean, object, array, enum, literal, nullable, union, discriminatedUnion, record, optional, default, effects, lazy, tuple.
+
+## Context Passthrough
+
+Pass shared context (environment variables, database connections) to every tool execution:
+
+```typescript
+const server = createMCPServer({
+  name: 'my-tools',
+  version: '1.0.0',
+  tools: { weather, search },
+  context: {
+    env: process.env,
+    // Any ToolContext fields
+  },
+});
+```
+
+## Security
+
+- **Prototype chain traversal protection**: Tool lookup uses `hasOwnProperty` to prevent accessing `constructor`, `toString`, etc.
+- **Input validation**: Zod schemas validate all inputs before execution
+- **Output validation**: Output schemas prevent data leakage
+- **Error isolation**: Zod validation errors return structured messages; other errors return generic "Unknown error"

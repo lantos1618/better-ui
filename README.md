@@ -52,6 +52,7 @@ npm install @lantos1618/better-ui zod
 |---------|------|
 | **View integration** | Tools render their own results — no other framework does this |
 | **MCP server** | Expose any tool registry to Claude Desktop, Cursor, VS Code |
+| **AG-UI protocol** | Compatible with CopilotKit, LangChain, Google ADK frontends |
 | **Multi-provider** | OpenAI, Anthropic, Google Gemini, OpenRouter |
 | **Streaming views** | Progressive partial data rendering |
 | **Drop-in chat** | `<Chat />` component with automatic tool view rendering |
@@ -404,6 +405,26 @@ zodToJsonSchema(z.object({
 
 ---
 
+## AG-UI Protocol
+
+Expose your tools via the [AG-UI (Agent-User Interaction Protocol)](https://docs.ag-ui.com) — compatible with CopilotKit, LangChain, Google ADK, and any AG-UI frontend.
+
+```typescript
+import { createAGUIServer } from '@lantos1618/better-ui/agui';
+
+const server = createAGUIServer({
+  name: 'my-tools',
+  tools: { weather, search },
+});
+
+// Next.js route handler — returns SSE event stream
+export const POST = server.handler();
+```
+
+The handler emits standard AG-UI events (`RUN_STARTED`, `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_RESULT`, `TOOL_CALL_END`, `RUN_FINISHED`) over Server-Sent Events.
+
+---
+
 ## Providers
 
 ```typescript
@@ -532,8 +553,10 @@ src/
     types.ts             PersistenceAdapter interface
     memory.ts            In-memory adapter
   mcp/
-    server.ts            MCP server (stdio + HTTP)
+    server.ts            MCP server (stdio + HTTP + SSE)
     schema.ts            Zod → JSON Schema converter
+  agui/
+    server.ts            AG-UI protocol server (SSE)
 examples/
   nextjs-demo/           Full Next.js demo app
   vite-demo/             Vite + Express demo app
@@ -545,7 +568,7 @@ examples/
 ```bash
 npm install
 npm run build        # Build library
-npm test             # Run tests (163 tests)
+npm test             # Run tests (226 tests)
 npm run type-check   # TypeScript check
 ```
 

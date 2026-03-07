@@ -1,0 +1,117 @@
+---
+title: "AG-UI Protocol"
+description: "Expose your tools via the AG-UI protocol for CopilotKit, LangChain, and Google ADK frontends"
+---
+
+## Overview
+
+[AG-UI (Agent-User Interaction Protocol)](https://docs.ag-ui.com) is an open protocol for agent-to-frontend communication over Server-Sent Events. It's adopted by CopilotKit, Google, LangChain, AWS, Microsoft, and more.
+
+Better UI tools can be exposed as an AG-UI server, making them compatible with any AG-UI-compatible frontend.
+
+## Quick Start
+
+```typescript
+import { createAGUIServer } from '@lantos1618/better-ui/agui';
+
+const server = createAGUIServer({
+  name: 'my-tools',
+  tools: { weather, search },
+});
+```
+
+### Next.js Route Handler
+
+```typescript
+// app/api/agui/route.ts
+import { server } from '@/lib/agui';
+
+export const POST = server.handler();
+```
+
+### Express
+
+```typescript
+import express from 'express';
+
+const app = express();
+app.post('/api/agui', async (req, res) => {
+  const response = await server.handler()(req);
+  // Forward SSE response
+  res.writeHead(200, Object.fromEntries(response.headers));
+  const reader = response.body!.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    res.write(value);
+  }
+  res.end();
+});
+```
+
+## Event Flow
+
+When a tool is executed, the server emits this event sequence:
+
+```
+RUN_STARTED
+  → TOOL_CALL_START     (toolCallId, toolCallName)
+  → TOOL_CALL_ARGS      (delta: JSON args)
+  → TOOL_CALL_RESULT    (result: JSON output)
+  → TOOL_CALL_END
+RUN_FINISHED
+```
+
+If no tool call is provided, it emits a text message listing available tools:
+
+```
+RUN_STARTED
+  → TEXT_MESSAGE_START
+  → TEXT_MESSAGE_CONTENT (available tools list)
+  → TEXT_MESSAGE_END
+RUN_FINISHED
+```
+
+On error:
+
+```
+RUN_STARTED
+  → RUN_ERROR           (error message)
+```
+
+## Request Format
+
+POST a JSON body with:
+
+```typescript
+{
+  threadId: string;        // Required: conversation thread ID
+  runId: string;           // Required: unique run ID
+  toolCall?: {             // Optional: tool to execute
+    id: string;            // Tool call ID
+    name: string;          // Tool name (must match registered tool)
+    args: object;          // Tool input arguments
+  };
+}
+```
+
+## Using with CopilotKit
+
+```tsx
+import { CopilotKit } from '@copilotkit/react-core';
+
+function App() {
+  return (
+    <CopilotKit runtimeUrl="/api/agui">
+      <YourApp />
+    </CopilotKit>
+  );
+}
+```
+
+## Security
+
+- Tool lookup uses `hasOwnProperty` to prevent prototype chain traversal
+- Input is validated through Zod schemas before execution
+- Error messages are sanitized in `RUN_ERROR` events
+- Context is passed through for auth integration
