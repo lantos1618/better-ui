@@ -23,6 +23,7 @@
  */
 
 import type { Tool, ToolContext } from '../tool';
+import { zodToJsonSchema } from '../mcp/schema';
 
 // ─── AG-UI Event Types ──────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ export interface AGUIEvent {
 export interface RunAgentInput {
   threadId: string;
   runId: string;
-  /** Tool calls to execute */
+  /** Tool definitions from the client */
   tools?: Array<{
     name: string;
     description?: string;
@@ -63,12 +64,18 @@ export interface RunAgentInput {
     role: string;
     content: string;
   }>;
-  /** Tool call to execute (for direct tool invocation) */
+  /** Single tool call to execute */
   toolCall?: {
     id: string;
     name: string;
     args: Record<string, unknown>;
   };
+  /** Multiple tool calls to execute in sequence */
+  toolCalls?: Array<{
+    id: string;
+    name: string;
+    args: Record<string, unknown>;
+  }>;
   /** State context from the frontend */
   state?: Record<string, unknown>;
 }
@@ -100,7 +107,7 @@ export class AGUIServer {
     return Object.values(this.config.tools).map((tool) => ({
       name: tool.name,
       description: tool.description || tool.name,
-      parameters: this.zodToJsonSchema(tool.inputSchema),
+      parameters: zodToJsonSchema(tool.inputSchema),
     }));
   }
 
@@ -146,11 +153,15 @@ export class AGUIServer {
             // Run started
             emit({ type: 'RUN_STARTED', threadId, runId });
 
-            if (toolCall) {
-              // Direct tool execution
-              await self.executeToolCall(toolCall, emit);
+            // Collect tool calls (single or batch)
+            const calls = toolCall ? [toolCall] : (input.toolCalls ?? []);
+
+            if (calls.length > 0) {
+              for (const call of calls) {
+                await self.executeToolCall(call, emit);
+              }
             } else {
-              // List available tools as a text message
+              // No tool calls — list available tools as a text message
               const tools = self.listTools();
               const messageId = `msg_${runId}`;
               emit({ type: 'TEXT_MESSAGE_START', messageId, role: 'assistant' });
@@ -248,20 +259,6 @@ export class AGUIServer {
     });
   }
 
-  /**
-   * Minimal Zod-to-JSON-Schema for AG-UI tool parameters.
-   * Delegates to the MCP schema converter if available, otherwise provides a basic fallback.
-   */
-  private zodToJsonSchema(schema: unknown): Record<string, unknown> {
-    try {
-      // Try to use the MCP schema converter
-      const { zodToJsonSchema } = require('../mcp/schema');
-      return zodToJsonSchema(schema);
-    } catch {
-      // Fallback: return empty object schema
-      return { type: 'object', properties: {} };
-    }
-  }
 }
 
 // ─── Factory ────────────────────────────────────────────────────────────────

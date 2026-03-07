@@ -255,6 +255,57 @@ describe('AG-UI Server', () => {
     });
   });
 
+  describe('batch tool calls', () => {
+    it('executes multiple tool calls in sequence', async () => {
+      const req = makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCalls: [
+          { id: 'tc1', name: 'echo', args: { message: 'first' } },
+          { id: 'tc2', name: 'echo', args: { message: 'second' } },
+        ],
+      });
+      const res = await handler(req);
+      const events = parseEvents(await readSSE(res));
+      const types = events.map(e => e.type);
+
+      // Should have tool call events for both calls
+      const toolStarts = events.filter(e => e.type === 'TOOL_CALL_START');
+      expect(toolStarts).toHaveLength(2);
+      expect(toolStarts[0].toolCallName).toBe('echo');
+      expect(toolStarts[1].toolCallName).toBe('echo');
+
+      const results = events.filter(e => e.type === 'TOOL_CALL_RESULT');
+      expect(results).toHaveLength(2);
+      expect(JSON.parse(results[0].result as string).echoed).toBe('first');
+      expect(JSON.parse(results[1].result as string).echoed).toBe('second');
+
+      // Should have run lifecycle
+      expect(types[0]).toBe('RUN_STARTED');
+      expect(types[types.length - 1]).toBe('RUN_FINISHED');
+    });
+
+    it('stops on first error in batch', async () => {
+      const req = makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCalls: [
+          { id: 'tc1', name: 'echo', args: { message: 'ok' } },
+          { id: 'tc2', name: 'fail', args: {} },
+          { id: 'tc3', name: 'echo', args: { message: 'never' } },
+        ],
+      });
+      const res = await handler(req);
+      const events = parseEvents(await readSSE(res));
+      const types = events.map(e => e.type);
+
+      expect(types).toContain('RUN_ERROR');
+      // Third tool should not execute
+      const results = events.filter(e => e.type === 'TOOL_CALL_RESULT');
+      expect(results).toHaveLength(1);
+    });
+  });
+
   describe('context passthrough', () => {
     it('passes context to tool execution', async () => {
       let receivedCtx: any = null;
