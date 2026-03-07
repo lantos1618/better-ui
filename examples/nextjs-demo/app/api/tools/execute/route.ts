@@ -135,8 +135,6 @@ export async function POST(req: Request) {
       {
         error: isValidationError
           ? error.message
-          : error instanceof Error
-          ? error.message
           : 'Tool execution failed'
       },
       { status: isValidationError ? 400 : 500 }

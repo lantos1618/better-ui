@@ -116,7 +116,7 @@ function cleanSnippet(text: string): string {
 export const searchTool = tool({
   name: 'search',
   description: 'Search for information',
-  input: z.object({ query: z.string() }),
+  input: z.object({ query: z.string().max(1000) }),
   output: z.object({
     query: z.string(),
     results: z.array(z.object({
@@ -167,20 +167,23 @@ searchTool.view((data, state) => {
         <span className="text-[var(--bui-fg-faint,#52525b)] text-xs ml-auto">{data.results.length} found</span>
       </div>
       <div className="divide-y divide-[var(--bui-border-strong,#3f3f46)]/50">
-        {data.results.map((r) => (
+        {data.results.map((r) => {
+          const safeUrl = r.url && /^https?:\/\//i.test(r.url) ? r.url : undefined;
+          return (
           <div key={r.id} className="px-4 py-3 hover:bg-[var(--bui-bg-hover,#3f3f46)]/30 transition-colors">
             <div className="flex items-center justify-between">
-              {r.url ? (
-                <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-[var(--bui-fg,#f4f4f5)] text-sm hover:underline">{r.title}</a>
+              {safeUrl ? (
+                <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="text-[var(--bui-fg,#f4f4f5)] text-sm hover:underline">{r.title}</a>
               ) : (
                 <span className="text-[var(--bui-fg,#f4f4f5)] text-sm">{r.title}</span>
               )}
               <span className="text-[var(--bui-fg-muted,#71717a)] text-xs font-mono">{(r.score * 100).toFixed(0)}%</span>
             </div>
-            {r.url && <p className="text-[var(--bui-fg-faint,#52525b)] text-[10px] truncate mt-0.5">{r.url}</p>}
+            {safeUrl && <p className="text-[var(--bui-fg-faint,#52525b)] text-[10px] truncate mt-0.5">{safeUrl}</p>}
             <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1 line-clamp-2">{r.snippet}</p>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

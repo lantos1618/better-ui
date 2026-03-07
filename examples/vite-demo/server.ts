@@ -24,7 +24,7 @@ import { eq, desc } from 'drizzle-orm';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // ---------------------------------------------------------------------------
 // POST /api/chat — AI SDK v5 streaming
@@ -33,7 +33,17 @@ app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
 
   // Parse JSON envelopes from user messages to extract stateContext.
-  let aggregatedStateContext: Record<string, unknown> = {};
+  let aggregatedStateContext: Record<string, unknown> = Object.create(null);
+
+  /** Safely merge stateContext, rejecting prototype-pollution keys */
+  function mergeStateContext(source: unknown) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return;
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      aggregatedStateContext[key] = value;
+    }
+  }
+
   const cleanedMessages = messages.map((msg: any) => {
     if (msg.role !== 'user') return msg;
 
@@ -43,9 +53,7 @@ app.post('/api/chat', async (req, res) => {
         try {
           const envelope = JSON.parse(part.text);
           if (envelope && typeof envelope === 'object' && '_meta' in envelope) {
-            if (envelope.stateContext) {
-              Object.assign(aggregatedStateContext, envelope.stateContext);
-            }
+            mergeStateContext(envelope.stateContext);
             return { ...part, text: envelope.text || '' };
           }
         } catch {
@@ -60,9 +68,7 @@ app.post('/api/chat', async (req, res) => {
       try {
         const envelope = JSON.parse(msg.content);
         if (envelope && typeof envelope === 'object' && '_meta' in envelope) {
-          if (envelope.stateContext) {
-            Object.assign(aggregatedStateContext, envelope.stateContext);
-          }
+          mergeStateContext(envelope.stateContext);
           return { ...msg, content: envelope.text || '' };
         }
       } catch {
@@ -159,8 +165,9 @@ app.post('/api/tools/execute', async (req, res) => {
     res.json({ result });
   } catch (error) {
     console.error('Tool execution error:', error instanceof Error ? error.message : error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Tool execution failed',
+    const isValidationError = error instanceof Error && error.name === 'ZodError';
+    res.status(isValidationError ? 400 : 500).json({
+      error: isValidationError ? error.message : 'Tool execution failed',
     });
   }
 });
@@ -186,8 +193,9 @@ app.post('/api/tools/confirm', async (req, res) => {
     res.json({ result });
   } catch (error) {
     console.error('Tool confirmation error:', error instanceof Error ? error.message : error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Tool execution failed',
+    const isValidationError = error instanceof Error && error.name === 'ZodError';
+    res.status(isValidationError ? 400 : 500).json({
+      error: isValidationError ? error.message : 'Tool execution failed',
     });
   }
 });

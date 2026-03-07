@@ -25,7 +25,17 @@ export async function POST(req: Request) {
   // Parse JSON envelopes from user messages to extract stateContext.
   // Envelope format: { text, stateContext, _meta: { hidden } }
   // Plain text messages pass through unchanged.
-  let aggregatedStateContext: Record<string, unknown> = {};
+  let aggregatedStateContext: Record<string, unknown> = Object.create(null);
+
+  /** Safely merge stateContext, rejecting prototype-pollution keys */
+  function mergeStateContext(source: unknown) {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) return;
+    for (const [key, value] of Object.entries(source as Record<string, unknown>)) {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+      aggregatedStateContext[key] = value;
+    }
+  }
+
   const cleanedMessages = messages.map((msg: any) => {
     if (msg.role !== 'user') return msg;
 
@@ -36,9 +46,7 @@ export async function POST(req: Request) {
         try {
           const envelope = JSON.parse(part.text);
           if (envelope && typeof envelope === 'object' && '_meta' in envelope) {
-            if (envelope.stateContext) {
-              Object.assign(aggregatedStateContext, envelope.stateContext);
-            }
+            mergeStateContext(envelope.stateContext);
             return { ...part, text: envelope.text || '' };
           }
         } catch {
@@ -54,9 +62,7 @@ export async function POST(req: Request) {
       try {
         const envelope = JSON.parse(msg.content);
         if (envelope && typeof envelope === 'object' && '_meta' in envelope) {
-          if (envelope.stateContext) {
-            Object.assign(aggregatedStateContext, envelope.stateContext);
-          }
+          mergeStateContext(envelope.stateContext);
           return { ...msg, content: envelope.text || '' };
         }
       } catch {
