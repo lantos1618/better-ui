@@ -3,8 +3,12 @@
 > Define once. Render in UI. Serve over MCP. Type-safe AI tools with views.
 
 [![npm version](https://img.shields.io/npm/v/@lantos1618/better-ui.svg)](https://www.npmjs.com/package/@lantos1618/better-ui)
+[![npm downloads](https://img.shields.io/npm/dm/@lantos1618/better-ui.svg)](https://www.npmjs.com/package/@lantos1618/better-ui)
+[![CI](https://github.com/lantos1618/better-ui/actions/workflows/test.yml/badge.svg)](https://github.com/lantos1618/better-ui/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+
+**[Guide](./GUIDE.md)** · **[API Reference](./docs/)** · **[Examples](./examples/)**
 
 ## The Problem
 
@@ -568,9 +572,26 @@ examples/
 ```bash
 npm install
 npm run build        # Build library
-npm test             # Run tests (226 tests)
+npm test             # Run 228 tests across 11 suites
 npm run type-check   # TypeScript check
 ```
+
+## Deploy the Demo
+
+The `examples/nextjs-demo/` is a full-featured chat app ready to deploy:
+
+```bash
+cd examples/nextjs-demo
+npm install
+# Set OPENAI_API_KEY in .env.local
+npm run dev
+```
+
+To deploy on Vercel, set the **Root Directory** to `examples/nextjs-demo` in your project settings.
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
