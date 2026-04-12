@@ -8,6 +8,14 @@
 import { z } from 'zod';
 import React, { ReactElement, memo } from 'react';
 
+/**
+ * Schema type that works with both Zod 3 and Zod 4.
+ * Zod 4 removed internal properties (_parse, _type, etc.) from ZodType,
+ * so we use a structural type instead of z.ZodType directly.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ZodSchema<T = any> = z.ZodType<T> | { parse: (data: unknown) => T; safeParse: (data: unknown) => any; [key: string]: any };
+
 /** Behavioral hints for tools */
 export interface ToolHints {
   /** Tool performs destructive/irreversible actions (auto-implies requiresConfirmation) */
@@ -72,8 +80,8 @@ export interface ClientFetchConfig {
 export interface ToolConfig<TInput, TOutput> {
   name: string;
   description?: string;
-  input: z.ZodType<TInput>;
-  output?: z.ZodType<TOutput>;
+  input: ZodSchema<TInput>;
+  output?: ZodSchema<TOutput>;
   tags?: string[];
   cache?: CacheConfig<TInput>;
   /** Configure auto-fetch behavior for client-side execution */
@@ -130,8 +138,8 @@ export type ViewComponent<TOutput, TInput = unknown> = (
 export class Tool<TInput = any, TOutput = any> {
   readonly name: string;
   readonly description?: string;
-  readonly inputSchema: z.ZodType<TInput>;
-  readonly outputSchema?: z.ZodType<TOutput>;
+  readonly inputSchema: ZodSchema<TInput>;
+  readonly outputSchema?: ZodSchema<TOutput>;
   readonly tags: string[];
   readonly cacheConfig?: CacheConfig<TInput>;
   readonly clientFetchConfig?: ClientFetchConfig;
@@ -636,8 +644,8 @@ export function tool<TInput, TOutput = any>(
 class ToolBuilder<TInput = any, TOutput = any> {
   private _name: string;
   private _description?: string;
-  private _input?: z.ZodType<TInput>;
-  private _output?: z.ZodType<TOutput>;
+  private _input?: ZodSchema<TInput>;
+  private _output?: ZodSchema<TOutput>;
   private _tags: string[] = [];
   private _cache?: CacheConfig<TInput>;
   private _clientFetch?: ClientFetchConfig;
@@ -667,16 +675,16 @@ class ToolBuilder<TInput = any, TOutput = any> {
    * 2. The return type correctly reflects the new generic parameter
    * 3. TypeScript doesn't support "this type mutation" in fluent builders
    */
-  input<T>(schema: z.ZodType<T>): ToolBuilder<T, TOutput> {
-    this._input = schema as z.ZodType<any>;
+  input<T>(schema: ZodSchema<T>): ToolBuilder<T, TOutput> {
+    this._input = schema as ZodSchema<any>;
     return this as unknown as ToolBuilder<T, TOutput>;
   }
 
   /**
    * Define output schema - enables type inference for results
    */
-  output<O>(schema: z.ZodType<O>): ToolBuilder<TInput, O> {
-    this._output = schema as z.ZodType<any>;
+  output<O>(schema: ZodSchema<O>): ToolBuilder<TInput, O> {
+    this._output = schema as ZodSchema<any>;
     return this as unknown as ToolBuilder<TInput, O>;
   }
 

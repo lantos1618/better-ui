@@ -26,11 +26,13 @@ export interface JsonSchema {
   [key: string]: unknown;
 }
 
-export function zodToJsonSchema(schema: z.ZodType): JsonSchema {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function zodToJsonSchema(schema: z.ZodType | { [key: string]: any }): JsonSchema {
   return convert(schema);
 }
 
-function convert(schema: z.ZodType): JsonSchema {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function convert(schema: z.ZodType | { [key: string]: any }): JsonSchema {
   const def = (schema as any)._def;
   const typeName: string = def?.typeName;
 
@@ -62,16 +64,16 @@ function convert(schema: z.ZodType): JsonSchema {
     case 'ZodDefault':
       return { ...convert(def.innerType), default: def.defaultValue() };
     case 'ZodUnion':
-      return { anyOf: def.options.map((o: z.ZodType) => convert(o)) };
+      return { anyOf: def.options.map((o: any) => convert(o)) };
     case 'ZodDiscriminatedUnion':
-      return { oneOf: [...def.options.values()].map((o: z.ZodType) => convert(o)) };
+      return { oneOf: [...def.options.values()].map((o: any) => convert(o)) };
     case 'ZodRecord':
       return {
         type: 'object',
         additionalProperties: convert(def.valueType),
       };
     case 'ZodTuple': {
-      const items = def.items.map((item: z.ZodType) => convert(item));
+      const items = def.items.map((item: any) => convert(item));
       return { type: 'array', items: items.length === 1 ? items[0] : undefined, prefixItems: items };
     }
     case 'ZodEffects':
@@ -134,7 +136,7 @@ function convertObject(def: any): JsonSchema {
   const required: string[] = [];
 
   for (const [key, value] of Object.entries(shape)) {
-    properties[key] = convert(value as z.ZodType);
+    properties[key] = convert(value as any);
 
     // Check if the field is required (not optional, not with default)
     const fieldDef = (value as any)._def;
