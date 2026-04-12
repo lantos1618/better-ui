@@ -185,7 +185,7 @@ describe('MCPServer', () => {
       expect(response).not.toBeNull();
       expect(response!.id).toBe(1);
       expect(response!.result).toEqual({
-        protocolVersion: '2024-11-05',
+        protocolVersion: '2025-11-25',
         capabilities: { tools: {} },
         serverInfo: { name: 'test-server', version: '0.1.0' },
       });

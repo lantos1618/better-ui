@@ -80,18 +80,22 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
 
   // Load thread list on mount when persistence is configured
   useEffect(() => {
-    if (persistence) {
-      persistence.listThreads().then(setThreads).catch((err) => console.warn('[better-ui] persistence error:', err));
-    }
+    if (!persistence) return;
+    let cancelled = false;
+    persistence.listThreads().then((t) => {
+      if (!cancelled) setThreads(t);
+    }).catch((err) => console.warn('[better-ui] persistence error:', err));
+    return () => { cancelled = true; };
   }, [persistence]);
 
   // Load messages when threadId changes
   useEffect(() => {
-    if (persistence && activeThreadId) {
-      persistence.getMessages(activeThreadId).then((msgs) => {
-        setMessages(msgs);
-      }).catch((err) => console.warn('[better-ui] persistence error:', err));
-    }
+    if (!persistence || !activeThreadId) return;
+    let cancelled = false;
+    persistence.getMessages(activeThreadId).then((msgs) => {
+      if (!cancelled) setMessages(msgs);
+    }).catch((err) => console.warn('[better-ui] persistence error:', err));
+    return () => { cancelled = true; };
   }, [persistence, activeThreadId, setMessages]);
 
   // Auto-save messages after AI finishes responding
@@ -122,9 +126,11 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
 
   const switchThreadFn = useCallback(async (id: string) => {
     if (!persistence) throw new Error('Persistence not configured');
-    setActiveThreadId(id);
-    setMessages([]);
+    // Load new thread messages before clearing to avoid data loss race condition
+    const msgs = await persistence.getMessages(id);
     toolStateStore.clear();
+    setMessages(msgs);
+    setActiveThreadId(id);
   }, [persistence, setMessages, toolStateStore]);
 
   const deleteThreadFn = useCallback(async (id: string) => {
@@ -156,8 +162,12 @@ export function ChatProvider({ endpoint = '/api/chat', tools, toolStateStore: ex
         stateContext[entry.toolName] = entry.output;
       }
     }
-    dirty.clear();
-    return Object.keys(stateContext).length > 0 ? stateContext : null;
+    // Only clear after successful collection — caller is about to send
+    if (Object.keys(stateContext).length > 0) {
+      dirty.clear();
+      return stateContext;
+    }
+    return null;
   }, [toolStateStore]);
 
   const executeToolDirect = useCallback(async (

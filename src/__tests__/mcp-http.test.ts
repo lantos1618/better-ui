@@ -111,7 +111,7 @@ describe('MCP HTTP Handler', () => {
       expect(json.result.serverInfo.name).toBe('test-http');
       expect(json.result.serverInfo.version).toBe('1.0.0');
       expect(json.result.capabilities.tools).toBeDefined();
-      expect(json.result.protocolVersion).toBe('2024-11-05');
+      expect(json.result.protocolVersion).toBe('2025-11-25');
     });
   });
 
