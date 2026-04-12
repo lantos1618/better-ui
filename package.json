@@ -1,6 +1,6 @@
 {
   "name": "@lantos1618/better-ui",
-  "version": "0.8.0",
+  "version": "0.9.1",
   "description": "A minimal, type-safe AI-first UI framework for building tools",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -41,6 +41,11 @@
       "import": "./dist/agui/index.mjs",
       "require": "./dist/agui/index.js"
     },
+    "./openapi": {
+      "types": "./dist/openapi/index.d.ts",
+      "import": "./dist/openapi/index.mjs",
+      "require": "./dist/openapi/index.js"
+    },
     "./theme.css": "./src/theme.css"
   },
   "files": [
@@ -69,7 +74,7 @@
   },
   "scripts": {
     "build": "npm run build:lib",
-    "build:lib": "tsup src/index.ts src/react/index.ts src/components/index.ts src/auth/index.ts src/persistence/index.ts src/mcp/index.ts src/agui/index.ts --format cjs,esm --dts --clean --tsconfig tsconfig.lib.json",
+    "build:lib": "tsup src/index.ts src/react/index.ts src/components/index.ts src/auth/index.ts src/persistence/index.ts src/mcp/index.ts src/agui/index.ts src/openapi/index.ts --format cjs,esm --dts --clean --tsconfig tsconfig.lib.json",
     "test": "jest",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build:lib"
