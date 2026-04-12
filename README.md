@@ -6,565 +6,721 @@
 [![npm downloads](https://img.shields.io/npm/dm/@lantos1618/better-ui.svg)](https://www.npmjs.com/package/@lantos1618/better-ui)
 [![CI](https://github.com/lantos1618/better-ui/actions/workflows/test.yml/badge.svg)](https://github.com/lantos1618/better-ui/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 
 **[Guide](./GUIDE.md)** · **[API Reference](./docs/)** · **[Examples](./examples/)**
 
-## The Problem
+## The idea
 
-Every AI framework lets you define tools. None of them let the tool own its own UI. You end up with tool definitions in one place, rendering logic scattered somewhere else, and no way to expose those same tools to external AI clients.
-
-## The Solution
-
-Better UI tools are self-contained units: **schema + server logic + view + streaming**, all in one definition. Use them in chat, call them from React, or expose them as an MCP server — same tool, zero glue code.
-
-```typescript
-import { tool } from '@lantos1618/better-ui';
-import { z } from 'zod';
-
-const weather = tool({
-  name: 'weather',
-  description: 'Get weather for a city',
-  input: z.object({ city: z.string() }),
-  output: z.object({ temp: z.number(), condition: z.string() }),
-});
-
-weather.server(async ({ city }) => {
-  const data = await weatherAPI.get(city);
-  return { temp: data.temp, condition: data.condition };
-});
-
-weather.view((data) => (
-  <div className="weather-card">
-    <span>{data.temp}°</span>
-    <span>{data.condition}</span>
-  </div>
-));
-```
-
-That's it. The tool validates input/output with Zod, runs server logic securely, and renders its own results. Drop it into chat and it just works. Expose it over MCP and Claude Desktop can call it.
-
-## Install
+One tool definition = schema + server logic + view. Use the same tool in chat, as a React hook, as an MCP server, as an OpenAPI endpoint, or as an AG-UI server.
 
 ```bash
-npm install @lantos1618/better-ui zod
+npm install @lantos1618/better-ui zod ai @ai-sdk/openai
 ```
 
-## What You Get
+---
 
-| Feature | What |
-|---------|------|
-| **View integration** | Tools render their own results — no other framework does this |
-| **MCP server** | Expose any tool registry to Claude Desktop, Cursor, VS Code |
-| **AG-UI protocol** | Compatible with CopilotKit, LangChain, Google ADK frontends |
-| **Multi-provider** | OpenAI, Anthropic, Google Gemini, OpenRouter |
-| **Streaming views** | Progressive partial data rendering |
-| **Drop-in chat** | `<Chat />` component with automatic tool view rendering |
-| **HITL confirmation** | Tools can require human approval before executing |
-| **Auth helpers** | JWT, session cookies, BetterAuth integration |
-| **Security** | Context stripping, input validation, output sanitization, rate limiting |
+## 1. Define tools
 
-## Quick Start
-
-### 1. Define a Tool
-
-```typescript
-import { tool } from '@lantos1618/better-ui';
+```tsx
+// lib/tools.tsx
+import { tool, Tool } from '@lantos1618/better-ui';
 import { z } from 'zod';
 
-export const search = tool({
-  name: 'search',
-  description: 'Search the web',
-  input: z.object({ query: z.string().max(1000) }),
+export const weatherTool = tool({
+  name: 'weather',
+  description: 'Get current weather for a city',
+  input: z.object({ city: z.string() }),
   output: z.object({
-    results: z.array(z.object({
-      title: z.string(),
-      url: z.string(),
-    })),
+    temp: z.number(),
+    city: z.string(),
+    condition: z.string(),
   }),
 });
 
-search.server(async ({ query }) => {
-  const results = await searchAPI.search(query);
-  return { results };
+weatherTool.server(async ({ city }, ctx) => {
+  // ctx.env, ctx.headers, ctx.user, ctx.session available here (stripped on client)
+  const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
+  const data = await res.json();
+  return { temp: Number(data.current_condition[0].temp_C), city, condition: data.current_condition[0].weatherDesc[0].value };
 });
 
-search.view((data) => (
-  <ul>
-    {data.results.map((r, i) => (
-      <li key={i}><a href={r.url}>{r.title}</a></li>
-    ))}
-  </ul>
-));
+weatherTool.view((data, state) => {
+  if (state?.loading) {
+    return (
+      <div className="bg-zinc-800 rounded-xl p-4 text-zinc-400 text-sm animate-pulse">
+        Fetching weather...
+      </div>
+    );
+  }
+  if (state?.error) {
+    return <div className="bg-zinc-800 rounded-xl p-4 text-red-400 text-sm">{state.error.message}</div>;
+  }
+  if (!data) return null;
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-xl p-4">
+      <p className="text-xs text-zinc-500 uppercase">{data.city}</p>
+      <p className="text-3xl font-light">{data.temp}&deg;</p>
+      <p className="text-sm text-zinc-400">{data.condition}</p>
+    </div>
+  );
+});
+
+// Export a registry for routes and components to share
+export const tools = { weather: weatherTool } satisfies Record<string, Tool>;
 ```
 
-### 2. Use It in Chat
+Key points:
+- `.server(input, ctx)` runs only server-side. `ctx.env`, `ctx.headers`, `ctx.user` are available and auto-stripped on client.
+- `.view(data, state)` — `state` has `loading`, `streaming`, `error`, and `onAction` (which takes the tool's **input** schema).
+- Calling `.view()` also creates `tool.View` — a memoized React component you can render standalone anywhere.
+- No `.client()`? Client auto-fetches to `/api/tools/execute`. Override with `clientFetch: { endpoint: '/my/path' }` in the tool config.
+
+---
+
+## 2. Wire up API routes (Next.js App Router)
+
+### Chat route
+
+```ts
+// app/api/chat/route.ts
+import { openai } from '@ai-sdk/openai';
+import { streamText, convertToModelMessages } from 'ai';
+import { weatherTool } from '@/lib/tools';
+
+export async function POST(req: Request) {
+  const { messages } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    messages: convertToModelMessages(messages),
+    tools: {
+      weather: weatherTool.toAITool(),
+    },
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+`.toAITool()` returns `{ description, inputSchema, execute }` — the format AI SDK v6 expects. The `execute` callback runs `tool.run(input, { isServer: true })` automatically. If the tool has `confirm: true`, `execute` is omitted so the SDK leaves the call at `state: 'input-available'` for HITL approval.
+
+### Passing auth context to AI-called tools
+
+When the LLM calls a tool via `streamText`, the `execute` from `.toAITool()` runs server-side. To pass auth/request context into it, wrap the call:
+
+```ts
+// app/api/chat/route.ts
+import { betterAuth } from '@lantos1618/better-ui/auth';
+import { auth as authInstance } from '@/lib/auth'; // your BetterAuth instance
+
+const auth = betterAuth(authInstance);
+
+export async function POST(req: Request) {
+  const { user, session } = await auth(req.headers);
+  const { messages } = await req.json();
+
+  const result = await streamText({
+    model: openai('gpt-4o'),
+    messages: convertToModelMessages(messages),
+    tools: {
+      // Wrap toAITool's execute to inject auth context
+      weather: {
+        ...weatherTool.toAITool(),
+        execute: async (input) => weatherTool.run(input, {
+          isServer: true, user, session, headers: req.headers,
+        }),
+      },
+    },
+  });
+
+  return result.toUIMessageStreamResponse();
+}
+```
+
+Now `ctx.user` and `ctx.session` are available inside `.server(input, ctx)`. Works the same with `jwtAuth()` or `sessionAuth()`.
+
+### Tool execution route
+
+Interactive views call tools directly (via `onAction`). This endpoint handles that:
+
+```ts
+// app/api/tools/execute/route.ts
+import { tools } from '@/lib/tools';
+import { betterAuth } from '@lantos1618/better-ui/auth';
+import { auth as authInstance } from '@/lib/auth';
+
+const auth = betterAuth(authInstance);
+
+export async function POST(req: Request) {
+  const { user, session } = await auth(req.headers);
+  const { tool: name, input } = await req.json();
+
+  const t = tools[name];
+  if (!t) return Response.json({ error: 'Tool not found' }, { status: 404 });
+
+  // Pass the same auth context so ctx.user works in onAction calls too
+  const result = await t.run(input, { isServer: true, user, session, headers: req.headers });
+  return Response.json({ result });
+}
+```
+
+### HITL confirmation route (only needed if you use `confirm: true`)
+
+```ts
+// app/api/tools/confirm/route.ts
+import { tools } from '@/lib/tools';
+
+export async function POST(req: Request) {
+  const { tool: name, input } = await req.json();
+  const t = tools[name];
+  if (!t) return Response.json({ error: 'Not found' }, { status: 404 });
+  const result = await t.run(input, { isServer: true });
+  return Response.json({ result });
+}
+```
+
+---
+
+## 3. Chat UI
+
+### Drop-in (simplest)
 
 ```tsx
+// app/page.tsx
+'use client';
 import { Chat } from '@lantos1618/better-ui/components';
+import { tools } from '@/lib/tools';
 
-function App() {
+export default function Page() {
   return (
     <Chat
       endpoint="/api/chat"
-      tools={{ weather, search }}
-      className="h-[600px]"
+      tools={tools}
+      className="h-screen"
+      placeholder="Ask something..."
+      suggestions={["What's the weather in Tokyo?"]}
     />
   );
 }
 ```
 
-Tool results render automatically using the tool's `.view()` component.
+`Chat` = `ChatProvider` + `Thread` + `Composer` in one component. Tool views render inline automatically.
 
-### 3. Wire Up the API Route
+### Composable (full control)
 
-```typescript
-// app/api/chat/route.ts (Next.js)
-import { streamText, convertToModelMessages } from 'ai';
-import { createProvider } from '@lantos1618/better-ui';
+```tsx
+'use client';
+import { ChatProvider, Thread, Composer, ChatPanel } from '@lantos1618/better-ui/components';
+import { tools } from '@/lib/tools';
 
-const provider = createProvider({ provider: 'openai', model: 'gpt-4o' });
-
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const result = streamText({
-    model: provider.model(),
-    messages: convertToModelMessages(messages),
-    tools: {
-      weather: weatherTool.toAITool(),
-      search: searchTool.toAITool(),
-    },
-  });
-  return result.toUIMessageStreamResponse();
+export default function Page() {
+  return (
+    <ChatProvider endpoint="/api/chat" tools={tools}>
+      <div className="flex h-screen">
+        <div className="flex-1 flex flex-col">
+          <Thread className="flex-1 overflow-y-auto" />
+          <Composer placeholder="Ask something..." />
+        </div>
+        {/* Side panel showing the latest tool result */}
+        <ChatPanel className="w-[500px] border-l border-zinc-800" />
+      </div>
+    </ChatProvider>
+  );
 }
 ```
 
-### 4. Or Expose as an MCP Server
+Inside `ChatProvider`, use `useChatContext()` from a child component to access:
 
-```typescript
+```tsx
+import { useChatContext } from '@lantos1618/better-ui/components';
+
+const {
+  messages,        // UIMessage[]
+  sendMessage,     // (text: string) => void
+  isLoading,       // boolean
+  status,          // 'ready' | 'streaming' | 'submitted'
+  tools,           // Record<string, Tool>
+  toolStateStore,  // shared tool state
+  confirmTool,     // HITL approve
+  rejectTool,      // HITL reject
+  retryTool,       // retry failed tool
+  // When persistence is configured:
+  threads,         // Thread[]
+  threadId,        // string
+  createThread,    // (title?) => Promise<Thread>
+  switchThread,    // (id) => Promise<void>
+  deleteThread,    // (id) => Promise<void>
+} = useChatContext();
+```
+
+---
+
+## 4. Interactive views with onAction
+
+Views can trigger tool re-execution. The result updates in-place and optionally syncs back to the AI:
+
+```tsx
+const counterTool = tool({
+  name: 'counter',
+  description: 'Manage a named counter',
+  input: z.object({
+    name: z.string(),
+    action: z.enum(['increment', 'decrement', 'reset', 'get']),
+  }),
+  output: z.object({ name: z.string(), value: z.number() }),
+  autoRespond: true, // auto-send updated state back to AI after user clicks
+});
+
+// In-memory for demo only — use a real database in production (resets in serverless)
+const counterStore: Record<string, number> = {};
+
+counterTool.server(async ({ name, action }) => {
+  if (!(name in counterStore)) counterStore[name] = 0;
+  if (action === 'increment') counterStore[name]++;
+  if (action === 'decrement') counterStore[name]--;
+  return { name, value: counterStore[name] };
+});
+
+counterTool.view((data, state) => {
+  if (!data) return null;
+  return (
+    <div className="flex items-center gap-4 p-4 bg-zinc-800 rounded-xl">
+      <span>{data.name}: {data.value}</span>
+      <button onClick={() => state?.onAction?.({ name: data.name, action: 'increment' })}>+</button>
+      <button onClick={() => state?.onAction?.({ name: data.name, action: 'decrement' })}>-</button>
+    </div>
+  );
+});
+```
+
+`onAction` calls `/api/tools/execute` with the new input and updates the view. With `autoRespond: true`, the updated state is also sent to the AI as a hidden message so it stays in sync.
+
+---
+
+## 5. HITL (human-in-the-loop)
+
+```tsx
+const sendEmailTool = tool({
+  name: 'sendEmail',
+  description: 'Send an email',
+  input: z.object({
+    to: z.string().email(),
+    subject: z.string(),
+    body: z.string(),
+  }),
+  output: z.object({ sent: z.boolean(), messageId: z.string() }),
+  confirm: true, // always show Approve/Reject before executing
+});
+
+// Or conditional:
+const deleteTool = tool({
+  name: 'delete',
+  input: z.object({ id: z.string(), permanent: z.boolean() }),
+  confirm: (input) => input.permanent === true, // only confirm permanent deletes
+  // ...
+});
+
+// Or via hints (destructive auto-implies confirmation):
+const dropTool = tool({
+  name: 'dropTable',
+  hints: { destructive: true },
+  // ...
+});
+```
+
+The chat UI automatically shows an Approve/Reject card. Approved tools hit `/api/tools/confirm`.
+
+---
+
+## 6. Streaming
+
+Use `.stream()` instead of (or alongside) `.server()` when you need partial updates before the final result:
+
+```tsx
+const analysisTool = tool({
+  name: 'analyze',
+  input: z.object({ data: z.string() }),
+  output: z.object({ status: z.string(), result: z.string() }),
+});
+
+analysisTool.stream(async (input, { stream }) => {
+  stream({ status: 'Parsing...' });
+  const parsed = JSON.parse(input.data); // your parsing logic
+  stream({ status: 'Analyzing...' });
+  const result = `Processed ${Object.keys(parsed).length} fields`; // your analysis
+  return { status: 'Done', result };
+});
+
+analysisTool.view((data, state) => {
+  if (state?.streaming) return <p>{data?.status}</p>;
+  return <p>{data?.result}</p>;
+});
+```
+
+`state.streaming` is true while partials arrive.
+
+---
+
+## 7. React hooks (outside chat)
+
+Use tools directly in any React component:
+
+```tsx
+import { useTool } from '@lantos1618/better-ui/react';
+
+function WeatherWidget() {
+  const { data, loading, error, execute } = useTool(weatherTool);
+
+  return (
+    <div>
+      <button onClick={() => execute({ city: 'Tokyo' })}>Get Weather</button>
+      {loading && <p>Loading...</p>}
+      {error && <p>Error: {error.message}</p>}
+      {data && <weatherTool.View data={data} />}
+    </div>
+  );
+}
+```
+
+Calling `.view()` on a tool also creates `tool.View` — a memoized React component you can render standalone, outside of chat.
+
+### useToolStream
+
+```tsx
+import { useToolStream } from '@lantos1618/better-ui/react';
+
+const { data, finalData, streaming, execute } = useToolStream(analysisTool);
+```
+
+### useTools (multiple)
+
+```tsx
+import { useTools } from '@lantos1618/better-ui/react';
+
+function Dashboard() {
+  const t = useTools({ weather: weatherTool, search: searchTool });
+
+  return (
+    <div>
+      <button onClick={() => t.weather.execute({ city: 'London' })}>
+        {t.weather.loading ? 'Loading...' : t.weather.data?.temp ?? 'Get Weather'}
+      </button>
+      <button onClick={() => t.search.execute({ query: 'React' })}>
+        {t.search.loading ? 'Searching...' : 'Search'}
+      </button>
+    </div>
+  );
+}
+```
+
+---
+
+## 8. MCP server
+
+Expose the same tools to Claude Desktop, Cursor, VS Code:
+
+```ts
+// mcp-server.ts
 import { createMCPServer } from '@lantos1618/better-ui/mcp';
+import { weatherTool, searchTool } from './lib/tools';
 
 const server = createMCPServer({
   name: 'my-tools',
   version: '1.0.0',
-  tools: { weather, search },
+  tools: { weather: weatherTool, search: searchTool },
 });
 
-server.start(); // stdio transport — works with Claude Desktop
+server.start(); // stdio transport
 ```
 
-Add to Claude Desktop config (`~/.claude/claude_desktop_config.json`):
-
-```json
+```jsonc
+// ~/.claude/claude_desktop_config.json
 {
   "mcpServers": {
-    "my-tools": {
-      "command": "npx",
-      "args": ["tsx", "path/to/mcp-server.ts"]
-    }
+    "my-tools": { "command": "npx", "args": ["tsx", "mcp-server.ts"] }
   }
 }
 ```
 
-Or use the HTTP handler for web-based MCP clients:
+Or as an HTTP endpoint:
 
-```typescript
+```ts
 // app/api/mcp/route.ts
 export const POST = server.httpHandler();
+// or for SSE streaming:
+export const POST = server.streamableHttpHandler();
 ```
 
 ---
 
-## Tool API
+## 9. AG-UI server
 
-### Object Config
+Expose tools via AG-UI protocol (CopilotKit, LangChain, Google ADK):
 
-```typescript
-const myTool = tool({
-  name: 'myTool',
-  description: 'What this tool does',
-  input: z.object({ query: z.string() }),
-  output: z.object({ results: z.array(z.string()) }),
-  tags: ['search'],
-  cache: { ttl: 60000 },
-  confirm: true,                    // require HITL confirmation
-  hints: { destructive: true },     // behavioral metadata
-  autoRespond: true,                // auto-send state back to AI after user action
-  groupKey: (input) => input.query, // collapse related calls in thread
-});
+```ts
+// app/api/agui/route.ts
+import { createAGUIServer } from '@lantos1618/better-ui/agui';
+import { tools } from '@/lib/tools';
+
+export const POST = createAGUIServer({
+  name: 'my-tools',
+  tools,
+}).handler();
 ```
 
-### Fluent Builder
+---
 
-```typescript
+## 10. Built-in view components
+
+Pre-built views for common patterns. Use in your tool's `.view()`:
+
+```tsx
+import {
+  QuestionView,     // multiple choice / free-text
+  FormView,         // dynamic forms from field definitions
+  DataTableView,    // sortable paginated table
+  ProgressView,     // step-by-step progress tracker
+  CodeBlockView,    // syntax highlighted code with copy button
+  MediaDisplayView, // image/video grid or carousel
+  FileUploadView,   // drag-and-drop file upload
+} from '@lantos1618/better-ui/components';
+
+// Example: question tool
+questionTool.view((data, state) => (
+  <QuestionView
+    question={data.question}
+    options={data.options}      // { label: string, value: string }[]
+    allowFreeText={true}
+    onSubmit={(answer) => state?.onAction?.({ ...data, answer })}
+  />
+));
+
+// Example: form tool
+formTool.view((data, state) => (
+  <FormView
+    title={data.title}
+    fields={data.fields}        // { name, label, type, required, options? }[]
+    onSubmit={(values) => state?.onAction?.({ ...data, values })}
+  />
+));
+
+// Example: data table
+tableTool.view((data) => (
+  <DataTableView
+    columns={data.columns}     // { key, label, sortable? }[]
+    rows={data.rows}           // Record<string, unknown>[]
+    pageSize={10}
+  />
+));
+```
+
+---
+
+## 11. Tool side effects
+
+React to tool results outside the chat (e.g. open URLs, change themes):
+
+```tsx
+import { useChatContext, useToolEffect } from '@lantos1618/better-ui/components';
+
+function SideEffects() {
+  const { toolStateStore } = useChatContext();
+
+  useToolEffect(toolStateStore, 'navigate', (entry) => {
+    const data = entry.output as { url: string };
+    if (data?.url) window.open(data.url, '_blank');
+  });
+
+  return null;
+}
+```
+
+---
+
+## 12. Persistence
+
+### In-memory (dev)
+
+```tsx
+import { createMemoryAdapter } from '@lantos1618/better-ui/persistence';
+
+<ChatProvider
+  endpoint="/api/chat"
+  tools={tools}
+  persistence={createMemoryAdapter()}
+>
+```
+
+### Database (production)
+
+Implement `PersistenceAdapter`:
+
+```ts
+import type { PersistenceAdapter, Thread } from '@lantos1618/better-ui/persistence';
+import type { UIMessage } from 'ai';
+
+const persistence: PersistenceAdapter = {
+  listThreads():                          Promise<Thread[]>     { /* ... */ },
+  getThread(id: string):                  Promise<Thread | null> { /* ... */ },
+  createThread(title?: string):           Promise<Thread>       { /* ... */ },
+  deleteThread(id: string):               Promise<void>         { /* ... */ },
+  getMessages(threadId: string):          Promise<UIMessage[]>  { /* ... */ },
+  saveMessages(threadId: string, msgs: UIMessage[]): Promise<void> { /* ... */ },
+};
+```
+
+Messages auto-save when AI finishes responding. `useChatContext()` exposes `threads`, `createThread`, `switchThread`, `deleteThread`.
+
+---
+
+## 13. Auth
+
+```ts
+import { jwtAuth, sessionAuth, betterAuth } from '@lantos1618/better-ui/auth';
+
+// JWT Bearer tokens (uses jose)
+const auth = jwtAuth({ secret: process.env.JWT_SECRET! });
+
+// Cookie sessions
+const auth = sessionAuth({
+  cookieName: 'session',
+  verify: async (token) => db.sessions.findUnique({ where: { token } }),
+});
+
+// BetterAuth
+const auth = betterAuth(authInstance);
+
+// Usage in a route:
+const user = await auth(req.headers);
+const result = await tool.run(input, { isServer: true, user });
+```
+
+---
+
+## 14. Providers
+
+```ts
+import { createProvider } from '@lantos1618/better-ui';
+
+const p = createProvider({ provider: 'openai', model: 'gpt-4o' });
+// or: 'anthropic' + 'claude-sonnet-4-5-20250929'
+// or: 'google' + 'gemini-2.5-pro'
+// or: 'openrouter' + 'anthropic/claude-sonnet-4-5-20250929' (needs apiKey)
+
+// Use in streamText:
+streamText({ model: p.model(), tools: { ... } });
+```
+
+---
+
+## 15. Fluent builder (alternative syntax)
+
+```tsx
 const search = tool('search')
   .description('Search the database')
   .input(z.object({ query: z.string() }))
   .output(z.object({ results: z.array(z.string()) }))
+  .cache({ ttl: 60_000 })
+  .hints({ readOnly: true })
   .server(async ({ query }) => ({ results: await db.search(query) }))
-  .view((data) => <ResultsList items={data.results} />)
+  .view((data) => <ul>{data.results.map((r, i) => <li key={i}>{r}</li>)}</ul>)
   .build();
 ```
 
-### Handlers
-
-```typescript
-// Server — runs in API routes, never on client
-myTool.server(async (input, ctx) => {
-  // ctx.env, ctx.headers, ctx.cookies, ctx.user, ctx.session
-  return await db.query(input.query);
-});
-
-// Client — runs in browser. Auto-fetches to /api/tools/execute if not defined
-myTool.client(async (input, ctx) => {
-  return ctx.fetch('/api/search', { method: 'POST', body: JSON.stringify(input) });
-});
-
-// Stream — progressive partial updates
-myTool.stream(async (input, { stream }) => {
-  stream({ status: 'searching...' });
-  const results = await search(input.query);
-  stream({ results, status: 'done' });
-  return { results, status: 'done', count: results.length };
-});
-
-// View — render results (the differentiator)
-myTool.view((data, { loading, error, streaming, onAction }) => {
-  if (loading) return <Spinner />;
-  if (error) return <ErrorCard message={error.message} />;
-  if (streaming) return <PartialResults data={data} />;
-  return <Results items={data.results} />;
-});
-```
-
-### Execution
-
-```typescript
-// Server-side
-const result = await myTool.run(input, { isServer: true });
-
-// Client-side (auto-fetches if no .client() defined)
-const result = await myTool.run(input, { isServer: false });
-
-// Streaming
-for await (const { partial, done } of myTool.runStream(input)) {
-  console.log(partial); // progressive updates
-  if (done) break;
-}
-
-// AI SDK integration
-const aiTool = myTool.toAITool(); // { description, inputSchema, execute }
-```
-
 ---
 
-## React Hooks
+## 16. OpenAPI / Swagger
 
-```typescript
-import { useTool, useTools, useToolStream } from '@lantos1618/better-ui/react';
+Auto-generate an OpenAPI 3.1 spec and callable REST endpoints from your tools:
+
+```ts
+import { toolRouter } from '@lantos1618/better-ui/openapi';
+import { tools } from './tools';
+
+// Next.js catch-all: app/api/tools/[...path]/route.ts
+const router = toolRouter({ tools });
+export const GET = router;
+export const POST = router;
 ```
 
-### `useTool`
+That gives you:
 
-```typescript
-const { data, loading, error, execute, reset, executed } = useTool(myTool, initialInput, {
-  auto: false,
-  onSuccess: (data) => {},
-  onError: (error) => {},
+| Endpoint | What |
+|---|---|
+| `POST /api/tools/weather` | Execute tool, returns `{ result }` |
+| `GET /api/tools` | OpenAPI 3.1 JSON spec |
+| `GET /api/tools/docs` | Swagger UI |
+
+With auth/rate-limiting:
+
+```ts
+const router = toolRouter({
+  tools,
+  onBeforeExecute: async (toolName, input, req) => {
+    const user = await auth(req.headers);
+    if (!user) throw new Error('Unauthorized');
+  },
 });
 ```
 
-### `useToolStream`
+Or just generate the spec without the router:
 
-```typescript
-const { data, finalData, streaming, loading, error, execute, reset } = useToolStream(myTool);
-```
+```ts
+import { generateOpenAPISpec, openAPIHandler } from '@lantos1618/better-ui/openapi';
 
-### `useTools`
+// Get the spec object
+const spec = generateOpenAPISpec({ title: 'My API', version: '1.0.0', tools });
 
-```typescript
-const tools = useTools({ weather, search });
-
-await tools.weather.execute({ city: 'London' });
-tools.weather.data;    // result
-tools.search.loading;  // loading state
+// Or serve it as a route
+export const GET = openAPIHandler({ title: 'My API', version: '1.0.0', tools });
 ```
 
 ---
 
-## Chat Components
+## Cheat sheet
 
-```typescript
-import { Chat, ChatProvider, Thread, Composer, Message, ToolResult } from '@lantos1618/better-ui/components';
-```
-
-### Drop-in
-
-```tsx
-<Chat endpoint="/api/chat" tools={{ weather, search }} className="h-[600px]" />
-```
-
-### Composable
-
-```tsx
-<ChatProvider endpoint="/api/chat" tools={tools}>
-  <div className="flex flex-col h-screen">
-    <Thread className="flex-1 overflow-y-auto" />
-    <Composer placeholder="Type a message..." />
-  </div>
-</ChatProvider>
-```
-
-### All Components
-
-| Component | Description |
-|-----------|-------------|
-| `Chat` | All-in-one (ChatProvider + Thread + Composer) |
-| `ChatProvider` | Context provider wrapping AI SDK's `useChat` |
-| `Thread` | Message list with auto-scroll |
-| `Message` | Single message with tool view rendering |
-| `Composer` | Input form with send button |
-| `ToolResult` | Renders a tool's `.view()` in chat context |
-| `Panel` / `ChatPanel` | Sidebar panel for thread management |
-| `Markdown` | Markdown renderer with syntax highlighting |
-| `ThemeProvider` | Theme CSS variable provider |
-
-### View Building Blocks
-
-Pre-made view components for common patterns:
-
-```typescript
-import {
-  QuestionView,    // Multiple choice / free-text questions
-  FormView,        // Dynamic forms
-  DataTableView,   // Sortable data tables
-  ProgressView,    // Step-by-step progress
-  MediaDisplayView,// Image/video display
-  CodeBlockView,   // Syntax-highlighted code
-  FileUploadView,  // File upload UI
-} from '@lantos1618/better-ui/components';
-```
+| I want to...                 | Code                                            |
+|------------------------------|-------------------------------------------------|
+| Define a tool                | `tool({ name, input, output })`                 |
+| Add server logic             | `.server(async (input, ctx) => result)`          |
+| Add a view                   | `.view((data, state) => <JSX />)`               |
+| Drop into chat               | `<Chat endpoint="..." tools={tools} />`         |
+| Composable chat              | `<ChatProvider>` + `<Thread>` + `<Composer>`    |
+| Convert for AI SDK           | `tool.toAITool()`                               |
+| Run directly                 | `await tool.run(input, { isServer: true })`     |
+| Use as React hook            | `useTool(tool)` / `useToolStream(tool)`         |
+| Render view standalone       | `<tool.View data={data} />`                     |
+| Require approval             | `confirm: true`                                 |
+| Stream partial results       | `.stream(async (input, { stream }) => ...)`     |
+| Sync UI actions back to AI   | `autoRespond: true`                             |
+| React to tool results        | `useToolEffect(store, 'toolName', callback)`    |
+| Persist conversations        | `persistence={adapter}` on `ChatProvider`       |
+| Expose via MCP               | `createMCPServer({ tools }).start()`            |
+| Expose via AG-UI             | `createAGUIServer({ tools }).handler()`         |
+| Add auth                     | `jwtAuth()` / `sessionAuth()` / `betterAuth()` |
+| OpenAPI spec                 | `generateOpenAPISpec({ tools })`                |
+| Callable REST + Swagger UI   | `toolRouter({ tools })`                         |
 
 ---
 
-## MCP Server
-
-Turn any tool registry into an [MCP](https://modelcontextprotocol.io) server. Zero dependencies beyond Better UI itself.
-
-```typescript
-import { createMCPServer } from '@lantos1618/better-ui/mcp';
-
-const server = createMCPServer({
-  name: 'my-app',
-  version: '1.0.0',
-  tools: { weather, search, calculator },
-  context: { env: process.env },  // passed to every tool execution
-});
-```
-
-### Transports
-
-```typescript
-// stdio — for Claude Desktop, Cursor, VS Code extensions
-server.start();
-
-// HTTP — for Next.js, Express, Cloudflare Workers, Deno
-const handler = server.httpHandler();
-// Use as: export const POST = handler;
-```
-
-### Programmatic Use
-
-```typescript
-// List tools with JSON schemas
-const tools = server.listTools();
-
-// Call a tool directly
-const result = await server.callTool('weather', { city: 'Tokyo' });
-// → { content: [{ type: 'text', text: '{"temp":21,"city":"Tokyo","condition":"sunny"}' }] }
-
-// Handle raw JSON-RPC messages
-const response = await server.handleMessage({
-  jsonrpc: '2.0',
-  id: 1,
-  method: 'tools/call',
-  params: { name: 'weather', arguments: { city: 'Tokyo' } },
-});
-```
-
-### Schema Conversion
-
-The built-in `zodToJsonSchema` converter handles common Zod types without extra dependencies:
-
-```typescript
-import { zodToJsonSchema } from '@lantos1618/better-ui/mcp';
-
-zodToJsonSchema(z.object({
-  name: z.string().min(1).max(100),
-  age: z.number().int().min(0),
-  role: z.enum(['admin', 'user']),
-}));
-// → { type: 'object', properties: { name: { type: 'string', ... }, ... }, required: [...] }
-```
-
----
-
-## AG-UI Protocol
-
-Expose your tools via the [AG-UI (Agent-User Interaction Protocol)](https://docs.ag-ui.com) — compatible with CopilotKit, LangChain, Google ADK, and any AG-UI frontend.
-
-```typescript
-import { createAGUIServer } from '@lantos1618/better-ui/agui';
-
-const server = createAGUIServer({
-  name: 'my-tools',
-  tools: { weather, search },
-});
-
-// Next.js route handler — returns SSE event stream
-export const POST = server.handler();
-```
-
-The handler emits standard AG-UI events (`RUN_STARTED`, `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_RESULT`, `TOOL_CALL_END`, `RUN_FINISHED`) over Server-Sent Events.
-
----
-
-## Providers
-
-```typescript
-import { createProvider } from '@lantos1618/better-ui';
-
-createProvider({ provider: 'openai', model: 'gpt-4o' });
-createProvider({ provider: 'anthropic', model: 'claude-4-sonnet' });
-createProvider({ provider: 'google', model: 'gemini-2.5-pro' });
-createProvider({ provider: 'openrouter', model: 'anthropic/claude-4-sonnet', apiKey: '...' });
-```
-
-| Provider | Package | Example Models |
-|----------|---------|----------------|
-| OpenAI | `@ai-sdk/openai` (included) | `gpt-4o`, `gpt-5.2` |
-| Anthropic | `@ai-sdk/anthropic` (optional) | `claude-4-sonnet`, `claude-4-opus` |
-| Google | `@ai-sdk/google` (optional) | `gemini-2.5-pro` |
-| OpenRouter | `@ai-sdk/openai` (included) | any model via `provider/model` |
-
----
-
-## Auth
-
-```typescript
-import { jwtAuth, sessionAuth, betterAuth } from '@lantos1618/better-ui/auth';
-
-// JWT Bearer tokens
-const auth = jwtAuth({ secret: process.env.JWT_SECRET!, issuer: 'my-app' });
-
-// Cookie-based sessions
-const auth = sessionAuth({ cookieName: 'session', verify: async (token) => db.getSession(token) });
-
-// BetterAuth integration
-const auth = betterAuth(authInstance);
-```
-
----
-
-## Persistence
-
-```typescript
-import { createMemoryAdapter } from '@lantos1618/better-ui/persistence';
-
-const adapter = createMemoryAdapter(); // in-memory, for dev/testing
-
-await adapter.createThread('New Chat');
-await adapter.saveMessages(threadId, messages);
-await adapter.getMessages(threadId);
-```
-
-Implement the `PersistenceAdapter` interface for Drizzle, Prisma, or any database.
-
----
-
-## HITL (Human-in-the-Loop)
-
-Tools can require confirmation before executing:
-
-```typescript
-const sendEmail = tool({
-  name: 'sendEmail',
-  description: 'Send an email',
-  input: z.object({ to: z.string().email(), subject: z.string(), body: z.string() }),
-  confirm: true, // always require confirmation
-  // or: confirm: (input) => input.to.endsWith('@company.com') // conditional
-  // or: hints: { destructive: true } // auto-implies confirmation
-});
-```
-
-When `confirm` is set, `toAITool()` omits the `execute` function, leaving the tool call at `state: 'input-available'` for client-side confirmation before execution.
-
----
-
-## Security
-
-Better UI is designed with security boundaries between server and client:
-
-- **Context stripping** — `env`, `headers`, `cookies`, `user`, `session` are automatically removed when running on the client
-- **Input validation** — Zod schemas validate and strip unknown keys before execution
-- **Output validation** — Output schemas prevent accidental data leakage (extra fields are stripped)
-- **Server isolation** — Server handlers never run on the client; auto-fetch kicks in instead
-- **Serialization safety** — `toJSON()` excludes handlers, schemas, and internal config
-- **Rate limiting** — Pluggable rate limiter with in-memory and Redis backends
-- **Audit logging** — Structured JSON logging for every tool execution
-- **Prototype pollution protection** — Safe object merging in state context handling
-- **MCP hardening** — `hasOwnProperty` checks prevent prototype chain traversal on tool lookup
-
----
-
-## Project Structure
+## Project structure
 
 ```
 src/
   tool.tsx              Core tool() API — schema, handlers, view, streaming
   index.ts              Main exports (server-safe, no React)
-  react/
-    useTool.ts           useTool, useTools hooks
-    useToolStream.ts     useToolStream hook
-  components/
-    Chat.tsx             All-in-one chat
-    ChatProvider.tsx      Chat context provider
-    Thread.tsx           Message list
-    Message.tsx          Single message
-    Composer.tsx         Input form
-    ToolResult.tsx       Tool view renderer
-    Panel.tsx            Sidebar panel
-    Markdown.tsx         Markdown renderer
-    Question.tsx         Question view block
-    Form.tsx             Form view block
-    DataTable.tsx        Data table view block
-    Progress.tsx         Progress view block
-    MediaDisplay.tsx     Media view block
-    CodeBlock.tsx        Code block view block
-    FileUpload.tsx       File upload view block
-    Toast.tsx            Toast notifications
-    ThemeProvider.tsx     Theme CSS variables
-  providers/
-    openai.ts            OpenAI adapter
-    anthropic.ts         Anthropic adapter
-    google.ts            Google Gemini adapter
-    openrouter.ts        OpenRouter adapter
-  auth/
-    jwt.ts               JWT auth helper
-    session.ts           Session cookie auth
-    better-auth.ts       BetterAuth integration
-  persistence/
-    types.ts             PersistenceAdapter interface
-    memory.ts            In-memory adapter
-  mcp/
-    server.ts            MCP server (stdio + HTTP + SSE)
-    schema.ts            Zod → JSON Schema converter
-  agui/
-    server.ts            AG-UI protocol server (SSE)
+  react/                useTool, useTools, useToolStream hooks
+  components/           Chat, Thread, Composer, ToolResult, Panel, Markdown, Form, etc.
+  providers/            OpenAI, Anthropic, Google, OpenRouter adapters
+  auth/                 JWT, session cookie, BetterAuth helpers
+  persistence/          PersistenceAdapter interface + in-memory adapter
+  mcp/                  MCP server (stdio + HTTP + SSE)
+  agui/                 AG-UI protocol server (SSE)
+  openapi/              OpenAPI spec generator + tool router
 examples/
-  nextjs-demo/           Full Next.js demo app
-  vite-demo/             Vite + Express demo app
-  mcp-server/            Standalone MCP server example
+  nextjs-demo/          Full Next.js chat app
+  vite-demo/            Vite + React demo
+  mcp-server/           Standalone MCP server
 ```
 
 ## Development
@@ -572,26 +728,9 @@ examples/
 ```bash
 npm install
 npm run build        # Build library
-npm test             # Run 228 tests across 11 suites
+npm test             # Run 250 tests across 12 suites
 npm run type-check   # TypeScript check
 ```
-
-## Deploy the Demo
-
-The `examples/nextjs-demo/` is a full-featured chat app ready to deploy:
-
-```bash
-cd examples/nextjs-demo
-npm install
-# Set OPENAI_API_KEY in .env.local
-npm run dev
-```
-
-To deploy on Vercel, set the **Root Directory** to `examples/nextjs-demo` in your project settings.
-
-## Contributing
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
