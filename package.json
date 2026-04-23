@@ -1,6 +1,6 @@
 {
   "name": "@lantos1618/better-ui",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "A minimal, type-safe AI-first UI framework for building tools",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
