@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Send } from 'lucide-react';
 import { useChatContext } from './ChatProvider';
 
 export interface ComposerProps {
@@ -36,11 +37,10 @@ export function Composer({ className, placeholder = 'Ask something...' }: Compos
       <button
         type="submit"
         disabled={isLoading || !input.trim()}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-[var(--bui-fg-secondary,#a1a1aa)] hover:text-[var(--bui-fg,#f4f4f5)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="Send"
+        className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--bui-primary,#18181b)] text-[var(--bui-user-fg,#f4f4f5)] transition-all enabled:hover:bg-[var(--bui-primary-hover,#27272a)] enabled:active:scale-95 disabled:bg-[var(--bui-bg-elevated,#27272a)] disabled:text-[var(--bui-fg-faint,#52525b)] disabled:cursor-not-allowed"
       >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M14.5 1.5L7 9M14.5 1.5L10 14.5L7 9M14.5 1.5L1.5 6L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
+        <Send size={14} strokeWidth={1.75} />
       </button>
     </form>
   );
