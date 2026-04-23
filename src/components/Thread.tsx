@@ -29,25 +29,34 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
     <div ref={scrollRef} className={`${className || ''}`}>
       <div className="p-6 space-y-6">
         {messages.length === 0 && (
-          <div className="text-center py-16">
-            <div className="text-[var(--bui-fg-faint,#52525b)] text-sm">
-              <p className="text-[var(--bui-fg-secondary,#a1a1aa)] mb-4">
-                {emptyMessage || 'Send a message to get started'}
-              </p>
-              {suggestions && suggestions.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-2 mt-4">
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => sendMessage(suggestion)}
-                      className="px-3 py-1.5 text-xs text-[var(--bui-fg-secondary,#a1a1aa)] bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)] rounded-full hover:bg-[var(--bui-bg-hover,#3f3f46)] hover:text-[var(--bui-fg,#f4f4f5)] transition-colors"
+          <div className="py-12">
+            <p className="text-center text-sm text-[var(--bui-fg-secondary,#a1a1aa)]">
+              {emptyMessage || 'Send a message to get started'}
+            </p>
+            {suggestions && suggestions.length > 0 && (
+              <div className="mt-8 flex flex-col divide-y divide-[var(--bui-border,#27272a)] border-y border-[var(--bui-border,#27272a)]">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => sendMessage(suggestion)}
+                    className="group flex items-center justify-between gap-4 px-5 py-4 text-left text-sm text-[var(--bui-fg,#f4f4f5)] transition-colors hover:bg-[var(--bui-bg-hover,#27272a)]"
+                  >
+                    <span className="flex-1">{suggestion}</span>
+                    <svg
+                      className="shrink-0 text-[var(--bui-fg-faint,#52525b)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--bui-fg-secondary,#a1a1aa)]"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
                     >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                      <path d="M4 8h8m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
