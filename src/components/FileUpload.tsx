@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useCallback } from 'react';
+import { Upload, FileText } from 'lucide-react';
 
 export interface UploadedFile {
   name: string;
@@ -133,9 +134,7 @@ export function FileUploadView({
           className="hidden"
         />
 
-        <svg className="w-8 h-8 text-[var(--bui-fg-faint,#52525b)] mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-        </svg>
+        <Upload size={32} strokeWidth={1.5} className="text-[var(--bui-fg-faint,#52525b)] mx-auto mb-2" />
 
         <p className="text-[var(--bui-fg-secondary,#a1a1aa)] text-sm">
           {isDragging ? 'Drop files here' : 'Click or drag files to upload'}
@@ -176,9 +175,7 @@ function FileIcon({ type }: { type: string }) {
       isPdf ? 'bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] text-[var(--bui-error-fg,#f87171)]' :
       'bg-[var(--bui-bg-hover,#3f3f46)] text-[var(--bui-fg-secondary,#a1a1aa)]'
     }`}>
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-      </svg>
+      <FileText size={16} strokeWidth={1.5} />
     </div>
   );
 }

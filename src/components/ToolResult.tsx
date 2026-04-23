@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, useEffect, useRef, useSyncExternalStore, useCallback, type ReactNode, type ErrorInfo } from 'react';
+import { AlertCircle } from 'lucide-react';
 import type { Tool } from '../tool';
 import { useToolState, type ToolStateStore } from './useToolStateStore';
 
@@ -24,9 +25,7 @@ class ToolViewErrorBoundary extends Component<
       return (
         <div className="bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] border border-[var(--bui-error-border,rgba(153,27,27,0.5))] rounded-xl p-4">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-[var(--bui-error-fg,#f87171)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
+            <AlertCircle size={16} className="text-[var(--bui-error-fg,#f87171)] shrink-0" />
             <span className="text-[var(--bui-error-fg,#f87171)] text-sm font-medium">
               {this.props.toolName} view error
             </span>
@@ -289,9 +288,7 @@ export function ToolResult({
     return (
       <div className={`bg-[var(--bui-error-muted,rgba(220,38,38,0.08))] border border-[var(--bui-error-border,rgba(153,27,27,0.5))] rounded-xl p-4 ${className || ''}`}>
         <div className="flex items-center gap-2 mb-2">
-          <svg className="w-4 h-4 text-[var(--bui-error-fg,#f87171)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
+          <AlertCircle size={16} className="text-[var(--bui-error-fg,#f87171)] shrink-0" />
           <span className="text-[var(--bui-error-fg,#f87171)] text-sm font-medium">{toolName} failed</span>
         </div>
         <p className="text-[var(--bui-error-fg,#f87171)]/70 text-xs mb-3">{storeState.error}</p>
