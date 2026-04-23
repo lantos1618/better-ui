@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { useChatContext } from './ChatProvider';
 import { Message } from './Message';
 
@@ -42,17 +43,12 @@ export function Thread({ className, emptyMessage, suggestions }: ThreadProps) {
                     className="group flex items-center justify-between gap-4 px-5 py-4 text-left text-sm text-[var(--bui-fg,#f4f4f5)] transition-colors hover:bg-[var(--bui-bg-hover,#27272a)]"
                   >
                     <span className="flex-1">{suggestion}</span>
-                    <svg
-                      className="shrink-0 text-[var(--bui-fg-faint,#52525b)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--bui-fg-secondary,#a1a1aa)]"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 16 16"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
+                    <ArrowRight
+                      size={14}
+                      strokeWidth={1.75}
                       aria-hidden="true"
-                    >
-                      <path d="M4 8h8m0 0L8 4m4 4l-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                      className="shrink-0 text-[var(--bui-fg-faint,#52525b)] transition-all group-hover:translate-x-0.5 group-hover:text-[var(--bui-fg-secondary,#a1a1aa)]"
+                    />
                   </button>
                 ))}
               </div>
