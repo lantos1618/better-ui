@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Check } from 'lucide-react';
 
 export interface QuestionOption {
   label: string;
@@ -115,9 +116,7 @@ export function QuestionView({
                   : 'border-[var(--bui-border-strong,#3f3f46)]'
               } flex items-center justify-center`}>
                 {isSelected(opt.value) && (
-                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check size={10} strokeWidth={3} className="text-white" />
                 )}
               </div>
               <div className="min-w-0 flex-1">

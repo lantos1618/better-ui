@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { Check, X } from 'lucide-react';
 
 export interface ProgressStep {
   label: string;
@@ -91,14 +92,10 @@ export function ProgressView({
                 </div>
               )}
               {step.status === 'done' && (
-                <svg className="w-4 h-4 text-[var(--bui-success-fg,#6ee7b7)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+                <Check size={16} strokeWidth={3} className="text-[var(--bui-success-fg,#6ee7b7)]" />
               )}
               {step.status === 'error' && (
-                <svg className="w-4 h-4 text-[var(--bui-error-fg,#f87171)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X size={16} strokeWidth={3} className="text-[var(--bui-error-fg,#f87171)]" />
               )}
             </div>
             <div className="min-w-0 flex-1">

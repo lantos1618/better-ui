@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useSyncExternalStore, useCallback } from 'react';
+import { Sparkles } from 'lucide-react';
 import type { Tool } from '../tool';
 import type { ToolStateStore, ToolStateEntry } from './useToolStateStore';
 import { useChatContext } from './ChatProvider';
@@ -93,9 +94,7 @@ export function Panel({ toolStateStore, tools, getOnAction, className, tool: fil
           />
           <div className="relative flex flex-col items-center gap-3 text-center">
             <div className="w-10 h-10 rounded-xl bg-[var(--bui-bg-elevated,#27272a)] border border-[var(--bui-border-strong,#3f3f46)]/50 flex items-center justify-center">
-              <svg className="w-5 h-5 text-[var(--bui-fg-faint,#52525b)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.4 2.245 4.5 4.5 0 0 0 8.4-2.245c0-.399-.078-.78-.22-1.128Zm0 0a15.998 15.998 0 0 0 3.388-1.62m-5.043-.025a15.994 15.994 0 0 1 1.622-3.395m3.42 3.42a15.995 15.995 0 0 0 4.764-4.648l3.876-5.814a1.151 1.151 0 0 0-1.597-1.597L14.146 6.32a15.996 15.996 0 0 0-4.649 4.763m3.42 3.42a6.776 6.776 0 0 0-3.42-3.42" />
-              </svg>
+              <Sparkles size={20} strokeWidth={1.5} className="text-[var(--bui-fg-faint,#52525b)]" />
             </div>
             <div>
               <p className="text-[var(--bui-fg-muted,#71717a)] text-sm font-medium">Canvas</p>
