@@ -5,7 +5,14 @@
 export interface SessionAuthOptions {
   /** Cookie name to extract (default: 'session') */
   cookieName?: string;
-  /** Verification function — receives the cookie value, returns user/session data */
+  /**
+   * Verification function — receives the cookie value, returns user/session data.
+   *
+   * SECURITY: if your implementation compares the incoming token against a
+   * known value directly, use a constant-time comparison
+   * (`crypto.timingSafeEqual`) rather than `===` to avoid leaking the token
+   * through timing side-channels.
+   */
   verify: (sessionToken: string) => Promise<Record<string, unknown>>;
 }
 
@@ -33,7 +40,9 @@ export function sessionAuth(options: SessionAuthOptions) {
 }
 
 function parseCookies(cookieHeader: string): Record<string, string> {
-  const cookies: Record<string, string> = {};
+  // Use a null-prototype object so attacker-controlled cookie names like
+  // `__proto__` can't pollute the prototype chain or shadow inherited members.
+  const cookies: Record<string, string> = Object.create(null);
   for (const pair of cookieHeader.split(';')) {
     const [key, ...rest] = pair.split('=');
     const name = key?.trim();

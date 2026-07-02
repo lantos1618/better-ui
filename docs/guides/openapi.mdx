@@ -1,0 +1,158 @@
+---
+title: "OpenAPI & Callable Tools"
+description: "Generate an OpenAPI 3.1 spec and expose your tools as HTTP endpoints"
+---
+
+## Overview
+
+The `@lantos1618/better-ui/openapi` entry point turns a tool registry into a
+standard HTTP API. It can:
+
+- **Generate an OpenAPI 3.1 document** from your tools (`generateOpenAPISpec`)
+- **Serve that spec** as JSON (`openAPIHandler`)
+- **Route callable tool endpoints** — one `POST` endpoint per tool, plus the
+  spec and a Swagger UI page (`toolRouter`)
+
+Each tool becomes a `POST` endpoint at `{basePath}/{toolName}` (default base
+path `/api/tools`).
+
+## Generate a spec
+
+```typescript
+import { generateOpenAPISpec } from '@lantos1618/better-ui/openapi';
+import { tools } from './tools';
+
+const spec = generateOpenAPISpec({
+  title: 'My AI Tools API',
+  version: '1.0.0',
+  tools,
+});
+```
+
+The generated document:
+
+- Uses `openapi: '3.1.0'`.
+- Adds a `POST {basePath}/{toolName}` path for every tool, with the operation
+  `operationId` set to the tool name.
+- Derives request-body schemas from each tool's Zod `inputSchema` and, when
+  present, the response schema from its `outputSchema` (converted to JSON
+  Schema). Responses wrap the result as `{ "result": ... }`.
+- Documents `200`, `400` (Zod validation error), `404` (tool not found), and
+  `500` (execution failed) responses.
+- Appends tool hints (`destructive`, `read-only`, `idempotent`,
+  `requires confirmation`) to each operation's description, and groups
+  endpoints by the tool's `tags`.
+
+### Config
+
+<ParamField path="title" type="string" required>API title.</ParamField>
+<ParamField path="version" type="string" required>API version.</ParamField>
+<ParamField path="tools" type="Record<string, Tool>" required>The tool registry.</ParamField>
+<ParamField path="description" type="string">API description.</ParamField>
+<ParamField path="serverUrl" type="string" default="/">Base URL for the `servers` entry.</ParamField>
+<ParamField path="basePath" type="string" default="/api/tools">Path prefix for tool endpoints.</ParamField>
+<ParamField path="tags" type="Array<{ name: string; description?: string }>">Explicit tag list. When omitted, tags are derived from tool tags.</ParamField>
+<ParamField path="cors" type="CorsOptions">CORS policy for `openAPIHandler`'s response. Omit for same-origin only.</ParamField>
+
+## Serve the spec
+
+`openAPIHandler` returns a request handler that responds with the spec as JSON.
+
+```typescript
+// Next.js route: app/api/openapi/route.ts
+import { openAPIHandler } from '@lantos1618/better-ui/openapi';
+import { tools } from '@/tools';
+
+export const GET = openAPIHandler({
+  title: 'My Tools',
+  version: '1.0.0',
+  tools,
+});
+```
+
+By default no CORS headers are emitted (same-origin). Pass `cors` to opt in:
+
+```typescript
+export const GET = openAPIHandler({
+  title: 'My Tools',
+  version: '1.0.0',
+  tools,
+  cors: { origin: ['https://app.example.com'] }, // or '*'
+});
+```
+
+## Callable tool router
+
+`toolRouter` returns a single handler that serves everything:
+
+- `GET {basePath}` → the OpenAPI JSON spec
+- `GET {basePath}/docs` → a Swagger UI page
+- `POST {basePath}/{toolName}` → executes the tool and returns `{ result }`
+
+```typescript
+// Next.js catch-all: app/api/tools/[...path]/route.ts
+import { toolRouter } from '@lantos1618/better-ui/openapi';
+import { tools } from '@/tools';
+
+const router = toolRouter({ tools });
+
+export const GET = router;
+export const POST = router;
+
+// Now callable:
+// POST /api/tools/weather  { "city": "Tokyo" }  -> { "result": { "temp": 22, ... } }
+// GET  /api/tools           -> OpenAPI JSON spec
+// GET  /api/tools/docs      -> Swagger UI
+```
+
+Tools run server-side (`isServer: true`) with the request `headers` forwarded
+in the `ToolContext`.
+
+### Guarding execution with `onBeforeExecute`
+
+`onBeforeExecute` runs before every tool call. Throw to reject the request —
+use it for auth, rate limiting, or input policy checks.
+
+```typescript
+const router = toolRouter({
+  tools,
+  onBeforeExecute: async (toolName, input, req) => {
+    const token = req.headers.get('authorization');
+    if (!token) {
+      throw new Error('Unauthorized');
+    }
+  },
+});
+```
+
+### Router config
+
+<ParamField path="tools" type="Record<string, Tool>" required>The tool registry.</ParamField>
+<ParamField path="basePath" type="string" default="/api/tools">Path prefix for all routes.</ParamField>
+<ParamField path="context" type="Partial<ToolContext>">Extra context merged into every tool execution.</ParamField>
+<ParamField path="onBeforeExecute" type="(toolName, input, req) => void | Promise<void>">
+  Called before each tool executes. Throw to reject the request.
+</ParamField>
+<ParamField path="cors" type="CorsOptions">
+  CORS policy. Omit for same-origin only; provide an explicit origin allow-list to opt in.
+</ParamField>
+<ParamField path="maxBodyBytes" type="number" default="1000000">
+  Maximum request body size in bytes. Oversized bodies are rejected with HTTP 413.
+</ParamField>
+<ParamField path="debug" type="boolean" default="false">
+  When true, tool-execution errors surface `error.message` to the client.
+  Otherwise clients receive a generic message and the detail is logged server-side.
+</ParamField>
+<ParamField path="docsAssetBase" type="string">
+  Base URL for the self-hosted Swagger UI assets used by the `/docs` page.
+  Defaults to a pinned `swagger-ui-dist` build on unpkg.
+</ParamField>
+
+## Error responses
+
+| Status | Meaning |
+|--------|---------|
+| `400` | Missing tool name, invalid JSON body, or Zod validation error |
+| `404` | Tool not found |
+| `413` | Request body exceeds `maxBodyBytes` |
+| `500` | Tool execution failed |

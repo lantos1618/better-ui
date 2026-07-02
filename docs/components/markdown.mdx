@@ -1,0 +1,56 @@
+---
+title: "Markdown"
+description: "Render markdown with GFM, syntax-highlighted code blocks, and copy buttons"
+---
+
+## Import
+
+```tsx
+import { Markdown } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+```tsx
+<Markdown content={`# Hello
+
+Some **bold** text and a list:
+
+- one
+- two
+
+\`\`\`ts
+const x = 1;
+\`\`\`
+`} />
+```
+
+## Props
+
+<ParamField path="content" type="string" required>
+  The markdown source to render.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS class applied to the wrapper element.
+</ParamField>
+
+## Features
+
+- **GitHub Flavored Markdown**: Tables, strikethrough, task lists, and
+  autolinks via `remark-gfm`.
+- **Syntax highlighting**: Fenced code blocks are highlighted with
+  [Shiki](https://shiki.style) (`github-dark` theme), loaded lazily on the
+  client. Until highlighting resolves, the raw code is shown as a fallback.
+- **Copy button**: Every code block gets a hover copy button with "Copied!"
+  feedback.
+- **Themed styling**: Headings, lists, blockquotes, tables, links, and inline
+  code are styled with the framework's `--bui-*` CSS variables.
+- **Safe links**: Rendered links open in a new tab with `rel="noopener noreferrer"`.
+
+## Notes
+
+- `Markdown` is a client component (`'use client'`) — it dynamically imports
+  Shiki in the browser for code highlighting.
+- Inline code uses a subtle highlighted background; fenced blocks (```` ```lang ````)
+  are syntax-highlighted.

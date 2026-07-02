@@ -304,7 +304,9 @@ describe('Tool', () => {
       });
 
       const aiTool = myTool.toAITool();
-      await aiTool.execute!({ x: 5 });
+      // toAITool() now returns the AI SDK's Tool type, whose execute signature
+      // is (input, options). Our implementation ignores the options arg.
+      await aiTool.execute!({ x: 5 }, { toolCallId: 'test', messages: [] });
 
       expect(wasServer).toBe(true);
     });

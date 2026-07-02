@@ -162,5 +162,72 @@ describe('MCP Streamable HTTP Handler', () => {
       const res = await handler(req);
       expect(res.status).toBe(400);
     });
+
+    it('rejects a JSON `null` body with a clean 400 (no crash)', async () => {
+      const res = await handler(jsonRequest(null));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.code).toBe(-32600); // INVALID_REQUEST
+    });
+
+    it('rejects a JSON array body with a clean 400', async () => {
+      const res = await handler(jsonRequest([1, 2, 3]));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.code).toBe(-32600);
+    });
+  });
+
+  describe('security hardening', () => {
+    it('rejects cross-origin requests with 403 before streaming', async () => {
+      const req = new Request('http://localhost/mcp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          'Origin': 'http://evil.example.com',
+          'Host': 'localhost',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ping' }),
+      });
+      const res = await handler(req);
+      expect(res.status).toBe(403);
+    });
+
+    it('rejects oversized bodies with 413', async () => {
+      const limited = new MCPServer({
+        name: 'test-sse',
+        version: '1.0.0',
+        tools: { echo: echoTool },
+        maxBodyBytes: 100,
+      }).streamableHttpHandler();
+      const req = sseRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'echo', arguments: { message: 'x'.repeat(500) } },
+      });
+      const res = await limited(req);
+      expect(res.status).toBe(413);
+    });
+
+    it('returns 401 when the auth hook rejects', async () => {
+      const guarded = new MCPServer({
+        name: 'test-sse',
+        version: '1.0.0',
+        tools: { echo: echoTool },
+        onBeforeExecute: () => { throw new Error('denied'); },
+      }).streamableHttpHandler();
+      const req = sseRequest({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'echo', arguments: { message: 'hi' } },
+      });
+      const res = await guarded(req);
+      expect(res.status).toBe(401);
+      const json = await res.json();
+      expect(json.error.message).toBe('Unauthorized');
+    });
   });
 });

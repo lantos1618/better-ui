@@ -3,6 +3,11 @@ import { threads } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
+// ⚠️ DEMO ONLY: This route has NO authentication or ownership checks. Threads are
+// global and any caller can list, create, or delete them by id (IDOR). Add a
+// session/auth layer that scopes threads to the authenticated user before
+// deploying anything like this to production.
+
 export async function GET() {
   const allThreads = db
     .select()

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
              req.headers.get('x-real-ip') || 
              'anonymous';
 
-  if (!rateLimiter.check(ip)) {
+  if (!(await rateLimiter.check(ip))) {
     return Response.json(
       { error: 'Rate limit exceeded' },
       { status: 429 }

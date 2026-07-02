@@ -99,6 +99,21 @@ describe('AG-UI Server', () => {
       expect(res.status).toBe(400);
     });
 
+    it('rejects a JSON `null` body with a clean 400 (no crash)', async () => {
+      const res = await handler(makeRequest(null));
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a JSON array body with a clean 400', async () => {
+      const res = await handler(makeRequest([1, 2, 3]));
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a JSON primitive body with a clean 400', async () => {
+      const res = await handler(makeRequest('just a string'));
+      expect(res.status).toBe(400);
+    });
+
     it('rejects missing threadId', async () => {
       const req = makeRequest({ runId: 'r1' });
       const res = await handler(req);
@@ -303,6 +318,195 @@ describe('AG-UI Server', () => {
       // Third tool should not execute
       const results = events.filter(e => e.type === 'TOOL_CALL_RESULT');
       expect(results).toHaveLength(1);
+    });
+  });
+
+  describe('Origin validation', () => {
+    function makeRequestWithHeaders(body: unknown, headers: Record<string, string>): Request {
+      return new Request('http://localhost/agui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(body),
+      });
+    }
+
+    it('allows requests without an Origin header', async () => {
+      const res = await handler(makeRequest({ threadId: 't1', runId: 'r1' }));
+      expect(res.status).toBe(200);
+    });
+
+    it('allows same-origin requests when no allowlist configured', async () => {
+      const res = await handler(makeRequestWithHeaders(
+        { threadId: 't1', runId: 'r1' },
+        { Origin: 'http://localhost', Host: 'localhost' },
+      ));
+      expect(res.status).toBe(200);
+    });
+
+    it('rejects cross-origin requests with 403', async () => {
+      const res = await handler(makeRequestWithHeaders(
+        { threadId: 't1', runId: 'r1' },
+        { Origin: 'http://evil.example.com', Host: 'localhost' },
+      ));
+      expect(res.status).toBe(403);
+    });
+
+    it('allows an Origin present in the allowlist', async () => {
+      const s = createAGUIServer({
+        name: 'origin-test',
+        tools: { echo: echoTool },
+        allowedOrigins: ['https://app.example.com'],
+      });
+      const res = await s.handler()(makeRequestWithHeaders(
+        { threadId: 't1', runId: 'r1' },
+        { Origin: 'https://app.example.com', Host: 'localhost' },
+      ));
+      expect(res.status).toBe(200);
+    });
+
+    it('rejects an Origin absent from the allowlist', async () => {
+      const s = createAGUIServer({
+        name: 'origin-test',
+        tools: { echo: echoTool },
+        allowedOrigins: ['https://app.example.com'],
+      });
+      const res = await s.handler()(makeRequestWithHeaders(
+        { threadId: 't1', runId: 'r1' },
+        { Origin: 'https://other.example.com', Host: 'localhost' },
+      ));
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('body size limit', () => {
+    it('rejects oversized bodies with 413', async () => {
+      const s = createAGUIServer({
+        name: 'limit-test',
+        tools: { echo: echoTool },
+        maxBodyBytes: 100,
+      });
+      const req = makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCall: { id: 'tc1', name: 'echo', args: { message: 'x'.repeat(500) } },
+      });
+      const res = await s.handler()(req);
+      expect(res.status).toBe(413);
+    });
+
+    it('rejects a multibyte body over the byte cap on the streamed path (413)', async () => {
+      const s = createAGUIServer({
+        name: 'limit-test',
+        tools: { echo: echoTool },
+        maxBodyBytes: 120,
+      });
+      // char length < cap but UTF-8 byte length > cap: only a byte-accurate check rejects this.
+      const payload = { threadId: 't1', runId: 'r1', pad: '€'.repeat(60) };
+      const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      expect(JSON.stringify(payload).length).toBeLessThanOrEqual(120);
+      expect(bytes.byteLength).toBeGreaterThan(120);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      });
+      const req = new Request('http://localhost/agui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: stream,
+        // @ts-expect-error duplex is required for streamed request bodies (undici)
+        duplex: 'half',
+      });
+      const res = await s.handler()(req);
+      expect(res.status).toBe(413);
+    });
+  });
+
+  describe('onBeforeExecute auth hook', () => {
+    it('blocks execution and emits RUN_ERROR when the hook throws', async () => {
+      let executed = false;
+      const guardedTool = tool({
+        name: 'guarded',
+        description: 'Guarded',
+        input: z.object({ message: z.string() }),
+        output: z.object({ echoed: z.string() }),
+      });
+      guardedTool.server(async ({ message }) => {
+        executed = true;
+        return { echoed: message };
+      });
+
+      const s = createAGUIServer({
+        name: 'auth-test',
+        tools: { guarded: guardedTool },
+        onBeforeExecute: () => { throw new Error('Unauthorized'); },
+      });
+
+      const req = makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCall: { id: 'tc1', name: 'guarded', args: { message: 'hi' } },
+      });
+      const events = parseEvents(await readSSE(await s.handler()(req)));
+      const types = events.map(e => e.type);
+
+      expect(types).toContain('RUN_ERROR');
+      expect(types).not.toContain('TOOL_CALL_RESULT');
+      expect(executed).toBe(false);
+      const error = events.find(e => e.type === 'RUN_ERROR');
+      expect(error!.message).toBe('Unauthorized');
+    });
+
+    it('receives tool name, args and request and allows execution when it does not throw', async () => {
+      const seen: { name?: string; args?: unknown; hasReq?: boolean } = {};
+      const s = createAGUIServer({
+        name: 'auth-test',
+        tools: { echo: echoTool },
+        onBeforeExecute: (name, args, req) => {
+          seen.name = name;
+          seen.args = args;
+          seen.hasReq = req instanceof Request;
+        },
+      });
+      const req = makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCall: { id: 'tc1', name: 'echo', args: { message: 'hi' } },
+      });
+      const events = parseEvents(await readSSE(await s.handler()(req)));
+      expect(events.map(e => e.type)).toContain('TOOL_CALL_RESULT');
+      expect(seen.name).toBe('echo');
+      expect(seen.args).toEqual({ message: 'hi' });
+      expect(seen.hasReq).toBe(true);
+    });
+  });
+
+  describe('error hygiene (debug)', () => {
+    it('genericizes tool execution errors by default', async () => {
+      const events = parseEvents(await readSSE(await handler(makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCall: { id: 'tc1', name: 'fail', args: {} },
+      }))));
+      const error = events.find(e => e.type === 'RUN_ERROR');
+      expect(error!.message).toBe('Tool execution failed');
+      expect(error!.message).not.toContain('Intentional failure');
+    });
+
+    it('exposes raw error detail when debug is enabled', async () => {
+      const s = createAGUIServer({
+        name: 'debug-test',
+        tools: { fail: failTool },
+        debug: true,
+      });
+      const events = parseEvents(await readSSE(await s.handler()(makeRequest({
+        threadId: 't1',
+        runId: 'r1',
+        toolCall: { id: 'tc1', name: 'fail', args: {} },
+      }))));
+      const error = events.find(e => e.type === 'RUN_ERROR');
+      expect((error!.message as string)).toContain('Intentional failure');
     });
   });
 

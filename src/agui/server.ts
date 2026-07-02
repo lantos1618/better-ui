@@ -24,6 +24,12 @@
 
 import type { Tool, ToolContext } from '../tool';
 import { zodToJsonSchema } from '../mcp/schema';
+import {
+  isOriginAllowed,
+  readCappedJson,
+  isPlainObject,
+  DEFAULT_MAX_BODY_BYTES,
+} from '../http/security';
 
 // ─── AG-UI Event Types ──────────────────────────────────────────────────────
 
@@ -91,6 +97,32 @@ export interface AGUIServerConfig {
   context?: Partial<ToolContext>;
   /** Called on errors */
   onError?: (error: Error) => void;
+  /**
+   * Allowlist of permitted `Origin` header values.
+   * Requests without an `Origin` header (non-browser clients) are always allowed.
+   * When set, a browser request is allowed only if its Origin is in this list.
+   * When omitted, a browser request is allowed only if its Origin matches the request Host (same-origin).
+   * Guards against DNS-rebinding / CSRF attacks.
+   */
+  allowedOrigins?: string[];
+  /**
+   * Authentication/authorization hook run before each tool call executes.
+   * Throw to reject the call — the tool will not run and a RUN_ERROR event is emitted.
+   */
+  onBeforeExecute?: (toolName: string, args: unknown, req: Request) => void | Promise<void>;
+  /** Maximum accepted request body size in bytes (default: 1 MiB). Oversized requests get HTTP 413. */
+  maxBodyBytes?: number;
+  /** When true, echo raw error details to clients. When false (default), return generic messages and log details server-side. */
+  debug?: boolean;
+}
+
+/** Error marked as safe to surface to clients (e.g. auth / unknown-tool / validation). */
+class SafeError extends Error {
+  readonly safe = true;
+  constructor(message: string) {
+    super(message);
+    this.name = 'SafeError';
+  }
 }
 
 // ─── AG-UI Server ───────────────────────────────────────────────────────────
@@ -126,12 +158,24 @@ export class AGUIServer {
    */
   handler(): (req: Request) => Promise<Response> {
     return async (req: Request): Promise<Response> => {
-      let input: RunAgentInput;
-      try {
-        input = await req.json();
-      } catch {
+      // Validate Origin (DNS-rebinding / CSRF protection)
+      if (!isOriginAllowed(req, this.config.allowedOrigins)) {
+        return new Response('Origin not allowed', { status: 403 });
+      }
+
+      const body = await readCappedJson(req, this.config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES);
+      if (body.tooLarge) {
+        return new Response('Payload too large', { status: 413 });
+      }
+      if (body.parseError) {
         return new Response('Invalid JSON', { status: 400 });
       }
+      // Reject bodies that parse as JSON but are not an object (e.g. `null`, arrays, primitives)
+      // before destructuring, which would otherwise throw a TypeError.
+      if (!isPlainObject(body.value)) {
+        return new Response('Invalid request body', { status: 400 });
+      }
+      const input = body.value as unknown as RunAgentInput;
 
       const { threadId, runId, toolCall } = input;
 
@@ -158,6 +202,14 @@ export class AGUIServer {
 
             if (calls.length > 0) {
               for (const call of calls) {
+                // Authentication/authorization hook — reject before the tool runs.
+                if (self.config.onBeforeExecute) {
+                  try {
+                    await self.config.onBeforeExecute(call.name, call.args, req);
+                  } catch (authErr) {
+                    throw new SafeError(authErr instanceof Error ? authErr.message : 'Unauthorized');
+                  }
+                }
                 await self.executeToolCall(call, emit);
               }
             } else {
@@ -176,11 +228,21 @@ export class AGUIServer {
             // Run finished
             emit({ type: 'RUN_FINISHED', threadId, runId });
           } catch (err) {
+            // Preserve safe messages (auth, unknown-tool, Zod validation); genericize the rest unless debug.
+            const isSafe =
+              err instanceof SafeError ||
+              (err instanceof Error && (err.name === 'ZodError' || (err as { safe?: boolean }).safe === true));
+            if (!isSafe && !self.config.debug) {
+              console.error('[AG-UI] Tool execution error:', err);
+            }
+            const message = isSafe || self.config.debug
+              ? (err instanceof Error ? err.message : 'Unknown error')
+              : 'Tool execution failed';
             emit({
               type: 'RUN_ERROR',
               threadId,
               runId,
-              message: err instanceof Error ? err.message : 'Unknown error',
+              message,
             });
             self.config.onError?.(err instanceof Error ? err : new Error(String(err)));
           }
@@ -219,7 +281,7 @@ export class AGUIServer {
         type: 'TOOL_CALL_END',
         toolCallId: id,
       });
-      throw new Error(`Unknown tool: ${name}`);
+      throw new SafeError(`Unknown tool: ${name}`);
     }
 
     const tool = this.config.tools[name];

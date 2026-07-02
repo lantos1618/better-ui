@@ -1,0 +1,69 @@
+---
+title: "Chat"
+description: "Drop-in all-in-one chat component: ChatProvider + Thread + Composer"
+---
+
+## Import
+
+```tsx
+import { Chat } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+`Chat` is a convenience component that combines [`ChatProvider`](/api-reference/chat-provider),
+`Thread`, and `Composer` into a single drop-in. Give it a tool registry and an
+endpoint and you have a working chat UI.
+
+```tsx
+import { Chat } from '@lantos1618/better-ui/components';
+import { weatherTool, searchTool } from './tools';
+
+export default function Page() {
+  return (
+    <Chat
+      endpoint="/api/chat"
+      tools={{ weather: weatherTool, search: searchTool }}
+      placeholder="Ask me anything…"
+      emptyMessage="How can I help you today?"
+      suggestions={['What is the weather in Tokyo?', 'Search the docs']}
+    />
+  );
+}
+```
+
+For finer layout control, compose `ChatProvider` + `Thread` + `Composer`
+yourself instead of using `Chat`.
+
+## Props
+
+<ParamField path="tools" type="Record<string, Tool>" required>
+  The tool registry available to the chat.
+</ParamField>
+
+<ParamField path="endpoint" type="string" default="/api/chat">
+  The chat API endpoint the underlying `ChatProvider` posts to.
+</ParamField>
+
+<ParamField path="placeholder" type="string">
+  Placeholder text for the composer input.
+</ParamField>
+
+<ParamField path="emptyMessage" type="string">
+  Message shown in the thread before any messages exist.
+</ParamField>
+
+<ParamField path="suggestions" type="string[]">
+  Suggestion prompts shown in the empty thread; clicking one submits it.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS class applied to the chat container.
+</ParamField>
+
+## Notes
+
+- `Chat` wraps its children in `ChatProvider`, so it must run in a client
+  component (it uses `'use client'` internally).
+- `emptyMessage` and `suggestions` are forwarded to `Thread`; `placeholder` is
+  forwarded to `Composer`.

@@ -383,7 +383,37 @@ describe('MCPServer', () => {
         params: { name: 'error', arguments: { x: 1 } },
       });
 
-      // MCP convention: tool errors are returned as content with isError flag
+      // MCP convention: tool errors are returned as content with isError flag.
+      // With debug disabled (default), the raw error message is NOT leaked to clients.
+      const result = response!.result as any;
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toBe('Tool execution failed');
+      expect(result.content[0].text).not.toContain('Something broke');
+    });
+
+    it('exposes raw error detail when debug is enabled', async () => {
+      const errorTool = tool({
+        name: 'error',
+        input: z.object({ x: z.number() }),
+      });
+      errorTool.server(() => {
+        throw new Error('Something broke');
+      });
+
+      const s = createMCPServer({
+        name: 'test',
+        version: '1.0.0',
+        tools: { error: errorTool },
+        debug: true,
+      });
+
+      const response = await s.handleMessage({
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: { name: 'error', arguments: { x: 1 } },
+      });
+
       const result = response!.result as any;
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Something broke');

@@ -13,9 +13,14 @@ Better UI provides auth helpers that extract and verify user identity from incom
 import { jwtAuth } from '@lantos1618/better-ui/auth';
 
 const auth = jwtAuth({
+  // Must be at least 32 bytes (256 bits). Generate one with:
+  //   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   secret: process.env.JWT_SECRET!,
-  issuer: 'my-app',        // optional: validate issuer claim
-  audience: 'my-api',      // optional: validate audience claim
+  issuer: 'my-app',            // optional: validate issuer claim
+  audience: 'my-api',          // optional: validate audience claim
+  // requireExpiration: false, // optional: accept tokens without an exp claim
+  // maxTokenAge: '1h',        // optional: reject tokens older than this
+  // algorithms: ['HS256'],    // optional: override the accepted algorithms
 });
 
 // In your API route:
@@ -25,9 +30,18 @@ const user = await auth(req.headers);
 
 The `jwtAuth` helper:
 - Extracts the token from the `Authorization: Bearer <token>` header
-- Verifies the signature using HMAC SHA-256
-- Validates `exp`, `iss`, and `aud` claims
+- Verifies the signature using HMAC (default `HS256`)
+- Requires an `exp` claim and validates it (opt out with `requireExpiration: false`)
+- Validates `iss` and `aud` claims when configured
 - Returns the decoded payload
+
+<Warning>
+  **Breaking changes in 0.10.0.** `jwtAuth` now throws at construction if the
+  secret is shorter than 32 bytes, and rejects tokens that have no `exp` claim
+  by default. If you are upgrading, use a secret of at least 32 bytes and either
+  issue tokens with an expiry or pass `requireExpiration: false`. The accepted
+  algorithm now defaults to `['HS256']`.
+</Warning>
 
 ## Session Cookies
 
@@ -64,7 +78,7 @@ All auth helpers return an async function `(headers: Headers) => Promise<UserDat
 // app/api/tools/execute/route.ts
 import { jwtAuth } from '@lantos1618/better-ui/auth';
 
-const auth = jwtAuth({ secret: process.env.JWT_SECRET! });
+const auth = jwtAuth({ secret: process.env.JWT_SECRET! }); // secret must be >= 32 bytes
 
 export async function POST(req: Request) {
   const user = await auth(new Headers(req.headers));

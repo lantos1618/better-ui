@@ -3,6 +3,10 @@ import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { weatherTool, searchTool, counterTool, artifactTool, navigateTool, setThemeTool, stockQuoteTool, sendEmailTool, taskListTool, questionTool, formTool, dataTableTool, progressTool, mediaTool, codeTool, fileUploadTool, setSearchProvider, createExaProvider } from '@/lib/tools';
 import { rateLimiter } from '@/lib/rate-limiter';
 
+// ⚠️ DEMO ONLY: This route has NO authentication or ownership checks.
+// Requests are rate-limited by IP but anyone can call it. Add a session/auth
+// layer (and per-user scoping) before using anything like this in production.
+
 // Wire up search provider — set EXA_API_KEY in .env.local to enable real search
 const exaKey = process.env.EXA_API_KEY;
 if (exaKey) setSearchProvider(createExaProvider(exaKey));
@@ -13,7 +17,7 @@ export async function POST(req: Request) {
              req.headers.get('x-real-ip') || 
              'anonymous';
 
-  if (!rateLimiter.check(ip)) {
+  if (!(await rateLimiter.check(ip))) {
     return Response.json(
       { error: 'Rate limit exceeded' },
       { status: 429 }
@@ -78,8 +82,8 @@ export async function POST(req: Request) {
     ? `\n\nCurrent UI tool state (updated by user interactions):\n${JSON.stringify(aggregatedStateContext, null, 2)}`
     : '';
 
-  // AI SDK v5: Convert UIMessage[] from client to ModelMessage[] for streamText
-  const modelMessages = convertToModelMessages(cleanedMessages);
+  // AI SDK v6: convertToModelMessages is async — converts UIMessage[] to ModelMessage[]
+  const modelMessages = await convertToModelMessages(cleanedMessages);
 
   const result = await streamText({
     model: openai('gpt-5.2'),
@@ -103,6 +107,8 @@ When the user asks for something that involves multiple steps (e.g. "get weather
 4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
 5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
+    // Better UI's toAITool() is typed as the AI SDK's Tool, so this map is a
+    // ToolSet directly — no cast needed.
     tools: {
       // Use Better UI's toAITool() - that's it!
       weather: weatherTool.toAITool(),

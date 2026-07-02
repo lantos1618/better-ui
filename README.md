@@ -579,6 +579,8 @@ Messages auto-save when AI finishes responding. `useChatContext()` exposes `thre
 import { jwtAuth, sessionAuth, betterAuth } from '@lantos1618/better-ui/auth';
 
 // JWT Bearer tokens (uses jose)
+// Secret must be >= 32 bytes; tokens must carry an `exp` claim by default
+// (pass requireExpiration: false to opt out).
 const auth = jwtAuth({ secret: process.env.JWT_SECRET! });
 
 // Cookie sessions

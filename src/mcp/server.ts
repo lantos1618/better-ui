@@ -23,6 +23,12 @@
 
 import type { Tool, ToolContext } from '../tool';
 import { zodToJsonSchema } from './schema';
+import {
+  isOriginAllowed,
+  readCappedJson,
+  isPlainObject,
+  DEFAULT_MAX_BODY_BYTES,
+} from '../http/security';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,6 +45,25 @@ export interface MCPServerConfig {
   onStart?: () => void;
   /** Called on errors */
   onError?: (error: Error) => void;
+  /**
+   * Allowlist of permitted `Origin` header values for HTTP transports.
+   * Requests without an `Origin` header (non-browser clients) are always allowed.
+   * When set, a browser request is allowed only if its Origin is in this list.
+   * When omitted, a browser request is allowed only if its Origin matches the request Host (same-origin).
+   * Guards against DNS-rebinding / CSRF attacks (MCP spec requirement).
+   */
+  allowedOrigins?: string[];
+  /**
+   * Authentication/authorization hook run before a tool executes over HTTP.
+   * Throw to reject the call — the tool will not run and a JSON-RPC error (HTTP 401) is returned.
+   */
+  onBeforeExecute?: (toolName: string, args: unknown, req: Request) => void | Promise<void>;
+  /** Maximum accepted HTTP request body size in bytes (default: 1 MiB). Oversized requests get HTTP 413. */
+  maxBodyBytes?: number;
+  /** Maximum accepted length of a single stdio line in bytes (default: 10 MiB). Overflow resets the buffer with a parse error. */
+  maxLineBytes?: number;
+  /** When true, echo raw error details to clients. When false (default), return generic messages and log details server-side. */
+  debug?: boolean;
 }
 
 interface JsonRpcRequest {
@@ -73,6 +98,11 @@ const INVALID_REQUEST = -32600;
 const METHOD_NOT_FOUND = -32601;
 const INVALID_PARAMS = -32602;
 const INTERNAL_ERROR = -32603;
+// Custom (server) error code for authentication/authorization failures
+const UNAUTHORIZED = -32001;
+
+// Default for the stdio line buffer limit (HTTP body limit lives in ../http/security).
+const DEFAULT_MAX_LINE_BYTES = 10 * 1024 * 1024; // 10 MiB
 
 // ─── MCPServer ───────────────────────────────────────────────────────────────
 
@@ -96,6 +126,7 @@ export class MCPServer {
     stdin.setEncoding('utf-8');
 
     let buffer = '';
+    const maxLineBytes = this.config.maxLineBytes ?? DEFAULT_MAX_LINE_BYTES;
 
     stdin.on('data', (chunk: string) => {
       buffer += chunk;
@@ -123,6 +154,18 @@ export class MCPServer {
             stdout.write(JSON.stringify(errorResponse) + '\n');
             this.config.onError?.(err instanceof Error ? err : new Error(String(err)));
           });
+      }
+
+      // Guard against an unbounded line buffer (a single oversized line with no newline).
+      if (Buffer.byteLength(buffer, 'utf8') > maxLineBytes) {
+        buffer = '';
+        const errorResponse: JsonRpcResponse = {
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: PARSE_ERROR, message: 'Message exceeds maximum allowed size' },
+        };
+        stdout.write(JSON.stringify(errorResponse) + '\n');
+        this.config.onError?.(new Error('stdio line buffer overflow'));
       }
     });
 
@@ -280,13 +323,43 @@ export class MCPServer {
           error: { code: error.code, message: error.message },
         };
       }
+      // Genuine tool-execution failure. Avoid leaking internal error details unless debug is enabled.
+      if (!this.config.debug) {
+        console.error('[MCP] Tool execution error:', error);
+      }
+      const text = this.config.debug
+        ? `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        : 'Tool execution failed';
       return {
         jsonrpc: '2.0',
         id: message.id!,
         result: {
-          content: [{ type: 'text', text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }],
+          content: [{ type: 'text', text }],
           isError: true,
         },
+      };
+    }
+  }
+
+  /**
+   * Run the configured `onBeforeExecute` hook for a `tools/call` request.
+   * Returns a JSON-RPC error response (to be sent with HTTP 401) if the hook throws, otherwise null.
+   */
+  private async checkAuth(message: JsonRpcRequest, req: Request): Promise<JsonRpcResponse | null> {
+    if (!this.config.onBeforeExecute || message.method !== 'tools/call') return null;
+    const params = message.params as { name?: string; arguments?: unknown } | undefined;
+    try {
+      await this.config.onBeforeExecute(params?.name ?? '', params?.arguments ?? {}, req);
+      return null;
+    } catch (error) {
+      if (!this.config.debug) {
+        console.error('[MCP] Authorization failed:', error);
+      }
+      const msg = this.config.debug && error instanceof Error ? error.message : 'Unauthorized';
+      return {
+        jsonrpc: '2.0',
+        id: message.id ?? null,
+        error: { code: UNAUTHORIZED, message: msg },
       };
     }
   }
@@ -304,6 +377,14 @@ export class MCPServer {
    */
   httpHandler(): (req: Request) => Promise<Response> {
     return async (req: Request): Promise<Response> => {
+      // Validate Origin (DNS-rebinding / CSRF protection)
+      if (!isOriginAllowed(req, this.config.allowedOrigins)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Origin not allowed' } },
+          { status: 403 },
+        );
+      }
+
       // Validate Content-Type
       const contentType = req.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
@@ -313,21 +394,39 @@ export class MCPServer {
         );
       }
 
-      let message: JsonRpcRequest;
-      try {
-        message = await req.json();
-      } catch {
+      const body = await readCappedJson(req, this.config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES);
+      if (body.tooLarge) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Request body too large' } },
+          { status: 413 },
+        );
+      }
+      if (body.parseError) {
         return Response.json(
           { jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Parse error' } },
           { status: 400 },
         );
       }
+      // Reject bodies that parse as JSON but are not a request object (e.g. `null`, arrays, primitives).
+      if (!isPlainObject(body.value)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Invalid Request' } },
+          { status: 400 },
+        );
+      }
+      const message = body.value as unknown as JsonRpcRequest;
 
       if (!message.jsonrpc || message.jsonrpc !== '2.0') {
         return Response.json(
           { jsonrpc: '2.0', id: message.id ?? null, error: { code: INVALID_REQUEST, message: 'Invalid JSON-RPC version' } },
           { status: 400 },
         );
+      }
+
+      // Authentication/authorization hook
+      const authError = await this.checkAuth(message, req);
+      if (authError) {
+        return Response.json(authError, { status: 401 });
       }
 
       const response = await this.handleMessage(message);
@@ -358,6 +457,14 @@ export class MCPServer {
       const accept = req.headers.get('accept') || '';
       const contentType = req.headers.get('content-type') || '';
 
+      // Validate Origin (DNS-rebinding / CSRF protection)
+      if (!isOriginAllowed(req, this.config.allowedOrigins)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Origin not allowed' } },
+          { status: 403 },
+        );
+      }
+
       if (!contentType.includes('application/json')) {
         return Response.json(
           { jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Content-Type must be application/json' } },
@@ -365,21 +472,39 @@ export class MCPServer {
         );
       }
 
-      let message: JsonRpcRequest;
-      try {
-        message = await req.json();
-      } catch {
+      const body = await readCappedJson(req, this.config.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES);
+      if (body.tooLarge) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Request body too large' } },
+          { status: 413 },
+        );
+      }
+      if (body.parseError) {
         return Response.json(
           { jsonrpc: '2.0', id: null, error: { code: PARSE_ERROR, message: 'Parse error' } },
           { status: 400 },
         );
       }
+      // Reject bodies that parse as JSON but are not a request object (e.g. `null`, arrays, primitives).
+      if (!isPlainObject(body.value)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Invalid Request' } },
+          { status: 400 },
+        );
+      }
+      const message = body.value as unknown as JsonRpcRequest;
 
       if (!message.jsonrpc || message.jsonrpc !== '2.0') {
         return Response.json(
           { jsonrpc: '2.0', id: message.id ?? null, error: { code: INVALID_REQUEST, message: 'Invalid JSON-RPC version' } },
           { status: 400 },
         );
+      }
+
+      // Authentication/authorization hook
+      const authError = await this.checkAuth(message, req);
+      if (authError) {
+        return Response.json(authError, { status: 401 });
       }
 
       // If client accepts SSE, stream the response
@@ -394,10 +519,16 @@ export class MCPServer {
                 controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(response)}\n\n`));
               }
             } catch (err) {
+              if (!self.config.debug) {
+                console.error('[MCP] Streamable handler error:', err);
+              }
               const errorResponse: JsonRpcResponse = {
                 jsonrpc: '2.0',
                 id: message.id ?? null,
-                error: { code: INTERNAL_ERROR, message: err instanceof Error ? err.message : 'Internal error' },
+                error: {
+                  code: INTERNAL_ERROR,
+                  message: self.config.debug && err instanceof Error ? err.message : 'Internal error',
+                },
               };
               controller.enqueue(encoder.encode(`event: message\ndata: ${JSON.stringify(errorResponse)}\n\n`));
             }

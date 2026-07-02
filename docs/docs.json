@@ -44,6 +44,7 @@
               "components/progress",
               "components/media",
               "components/code-block",
+              "components/markdown",
               "components/toast",
               "components/file-upload"
             ]
@@ -59,6 +60,7 @@
               "guides/server-adapters",
               "guides/mcp",
               "guides/agui",
+              "guides/openapi",
               "guides/auth",
               "guides/security"
             ]
@@ -79,12 +81,14 @@
           {
             "group": "React",
             "pages": [
+              "api-reference/chat",
               "api-reference/chat-provider",
               "api-reference/thread",
               "api-reference/panel",
               "api-reference/composer",
               "api-reference/message",
-              "api-reference/tool-result"
+              "api-reference/tool-result",
+              "api-reference/theme-provider"
             ]
           },
           {

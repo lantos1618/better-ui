@@ -679,8 +679,9 @@ Protect your tool endpoints:
 import { jwtAuth } from '@lantos1618/better-ui/auth';
 
 const auth = jwtAuth({
-  secret: process.env.JWT_SECRET!,
+  secret: process.env.JWT_SECRET!, // must be >= 32 bytes
   issuer: 'my-app',
+  // requireExpiration: false, // accept tokens without an exp claim (default requires exp)
 });
 
 // In your API route:
