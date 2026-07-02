@@ -4,7 +4,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { openai } from '@ai-sdk/openai';
-import { streamText, stepCountIs, convertToModelMessages, type ToolSet } from 'ai';
+import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import {
@@ -121,8 +121,8 @@ When the user asks for something that involves multiple steps (e.g. "get weather
 4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
 5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
-    // toAITool() returns a runtime-valid AI SDK tool; its hand-written return
-    // type is looser than ai v6's ToolSet, so we assert the assembled map.
+    // toAITool() is typed as the AI SDK's Tool, so this map is a ToolSet
+    // directly — no cast needed.
     tools: {
       weather: weatherTool.toAITool(),
       search: searchTool.toAITool(),
@@ -140,7 +140,7 @@ When the user asks for something that involves multiple steps (e.g. "get weather
       media: mediaTool.toAITool(),
       code: codeTool.toAITool(),
       fileUpload: fileUploadTool.toAITool(),
-    } as ToolSet,
+    },
     stopWhen: stepCountIs(10),
   });
 

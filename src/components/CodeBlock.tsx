@@ -160,6 +160,13 @@ function CodeContent({
       setHtml(null);
       return;
     }
+    // Streaming caveat: this re-runs the dynamic import + codeToHtml on every
+    // `code` change. `import('shiki')` is served from the module cache after the
+    // first load, so only re-highlighting (not re-loading) repeats. There is no
+    // streaming consumer today; if one is added, gate this on a streaming/loading
+    // prop (e.g. only highlight once the final chunk lands) to avoid highlighting
+    // every intermediate token — the plain-text fallback below already renders
+    // partial code fine while a stream is in flight.
     setHtml(null);
     import('shiki')
       .then(({ codeToHtml }) =>

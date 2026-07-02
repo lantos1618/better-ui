@@ -55,6 +55,25 @@ export const POST = server.httpHandler();
 
 The HTTP handler validates `Content-Type: application/json`, parses JSON-RPC 2.0 messages, and returns proper responses.
 
+<Warning>
+  **Origin validation (0.10.0+).** To prevent DNS-rebinding/CSRF, the HTTP and
+  streamable-HTTP handlers reject a request whose `Origin` header does not match
+  the server's `Host` (same-origin). Requests with **no** `Origin` header
+  (native MCP clients like Claude Desktop) are always allowed, so the config
+  above needs no change for those. **Browser-based** clients served from a
+  different origin must be allowlisted:
+
+  ```typescript
+  const server = createMCPServer({
+    name: 'my-tools',
+    tools: { weather: weatherTool },
+    allowedOrigins: ['https://app.example.com'],
+    // onBeforeExecute: async (toolName, args, req) => { /* authz */ },
+    // maxBodyBytes: 1_000_000, // request body cap (413 when exceeded)
+  });
+  ```
+</Warning>
+
 ## Programmatic Use
 
 ```typescript

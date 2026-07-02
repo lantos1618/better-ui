@@ -24,6 +24,12 @@
 
 import type { Tool, ToolContext } from '../tool';
 import { zodToJsonSchema } from '../mcp/schema';
+import {
+  isOriginAllowed,
+  readCappedJson,
+  isPlainObject,
+  DEFAULT_MAX_BODY_BYTES,
+} from '../http/security';
 
 // ─── AG-UI Event Types ──────────────────────────────────────────────────────
 
@@ -110,50 +116,6 @@ export interface AGUIServerConfig {
   debug?: boolean;
 }
 
-const DEFAULT_MAX_BODY_BYTES = 1024 * 1024; // 1 MiB
-
-/**
- * Validate the `Origin` header against DNS-rebinding / CSRF attacks.
- * - No Origin header (non-browser client) → allowed.
- * - Allowlist configured → allowed only if Origin is present in it.
- * - No allowlist → allowed only if Origin's host matches the request Host (same-origin).
- */
-function isOriginAllowed(req: Request, allowedOrigins?: string[]): boolean {
-  const origin = req.headers.get('origin');
-  if (!origin) return true;
-  if (allowedOrigins && allowedOrigins.length > 0) {
-    return allowedOrigins.includes(origin);
-  }
-  const host = req.headers.get('host');
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Read a request body as JSON with an upper size bound.
- * Rejects (via `tooLarge`) when Content-Length or the decoded text exceeds `maxBytes`.
- */
-async function readCappedJson(
-  req: Request,
-  maxBytes: number,
-): Promise<{ value?: unknown; tooLarge?: boolean; parseError?: boolean }> {
-  const contentLength = req.headers.get('content-length');
-  if (contentLength) {
-    const len = Number(contentLength);
-    if (Number.isFinite(len) && len > maxBytes) return { tooLarge: true };
-  }
-  const text = await req.text();
-  if (text.length > maxBytes) return { tooLarge: true };
-  try {
-    return { value: JSON.parse(text) };
-  } catch {
-    return { parseError: true };
-  }
-}
-
 /** Error marked as safe to surface to clients (e.g. auth / unknown-tool / validation). */
 class SafeError extends Error {
   readonly safe = true;
@@ -208,7 +170,12 @@ export class AGUIServer {
       if (body.parseError) {
         return new Response('Invalid JSON', { status: 400 });
       }
-      const input = body.value as RunAgentInput;
+      // Reject bodies that parse as JSON but are not an object (e.g. `null`, arrays, primitives)
+      // before destructuring, which would otherwise throw a TypeError.
+      if (!isPlainObject(body.value)) {
+        return new Response('Invalid request body', { status: 400 });
+      }
+      const input = body.value as unknown as RunAgentInput;
 
       const { threadId, runId, toolCall } = input;
 

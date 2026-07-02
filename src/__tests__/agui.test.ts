@@ -99,6 +99,21 @@ describe('AG-UI Server', () => {
       expect(res.status).toBe(400);
     });
 
+    it('rejects a JSON `null` body with a clean 400 (no crash)', async () => {
+      const res = await handler(makeRequest(null));
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a JSON array body with a clean 400', async () => {
+      const res = await handler(makeRequest([1, 2, 3]));
+      expect(res.status).toBe(400);
+    });
+
+    it('rejects a JSON primitive body with a clean 400', async () => {
+      const res = await handler(makeRequest('just a string'));
+      expect(res.status).toBe(400);
+    });
+
     it('rejects missing threadId', async () => {
       const req = makeRequest({ runId: 'r1' });
       const res = await handler(req);
@@ -374,6 +389,34 @@ describe('AG-UI Server', () => {
         threadId: 't1',
         runId: 'r1',
         toolCall: { id: 'tc1', name: 'echo', args: { message: 'x'.repeat(500) } },
+      });
+      const res = await s.handler()(req);
+      expect(res.status).toBe(413);
+    });
+
+    it('rejects a multibyte body over the byte cap on the streamed path (413)', async () => {
+      const s = createAGUIServer({
+        name: 'limit-test',
+        tools: { echo: echoTool },
+        maxBodyBytes: 120,
+      });
+      // char length < cap but UTF-8 byte length > cap: only a byte-accurate check rejects this.
+      const payload = { threadId: 't1', runId: 'r1', pad: '€'.repeat(60) };
+      const bytes = new TextEncoder().encode(JSON.stringify(payload));
+      expect(JSON.stringify(payload).length).toBeLessThanOrEqual(120);
+      expect(bytes.byteLength).toBeGreaterThan(120);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes);
+          controller.close();
+        },
+      });
+      const req = new Request('http://localhost/agui', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: stream,
+        // @ts-expect-error duplex is required for streamed request bodies (undici)
+        duplex: 'half',
       });
       const res = await s.handler()(req);
       expect(res.status).toBe(413);

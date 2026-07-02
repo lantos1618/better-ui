@@ -23,6 +23,12 @@
 
 import type { Tool, ToolContext } from '../tool';
 import { zodToJsonSchema } from './schema';
+import {
+  isOriginAllowed,
+  readCappedJson,
+  isPlainObject,
+  DEFAULT_MAX_BODY_BYTES,
+} from '../http/security';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -95,51 +101,8 @@ const INTERNAL_ERROR = -32603;
 // Custom (server) error code for authentication/authorization failures
 const UNAUTHORIZED = -32001;
 
-// Defaults for resource limits
-const DEFAULT_MAX_BODY_BYTES = 1024 * 1024; // 1 MiB
+// Default for the stdio line buffer limit (HTTP body limit lives in ../http/security).
 const DEFAULT_MAX_LINE_BYTES = 10 * 1024 * 1024; // 10 MiB
-
-/**
- * Validate the `Origin` header against DNS-rebinding / CSRF attacks.
- * - No Origin header (non-browser client) → allowed.
- * - Allowlist configured → allowed only if Origin is present in it.
- * - No allowlist → allowed only if Origin's host matches the request Host (same-origin).
- */
-function isOriginAllowed(req: Request, allowedOrigins?: string[]): boolean {
-  const origin = req.headers.get('origin');
-  if (!origin) return true;
-  if (allowedOrigins && allowedOrigins.length > 0) {
-    return allowedOrigins.includes(origin);
-  }
-  const host = req.headers.get('host');
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Read a request body as JSON with an upper size bound.
- * Rejects (via `tooLarge`) when Content-Length or the decoded text exceeds `maxBytes`.
- */
-async function readCappedJson(
-  req: Request,
-  maxBytes: number,
-): Promise<{ value?: unknown; tooLarge?: boolean; parseError?: boolean }> {
-  const contentLength = req.headers.get('content-length');
-  if (contentLength) {
-    const len = Number(contentLength);
-    if (Number.isFinite(len) && len > maxBytes) return { tooLarge: true };
-  }
-  const text = await req.text();
-  if (text.length > maxBytes) return { tooLarge: true };
-  try {
-    return { value: JSON.parse(text) };
-  } catch {
-    return { parseError: true };
-  }
-}
 
 // ─── MCPServer ───────────────────────────────────────────────────────────────
 
@@ -194,7 +157,7 @@ export class MCPServer {
       }
 
       // Guard against an unbounded line buffer (a single oversized line with no newline).
-      if (buffer.length > maxLineBytes) {
+      if (Buffer.byteLength(buffer, 'utf8') > maxLineBytes) {
         buffer = '';
         const errorResponse: JsonRpcResponse = {
           jsonrpc: '2.0',
@@ -444,7 +407,14 @@ export class MCPServer {
           { status: 400 },
         );
       }
-      const message = body.value as JsonRpcRequest;
+      // Reject bodies that parse as JSON but are not a request object (e.g. `null`, arrays, primitives).
+      if (!isPlainObject(body.value)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Invalid Request' } },
+          { status: 400 },
+        );
+      }
+      const message = body.value as unknown as JsonRpcRequest;
 
       if (!message.jsonrpc || message.jsonrpc !== '2.0') {
         return Response.json(
@@ -515,7 +485,14 @@ export class MCPServer {
           { status: 400 },
         );
       }
-      const message = body.value as JsonRpcRequest;
+      // Reject bodies that parse as JSON but are not a request object (e.g. `null`, arrays, primitives).
+      if (!isPlainObject(body.value)) {
+        return Response.json(
+          { jsonrpc: '2.0', id: null, error: { code: INVALID_REQUEST, message: 'Invalid Request' } },
+          { status: 400 },
+        );
+      }
+      const message = body.value as unknown as JsonRpcRequest;
 
       if (!message.jsonrpc || message.jsonrpc !== '2.0') {
         return Response.json(

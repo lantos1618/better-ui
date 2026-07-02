@@ -30,6 +30,12 @@ export function isSafeMediaUrl(url: string, kind: 'image' | 'video' | 'audio'): 
   const trimmed = url.trim();
   if (trimmed === '') return false;
 
+  // Reject any ASCII control character. Browsers strip interior control chars
+  // (tabs, newlines, NULs) before resolving a URL, so "java\tscript:..." would
+  // slip past the scheme test below — matching as schemeless/relative — yet
+  // still execute. Rejecting outright preserves the allowlist's intent.
+  if (/[\x00-\x1F\x7F]/.test(trimmed)) return false;
+
   // Detect a leading scheme like "javascript:", "data:", "http:", etc.
   const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
 

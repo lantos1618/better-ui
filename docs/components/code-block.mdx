@@ -27,10 +27,14 @@ import { CodeBlockView } from '@lantos1618/better-ui/components';
 Pass a `diff` object with `before` and `after` strings. The block renders a
 `before` / `diff` / `after` toggle, defaulting to the computed `diff` view.
 
+The `code` prop is still required by the type even in diff mode (it is not read
+when `diff` is set); pass the new version (or an empty string).
+
 ```tsx
 <CodeBlockView
   title="Changes"
   language="typescript"
+  code={`const x = 2;`}
   diff={{
     before: `const x = 1;`,
     after: `const x = 2;`,

@@ -43,6 +43,14 @@ describe('isSafeMediaUrl', () => {
     expect(isSafeMediaUrl('vbscript:msgbox(1)', 'image')).toBe(false);
     expect(isSafeMediaUrl('', 'image')).toBe(false);
   });
+
+  it('rejects a scheme obfuscated with an interior control char (tab)', () => {
+    // Browsers strip interior control chars before resolving, so "java\tscript:"
+    // would otherwise slip past the scheme test as a schemeless/relative URL.
+    expect(isSafeMediaUrl('java\tscript:alert(1)', 'image')).toBe(false);
+    expect(isSafeMediaUrl('java\nscript:alert(1)', 'image')).toBe(false);
+    expect(isSafeMediaUrl('java\x00script:alert(1)', 'image')).toBe(false);
+  });
 });
 
 describe('MediaDisplayView', () => {
@@ -193,6 +201,38 @@ describe('FileUploadView', () => {
     const dropZone = container.querySelector('[class*="border-dashed"]')!;
 
     dropFiles(dropZone, [makeFile('anything.xyz', 'application/octet-stream', 10)]);
+    expect(onUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts an empty-MIME file (e.g. .heic) against a MIME-only accept', () => {
+    // Some browsers report an empty `file.type` for formats they don't
+    // recognize. The native picker already applied `accept`, so a MIME-only
+    // accept list must not reject a typeless file we can't re-check.
+    const onUpload = jest.fn();
+    const { container } = render(
+      <FileUploadView accept="image/*" onUpload={onUpload} />
+    );
+    const dropZone = container.querySelector('[class*="border-dashed"]')!;
+
+    dropFiles(dropZone, [makeFile('photo.heic', '', 100)]);
+
+    expect(onUpload).toHaveBeenCalledTimes(1);
+    expect(onUpload.mock.calls[0][0][0].name).toBe('photo.heic');
+  });
+
+  it('still enforces extension entries for an empty-MIME file', () => {
+    // When the accept list contains an extension entry, a typeless file is
+    // matched by filename — a non-matching name is still rejected.
+    const onUpload = jest.fn();
+    const { container } = render(
+      <FileUploadView accept=".pdf" onUpload={onUpload} />
+    );
+    const dropZone = container.querySelector('[class*="border-dashed"]')!;
+
+    dropFiles(dropZone, [makeFile('photo.heic', '', 100)]);
+    expect(onUpload).not.toHaveBeenCalled();
+
+    dropFiles(dropZone, [makeFile('report.pdf', '', 100)]);
     expect(onUpload).toHaveBeenCalledTimes(1);
   });
 });

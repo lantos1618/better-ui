@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [0.10.0] - 2026-07-02
 
+### ⚠️ Breaking changes (upgrade notes)
+- **CORS:** OpenAPI `toolRouter`/`openAPIHandler` no longer send `Access-Control-Allow-Origin: *`. Cross-origin browser callers break until you set `cors.origin`.
+- **Origin validation:** MCP and AG-UI HTTP/SSE handlers reject requests whose `Origin` does not match the `Host`. Native clients (no `Origin` header) are unaffected; browser clients on another origin must be listed in `allowedOrigins`.
+- **JWT:** `jwtAuth` now throws at construction if the secret is shorter than 32 bytes, requires an `exp` claim by default (opt out with `requireExpiration: false`), and defaults the accepted algorithm to `['HS256']`. Short-secret or non-expiring-token setups must be updated before upgrading.
+
 ### Security
 - MCP and AG-UI HTTP/SSE handlers now validate the `Origin` header (allowlist via `allowedOrigins`, same-origin fallback; 403 on mismatch) to prevent DNS-rebinding/CSRF
 - MCP and AG-UI handlers gained an `onBeforeExecute` hook for authentication/authorization, mirroring `toolRouter`

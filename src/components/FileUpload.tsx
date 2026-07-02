@@ -183,6 +183,14 @@ export function FileUploadView({
  * This mirrors browser behavior so drag-and-dropped files are filtered the same
  * way the file picker's `accept` filters them. It is UX only, not a security
  * boundary — always validate file type server-side as well.
+ *
+ * Empty-MIME caveat: some browsers report an empty `file.type` for formats they
+ * don't recognize (e.g. `.heic`). Such a file cannot be re-checked against
+ * MIME-type accept entries. When the `accept` list is composed solely of
+ * MIME-type entries (no extension entries that could still match on filename),
+ * we accept the file rather than wrongly reject it — the native picker has
+ * already applied the `accept` filter, and we have no reliable way to re-verify
+ * a typeless file. Extension entries are always enforced against the filename.
  */
 function isAcceptedFile(file: File, accept?: string): boolean {
   if (!accept || accept.trim() === '') return true;
@@ -196,6 +204,13 @@ function isAcceptedFile(file: File, accept?: string): boolean {
     .filter(Boolean);
 
   if (tokens.length === 0) return true;
+
+  const hasExtensionToken = tokens.some((t) => t.startsWith('.'));
+
+  // Typeless file (empty MIME) against a MIME-only accept list: can't re-check,
+  // so trust the native picker's filtering rather than reject. If any extension
+  // entry is present it may still match by filename, so fall through to it.
+  if (fileType === '' && !hasExtensionToken) return true;
 
   return tokens.some((token) => {
     if (token.startsWith('.')) {

@@ -462,6 +462,60 @@ describe('MCP HTTP Handler — body size limit', () => {
   });
 });
 
+describe('MCP HTTP Handler — non-object body', () => {
+  it('rejects a JSON `null` body with a clean 400 (no crash)', async () => {
+    const res = await createTestServer().httpHandler()(jsonRequest(null));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe(-32600); // INVALID_REQUEST
+  });
+
+  it('rejects a JSON array body with a clean 400', async () => {
+    const res = await createTestServer().httpHandler()(jsonRequest([1, 2, 3]));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe(-32600);
+  });
+
+  it('rejects a JSON primitive body with a clean 400', async () => {
+    const res = await createTestServer().httpHandler()(jsonRequest(42));
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error.code).toBe(-32600);
+  });
+});
+
+describe('MCP HTTP Handler — multibyte body size (no Content-Length)', () => {
+  it('rejects a multibyte body over the byte cap on the streamed path (413)', async () => {
+    const server = new MCPServer({
+      name: 'limit-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      maxBodyBytes: 120,
+    });
+    // char length < cap but UTF-8 byte length > cap: only a byte-accurate check rejects this.
+    const payload = { jsonrpc: '2.0', id: 1, method: 'ping', pad: '€'.repeat(60) };
+    const bytes = new TextEncoder().encode(JSON.stringify(payload));
+    expect(JSON.stringify(payload).length).toBeLessThanOrEqual(120);
+    expect(bytes.byteLength).toBeGreaterThan(120);
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
+    const req = new Request('http://localhost/mcp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: stream,
+      // @ts-expect-error duplex is required for streamed request bodies (undici)
+      duplex: 'half',
+    });
+    const res = await server.httpHandler()(req);
+    expect(res.status).toBe(413);
+  });
+});
+
 describe('MCP HTTP Handler — error hygiene (debug)', () => {
   it('leaks raw error detail when debug is enabled', async () => {
     const server = new MCPServer({

@@ -20,7 +20,16 @@ const deleteTool = tool({
   hints: { destructive: true },
 }).server(async ({ id }) => ({ deleted: true }));
 
-const tools = { weather: weatherTool, deleteItem: deleteTool };
+// A tool whose input is entirely optional — an empty body would validate,
+// so it is the regression case for empty-body-as-undefined executing tools.
+const optionalTool = tool({
+  name: 'optional',
+  description: 'All-optional input',
+  input: z.object({ q: z.string().optional() }),
+  output: z.object({ ok: z.boolean() }),
+}).server(async () => ({ ok: true }));
+
+const tools = { weather: weatherTool, deleteItem: deleteTool, optional: optionalTool };
 
 describe('OpenAPI spec generator', () => {
   const spec = generateOpenAPISpec({
@@ -200,6 +209,18 @@ describe('toolRouter', () => {
     });
     const res = await router(req);
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for an empty request body (does not execute all-optional tools)', async () => {
+    const req = new Request('http://localhost/api/tools/optional', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '',
+    });
+    const res = await router(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe('Invalid JSON body');
   });
 
   it('serves OpenAPI spec at GET /api/tools', async () => {

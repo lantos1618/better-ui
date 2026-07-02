@@ -22,6 +22,7 @@
 
 import type { Tool } from '../tool';
 import { zodToJsonSchema, type JsonSchema } from '../mcp/schema';
+import { readCappedJson } from '../http/security';
 
 /**
  * CORS configuration. By default (when omitted) NO CORS headers are emitted,
@@ -358,24 +359,18 @@ export function toolRouter(config: ToolRouterConfig): (req: Request) => Promise<
 
       const tool = config.tools[toolName];
 
-      // Reject oversized bodies up front via the declared Content-Length.
-      const contentLength = req.headers.get('content-length');
-      if (contentLength !== null && Number(contentLength) > maxBodyBytes) {
+      // Read the body with a byte-accurate size cap (handles Content-Length,
+      // multibyte payloads, and chunked bodies without a Content-Length).
+      const body = await readCappedJson(req, maxBodyBytes);
+      if (body.tooLarge) {
         return Response.json({ error: 'Payload too large' }, { status: 413, headers: cors });
       }
-
-      let input: unknown;
-      try {
-        const raw = await req.text();
-        // Enforce the byte limit for bodies without/with an inaccurate
-        // Content-Length (e.g. chunked transfer encoding).
-        if (new TextEncoder().encode(raw).byteLength > maxBodyBytes) {
-          return Response.json({ error: 'Payload too large' }, { status: 413, headers: cors });
-        }
-        input = raw.length === 0 ? undefined : JSON.parse(raw);
-      } catch {
+      // Reject empty or malformed bodies with a 400. An empty POST must not
+      // silently execute a tool with an all-optional schema.
+      if (body.parseError) {
         return Response.json({ error: 'Invalid JSON body' }, { status: 400, headers: cors });
       }
+      const input = body.value;
 
       try {
         if (config.onBeforeExecute) {

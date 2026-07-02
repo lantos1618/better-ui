@@ -162,6 +162,20 @@ describe('MCP Streamable HTTP Handler', () => {
       const res = await handler(req);
       expect(res.status).toBe(400);
     });
+
+    it('rejects a JSON `null` body with a clean 400 (no crash)', async () => {
+      const res = await handler(jsonRequest(null));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.code).toBe(-32600); // INVALID_REQUEST
+    });
+
+    it('rejects a JSON array body with a clean 400', async () => {
+      const res = await handler(jsonRequest([1, 2, 3]));
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error.code).toBe(-32600);
+    });
   });
 
   describe('security hardening', () => {

@@ -1,5 +1,5 @@
 import { openai } from '@ai-sdk/openai';
-import { streamText, stepCountIs, convertToModelMessages, type ToolSet } from 'ai';
+import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import { weatherTool, searchTool, counterTool, artifactTool, navigateTool, setThemeTool, stockQuoteTool, sendEmailTool, taskListTool, questionTool, formTool, dataTableTool, progressTool, mediaTool, codeTool, fileUploadTool, setSearchProvider, createExaProvider } from '@/lib/tools';
 import { rateLimiter } from '@/lib/rate-limiter';
 
@@ -107,8 +107,8 @@ When the user asks for something that involves multiple steps (e.g. "get weather
 4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
 5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
-    // Better UI's toAITool() returns a runtime-valid AI SDK tool, but its
-    // hand-written return type is looser than ai v6's ToolSet, so we assert it.
+    // Better UI's toAITool() is typed as the AI SDK's Tool, so this map is a
+    // ToolSet directly — no cast needed.
     tools: {
       // Use Better UI's toAITool() - that's it!
       weather: weatherTool.toAITool(),
@@ -127,7 +127,7 @@ When the user asks for something that involves multiple steps (e.g. "get weather
       media: mediaTool.toAITool(),
       code: codeTool.toAITool(),
       fileUpload: fileUploadTool.toAITool(),
-    } as ToolSet,
+    },
     stopWhen: stepCountIs(10),
   });
 

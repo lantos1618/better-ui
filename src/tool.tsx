@@ -7,6 +7,10 @@
 
 import { z } from 'zod';
 import React, { ReactElement, memo } from 'react';
+// Aliased to avoid clashing with this module's own `Tool` class. Used solely
+// to annotate `toAITool()` so a `Record<string, ReturnType<toAITool>>` is
+// assignable to the AI SDK's `ToolSet` without a downstream cast.
+import type { Tool as AITool } from 'ai';
 
 /**
  * Schema type that works with both Zod 3 and Zod 4.
@@ -575,16 +579,21 @@ export class Tool<TInput = any, TOutput = any> {
    * leaves the tool call at `state: 'input-available'`, enabling HITL
    * confirmation on the client before execution.
    */
-  toAITool() {
+  toAITool(): AITool<TInput, any> {
+    // The class stores `inputSchema` as a deliberately broad union (to accept
+    // any zod-like validator); narrow it to the AI SDK's `FlexibleSchema` here.
+    const inputSchema = this.inputSchema as AITool<TInput, any>['inputSchema'];
     if (this.requiresConfirmation) {
+      // HITL: omit `execute` so the AI SDK leaves the call at
+      // `state: 'input-available'`. `execute` is optional on the AI SDK's Tool.
       return {
         description: this.description || this.name,
-        inputSchema: this.inputSchema,
+        inputSchema,
       };
     }
     return {
       description: this.description || this.name,
-      inputSchema: this.inputSchema,
+      inputSchema,
       execute: async (input: TInput) => {
         return this.run(input, { isServer: true });
       },
