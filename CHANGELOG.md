@@ -4,6 +4,82 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-07-02
+
+### Security
+- MCP and AG-UI HTTP/SSE handlers now validate the `Origin` header (allowlist via `allowedOrigins`, same-origin fallback; 403 on mismatch) to prevent DNS-rebinding/CSRF
+- MCP and AG-UI handlers gained an `onBeforeExecute` hook for authentication/authorization, mirroring `toolRouter`
+- Request body size limits (`maxBodyBytes`, default 1MB → 413) on all HTTP handlers; MCP stdio line buffer capped (`maxLineBytes`, default 10MB)
+- Error responses are now generic by default; raw error details are logged server-side and only returned when `debug: true`
+- **Breaking:** OpenAPI `toolRouter`/`openAPIHandler` no longer send `Access-Control-Allow-Origin: *` by default — CORS is off (same-origin) unless configured via the new `cors.origin` option
+- **Breaking:** `jwtAuth` now requires an `exp` claim by default (opt out with `requireExpiration: false`), applies the documented `['HS256']` algorithm default, and rejects secrets shorter than 32 bytes; added `maxTokenAge` option
+- Swagger UI assets pinned to an exact version with a `docsAssetBase` self-host option; `basePath` interpolation escaped
+- `parseCookies` uses a null-prototype object (prevents `__proto__` pollution)
+- `MediaDisplay` validates media URLs against a protocol allowlist (blocks `javascript:` and non-media `data:` URIs)
+- `FileUpload` enforces the `accept` prop for drag-and-dropped files
+
+### Added
+- `CodeBlock` now renders syntax-highlighted code via lazy-loaded shiki
+- Test suites for the auth module (25 tests) and view components (19 tests); suite grew from 228 to 330 tests
+- Docs pages for `ThemeProvider`, `Chat`, `Markdown`, and the OpenAPI adapter
+
+### Fixed
+- Demo apps: rate limiter was checked without `await` (never triggered with Redis); vite demo CORS restricted to the dev origin; thread message routes validate thread existence and cap payload size
+- Demo apps migrated from `better-ui@0.6.1` / AI SDK v5 to the current API / AI SDK v6
+- `useTool` docs showed a root import path; it is exported from `@lantos1618/better-ui/react`
+
+## [0.9.3] - 2026-04-23
+
+### Changed
+- Replaced remaining inline SVGs with `lucide-react` icons across components
+
+## [0.9.2] - 2026-04-23
+
+### Changed
+- Composer/Thread polish: bolder send button and refreshed suggestion prompts
+- Rewrote README usage guide
+
+## [0.9.1] - 2026-04-12
+
+### Added
+- OpenAPI 3.1 spec generator and callable tool router (`@lantos1618/better-ui/openapi`)
+- `generateOpenAPISpec` — build an OpenAPI document from a tool registry
+- `openAPIHandler` — serve the spec as JSON
+- `toolRouter` — one `POST` endpoint per tool, plus the spec and a Swagger UI page, with an `onBeforeExecute` hook for auth/guards
+
+## [0.8.0] - 2026-04-12
+
+### Changed
+- Updated MCP protocol version to `2025-11-25`
+
+### Fixed
+- Fixed `ChatProvider` race conditions
+- Added an error boundary to `ToolResult`
+
+## [0.7.1] - 2026-04-12
+
+### Added
+- Zod 4 compatibility
+
+## [0.7.0] - 2026-04-02
+
+### Changed
+- Bumped dependencies: AI SDK v6, Shiki v4, and `@ai-sdk/*` peer deps to v3
+
+### Added
+- Comprehensive usage guide (`GUIDE.md`)
+
+### Fixed
+- Configured demo apps for deployment
+
+## [0.6.1] - 2026-03-07
+
+### Added
+- AG-UI: batch tool calls support
+
+### Changed
+- AG-UI server now uses a static import
+
 ## [0.6.0] - 2026-03-07
 
 ### Added

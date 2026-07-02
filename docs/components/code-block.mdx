@@ -24,40 +24,56 @@ import { CodeBlockView } from '@lantos1618/better-ui/components';
 
 ## Diff View
 
+Pass a `diff` object with `before` and `after` strings. The block renders a
+`before` / `diff` / `after` toggle, defaulting to the computed `diff` view.
+
 ```tsx
 <CodeBlockView
   title="Changes"
   language="typescript"
-  code={codeString}
-  diff={true}
+  diff={{
+    before: `const x = 1;`,
+    after: `const x = 2;`,
+  }}
 />
 ```
 
 ## Props
-
-<ParamField path="title" type="string">
-  Optional title (often the filename)
-</ParamField>
 
 <ParamField path="code" type="string" required>
   The code content to display
 </ParamField>
 
 <ParamField path="language" type="string">
-  Language identifier for syntax context (e.g. `'typescript'`, `'python'`, `'json'`)
+  Language label shown in the header (e.g. `'typescript'`, `'python'`, `'json'`)
 </ParamField>
 
-<ParamField path="showLineNumbers" type="boolean" default="true">
+<ParamField path="title" type="string">
+  Optional title (often the filename)
+</ParamField>
+
+<ParamField path="showLineNumbers" type="boolean" default="false">
   Show line numbers in the gutter
 </ParamField>
 
-<ParamField path="diff" type="boolean" default="false">
-  Enable diff view — lines starting with `+` are highlighted green, `-` are highlighted red
+<ParamField path="diff" type="{ before: string; after: string }">
+  Enable diff view. Provide the previous and updated source; the component
+  renders a `before` / `diff` / `after` toggle. In the diff view, removed lines
+  are highlighted red and added lines green.
+</ParamField>
+
+<ParamField path="loading" type="boolean" default="false">
+  Show a "Generating code…" placeholder instead of the code.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS class applied to the root element.
 </ParamField>
 
 ## Features
 
 - **Copy button**: One-click copy with visual feedback
-- **Line numbers**: Toggleable line number gutter
-- **Diff highlighting**: Green/red line backgrounds for added/removed lines
-- **Monospace font**: Proper code formatting
+- **Syntax highlighting**: Language-aware highlighting for code blocks
+- **Line numbers**: Optional line number gutter
+- **Diff view**: `before` / `diff` / `after` toggle with green/red line highlighting
+- **Loading state**: Built-in placeholder while code is streaming in

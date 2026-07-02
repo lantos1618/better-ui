@@ -1,0 +1,69 @@
+---
+title: "ThemeProvider"
+description: "Scope theming and override CSS variables for Better UI components"
+---
+
+## Import
+
+```tsx
+import { ThemeProvider } from '@lantos1618/better-ui/components';
+```
+
+## Usage
+
+Wrap any subtree to set its theme. `ThemeProvider` renders a `<div>` with a
+`data-theme` attribute so the framework's CSS variables resolve against the
+chosen theme.
+
+```tsx
+<ThemeProvider theme="dark">
+  <Chat tools={tools} />
+</ThemeProvider>
+```
+
+## Overriding variables
+
+Pass `variables` to override individual CSS custom properties inline. The keys
+are applied directly as inline styles on the wrapper, so use the raw CSS
+variable names (all Better UI variables are prefixed with `--bui-`).
+
+```tsx
+<ThemeProvider
+  theme="dark"
+  variables={{
+    '--bui-primary': '#8b5cf6',
+    '--bui-bg-surface': '#0b0b0f',
+    '--bui-border': '#1f1f27',
+  }}
+>
+  <Chat tools={tools} />
+</ThemeProvider>
+```
+
+## Props
+
+<ParamField path="children" type="React.ReactNode" required>
+  The subtree to theme.
+</ParamField>
+
+<ParamField path="theme" type="string" default="dark">
+  Theme name. Sets the `data-theme` attribute on the wrapper for CSS variable
+  scoping. The bundled `theme.css` ships a dark palette by default and a light
+  palette activated with `theme="light"`.
+</ParamField>
+
+<ParamField path="variables" type="Record<string, string>">
+  Override individual CSS variables. Applied as inline styles on the wrapper.
+</ParamField>
+
+<ParamField path="className" type="string">
+  Additional CSS class for the wrapper element.
+</ParamField>
+
+## Notes
+
+- `ThemeProvider` renders a single `<div>` wrapper — it does not inject a global
+  stylesheet. Import the framework stylesheet (`theme.css`) once at your app
+  root for the base variable definitions.
+- All framework variables use the `--bui-` prefix (e.g. `--bui-primary`,
+  `--bui-bg-surface`, `--bui-border`, `--bui-fg`).

@@ -1,5 +1,7 @@
 /**
  * Tests for tool View components
+ *
+ * @jest-environment jsdom
  */
 
 import React from 'react';

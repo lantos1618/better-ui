@@ -43,6 +43,15 @@ export function FileUploadView({
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Validates a batch of files against the `maxSize` and `accept` props.
+   *
+   * NOTE: This is client-side UX filtering only. The `accept` attribute on the
+   * native file input is not enforced for drag-and-dropped files, so we
+   * re-check it here. Neither check is a security boundary — a malicious client
+   * can bypass both. Server-side validation of file type and size is still
+   * mandatory before trusting any uploaded file.
+   */
   const validateFiles = useCallback((fileList: File[]): File[] => {
     setError(null);
     const valid: File[] = [];
@@ -50,6 +59,10 @@ export function FileUploadView({
     for (const file of fileList) {
       if (maxSize && file.size > maxSize) {
         setError(`${file.name} exceeds max size (${formatBytes(maxSize)})`);
+        continue;
+      }
+      if (!isAcceptedFile(file, accept)) {
+        setError(`${file.name} is not an accepted file type (${accept})`);
         continue;
       }
       valid.push(file);
@@ -60,7 +73,7 @@ export function FileUploadView({
     }
 
     return valid;
-  }, [maxSize, multiple]);
+  }, [maxSize, multiple, accept]);
 
   const handleFiles = useCallback((fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -157,6 +170,46 @@ export function FileUploadView({
       )}
     </div>
   );
+}
+
+/**
+ * Returns true if `file` matches the `accept` spec (same syntax as the native
+ * `<input accept>` attribute). Supports comma-separated entries of:
+ *   - extension entries (".pdf")
+ *   - exact MIME types ("image/png")
+ *   - wildcard MIME types ("image/*")
+ * An empty/absent `accept` accepts everything.
+ *
+ * This mirrors browser behavior so drag-and-dropped files are filtered the same
+ * way the file picker's `accept` filters them. It is UX only, not a security
+ * boundary — always validate file type server-side as well.
+ */
+function isAcceptedFile(file: File, accept?: string): boolean {
+  if (!accept || accept.trim() === '') return true;
+
+  const fileType = (file.type || '').toLowerCase();
+  const fileName = (file.name || '').toLowerCase();
+
+  const tokens = accept
+    .split(',')
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (tokens.length === 0) return true;
+
+  return tokens.some((token) => {
+    if (token.startsWith('.')) {
+      // Extension match
+      return fileName.endsWith(token);
+    }
+    if (token.endsWith('/*')) {
+      // Wildcard MIME, e.g. "image/*"
+      const prefix = token.slice(0, token.indexOf('/') + 1);
+      return fileType.startsWith(prefix);
+    }
+    // Exact MIME match
+    return fileType === token;
+  });
 }
 
 function formatBytes(bytes: number): string {

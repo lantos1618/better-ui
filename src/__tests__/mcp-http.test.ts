@@ -190,7 +190,9 @@ describe('MCP HTTP Handler', () => {
       const res = await handler(req);
       const json = await res.json();
       expect(json.result.isError).toBe(true);
-      expect(json.result.content[0].text).toContain('Error');
+      // Raw error detail is not leaked when debug is disabled (default).
+      expect(json.result.content[0].text).toBe('Tool execution failed');
+      expect(json.result.content[0].text).not.toContain('Intentional failure');
     });
 
     it('validates input against Zod schema', async () => {
@@ -281,5 +283,201 @@ describe('MCP HTTP Handler', () => {
         expect(parsed.echoed).toBe(`msg-${i}`);
       }
     });
+  });
+});
+
+// ─── New security hardening tests ─────────────────────────────────────────
+
+function requestWithHeaders(body: unknown, headers: Record<string, string>): Request {
+  return new Request('http://localhost/mcp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  });
+}
+
+const pingMsg = { jsonrpc: '2.0', id: 1, method: 'ping' };
+
+describe('MCP HTTP Handler — Origin validation', () => {
+  it('allows requests without an Origin header (non-browser clients)', async () => {
+    const handler = createTestServer().httpHandler();
+    const res = await handler(jsonRequest(pingMsg));
+    expect(res.status).toBe(200);
+  });
+
+  it('allows same-origin requests when no allowlist is configured', async () => {
+    const handler = createTestServer().httpHandler();
+    const res = await handler(requestWithHeaders(pingMsg, {
+      Origin: 'http://localhost',
+      Host: 'localhost',
+    }));
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects cross-origin requests (403) when no allowlist is configured', async () => {
+    const handler = createTestServer().httpHandler();
+    const res = await handler(requestWithHeaders(pingMsg, {
+      Origin: 'http://evil.example.com',
+      Host: 'localhost',
+    }));
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error.message).toContain('Origin');
+  });
+
+  it('allows an Origin present in the allowlist', async () => {
+    const server = new MCPServer({
+      name: 'origin-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      allowedOrigins: ['https://app.example.com'],
+    });
+    const res = await server.httpHandler()(requestWithHeaders(pingMsg, {
+      Origin: 'https://app.example.com',
+      Host: 'localhost',
+    }));
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects an Origin absent from the allowlist (403)', async () => {
+    const server = new MCPServer({
+      name: 'origin-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      allowedOrigins: ['https://app.example.com'],
+    });
+    const res = await server.httpHandler()(requestWithHeaders(pingMsg, {
+      Origin: 'https://other.example.com',
+      Host: 'localhost',
+    }));
+    expect(res.status).toBe(403);
+  });
+});
+
+describe('MCP HTTP Handler — onBeforeExecute auth hook', () => {
+  it('blocks tool execution and returns 401 when the hook throws', async () => {
+    let executed = false;
+    const guardedTool = tool({
+      name: 'guarded',
+      description: 'Guarded tool',
+      input: z.object({ message: z.string() }),
+      output: z.object({ echoed: z.string() }),
+    });
+    guardedTool.server(async ({ message }) => {
+      executed = true;
+      return { echoed: message };
+    });
+
+    const server = new MCPServer({
+      name: 'auth-test',
+      version: '1.0.0',
+      tools: { guarded: guardedTool },
+      onBeforeExecute: () => {
+        throw new Error('nope');
+      },
+    });
+
+    const res = await server.httpHandler()(jsonRequest({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'guarded', arguments: { message: 'hi' } },
+    }));
+
+    expect(res.status).toBe(401);
+    const json = await res.json();
+    expect(json.error.message).toBe('Unauthorized');
+    expect(executed).toBe(false);
+  });
+
+  it('receives tool name, args and request; allows execution when it does not throw', async () => {
+    const seen: { name?: string; args?: unknown; hasReq?: boolean } = {};
+    const server = new MCPServer({
+      name: 'auth-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      onBeforeExecute: (name, args, req) => {
+        seen.name = name;
+        seen.args = args;
+        seen.hasReq = req instanceof Request;
+      },
+    });
+
+    const res = await server.httpHandler()(jsonRequest({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'echo', arguments: { message: 'hi' } },
+    }));
+
+    expect(res.status).toBe(200);
+    expect(seen.name).toBe('echo');
+    expect(seen.args).toEqual({ message: 'hi' });
+    expect(seen.hasReq).toBe(true);
+  });
+
+  it('does not invoke the hook for non tools/call methods', async () => {
+    let called = false;
+    const server = new MCPServer({
+      name: 'auth-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      onBeforeExecute: () => { called = true; },
+    });
+    const res = await server.httpHandler()(jsonRequest(pingMsg));
+    expect(res.status).toBe(200);
+    expect(called).toBe(false);
+  });
+});
+
+describe('MCP HTTP Handler — body size limit', () => {
+  it('rejects oversized bodies with 413', async () => {
+    const server = new MCPServer({
+      name: 'limit-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      maxBodyBytes: 100,
+    });
+    const bigMessage = 'x'.repeat(500);
+    const res = await server.httpHandler()(jsonRequest({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'echo', arguments: { message: bigMessage } },
+    }));
+    expect(res.status).toBe(413);
+    const json = await res.json();
+    expect(json.error.message).toContain('too large');
+  });
+
+  it('accepts bodies within the limit', async () => {
+    const server = new MCPServer({
+      name: 'limit-test',
+      version: '1.0.0',
+      tools: { echo: echoTool },
+      maxBodyBytes: 1000,
+    });
+    const res = await server.httpHandler()(jsonRequest(pingMsg));
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('MCP HTTP Handler — error hygiene (debug)', () => {
+  it('leaks raw error detail when debug is enabled', async () => {
+    const server = new MCPServer({
+      name: 'debug-test',
+      version: '1.0.0',
+      tools: { fail: failTool },
+      debug: true,
+    });
+    const res = await server.httpHandler()(jsonRequest({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'fail', arguments: {} },
+    }));
+    const json = await res.json();
+    expect(json.result.isError).toBe(true);
+    expect(json.result.content[0].text).toContain('Intentional failure');
   });
 });

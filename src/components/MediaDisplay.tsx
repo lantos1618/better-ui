@@ -9,6 +9,56 @@ export interface MediaItem {
   caption?: string;
 }
 
+/**
+ * Determine whether a media URL is safe to place into an img/video/audio `src`.
+ *
+ * Media items frequently originate from tool output or LLM-generated content,
+ * which is untrusted. Without filtering, values like `javascript:` URLs or
+ * arbitrary `data:` payloads could be used for XSS or to smuggle unexpected
+ * content. This allowlist permits only:
+ *   - http: / https: absolute URLs
+ *   - protocol-relative (`//host/...`) and relative URLs (no scheme)
+ *   - blob: URLs (produced locally via URL.createObjectURL)
+ *   - data: URLs whose MIME type matches the element kind (image/video/audio)
+ *
+ * @param url  The candidate URL.
+ * @param kind The media element the URL will be used in.
+ * @returns true if the URL is safe to render for the given media kind.
+ */
+export function isSafeMediaUrl(url: string, kind: 'image' | 'video' | 'audio'): boolean {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (trimmed === '') return false;
+
+  // Detect a leading scheme like "javascript:", "data:", "http:", etc.
+  const schemeMatch = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
+
+  if (!schemeMatch) {
+    // No scheme => relative or protocol-relative URL. These resolve against the
+    // current origin and cannot introduce a new dangerous scheme.
+    return true;
+  }
+
+  const scheme = schemeMatch[1].toLowerCase();
+
+  switch (scheme) {
+    case 'http':
+    case 'https':
+    case 'blob':
+      return true;
+    case 'data': {
+      // Only allow data: URLs whose media type matches the element kind.
+      const mimeMatch = /^data:([a-zA-Z0-9!#$&^_.+-]+\/[a-zA-Z0-9!#$&^_.+-]+)/.exec(trimmed);
+      if (!mimeMatch) return false;
+      const mime = mimeMatch[1].toLowerCase();
+      return mime.startsWith(`${kind}/`);
+    }
+    default:
+      // javascript:, vbscript:, file:, and any other scheme are rejected.
+      return false;
+  }
+}
+
 export interface MediaDisplayViewProps {
   /** Media items to display */
   items: MediaItem[];
@@ -114,12 +164,16 @@ export function MediaDisplayView({
             </>
           )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={items[lightboxIndex].url}
-            alt={items[lightboxIndex].alt || ''}
-            className="max-w-full max-h-full object-contain rounded"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {isSafeMediaUrl(items[lightboxIndex].url, 'image') ? (
+            <img
+              src={items[lightboxIndex].url}
+              alt={items[lightboxIndex].alt || ''}
+              className="max-w-full max-h-full object-contain rounded"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <UnsafeMediaPlaceholder kind="image" onClick={(e) => e.stopPropagation()} />
+          )}
           {items[lightboxIndex].caption && (
             <p className="absolute bottom-6 text-white/70 text-sm text-center">
               {items[lightboxIndex].caption}
@@ -141,17 +195,22 @@ function MediaItemRenderer({
   compact: boolean;
 }) {
   if (item.type === 'image') {
+    const safe = isSafeMediaUrl(item.url, 'image');
     return (
       <div className="relative group">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={item.url}
-          alt={item.alt || ''}
-          className={`w-full object-cover rounded cursor-pointer hover:opacity-90 transition-opacity ${
-            compact ? 'h-32' : 'h-auto max-h-80'
-          }`}
-          onClick={onImageClick}
-        />
+        {safe ? (
+          <img
+            src={item.url}
+            alt={item.alt || ''}
+            className={`w-full object-cover rounded cursor-pointer hover:opacity-90 transition-opacity ${
+              compact ? 'h-32' : 'h-auto max-h-80'
+            }`}
+            onClick={onImageClick}
+          />
+        ) : (
+          <UnsafeMediaPlaceholder kind="image" className={compact ? 'h-32' : 'h-40'} />
+        )}
         {item.caption && !compact && (
           <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1">{item.caption}</p>
         )}
@@ -160,15 +219,20 @@ function MediaItemRenderer({
   }
 
   if (item.type === 'video') {
+    const safe = isSafeMediaUrl(item.url, 'video');
     return (
       <div>
-        <video
-          src={item.url}
-          controls
-          className={`w-full rounded bg-black ${compact ? 'max-h-32' : 'max-h-80'}`}
-        >
-          <track kind="captions" />
-        </video>
+        {safe ? (
+          <video
+            src={item.url}
+            controls
+            className={`w-full rounded bg-black ${compact ? 'max-h-32' : 'max-h-80'}`}
+          >
+            <track kind="captions" />
+          </video>
+        ) : (
+          <UnsafeMediaPlaceholder kind="video" className={compact ? 'h-32' : 'h-40'} />
+        )}
         {item.caption && !compact && (
           <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-1">{item.caption}</p>
         )}
@@ -177,9 +241,14 @@ function MediaItemRenderer({
   }
 
   if (item.type === 'audio') {
+    const safe = isSafeMediaUrl(item.url, 'audio');
     return (
       <div className="bg-[var(--bui-bg-surface,#18181b)] rounded-lg p-3">
-        <audio src={item.url} controls className="w-full" />
+        {safe ? (
+          <audio src={item.url} controls className="w-full" />
+        ) : (
+          <UnsafeMediaPlaceholder kind="audio" />
+        )}
         {item.caption && (
           <p className="text-[var(--bui-fg-muted,#71717a)] text-xs mt-2">{item.caption}</p>
         )}
@@ -188,4 +257,30 @@ function MediaItemRenderer({
   }
 
   return null;
+}
+
+/**
+ * Rendered in place of a media element whose URL failed the safety check.
+ * Shows a harmless, inert placeholder rather than emitting an untrusted `src`.
+ */
+function UnsafeMediaPlaceholder({
+  kind,
+  className,
+  onClick,
+}: {
+  kind: 'image' | 'video' | 'audio';
+  className?: string;
+  onClick?: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      role="img"
+      aria-label={`Unavailable ${kind}: blocked unsafe source`}
+      onClick={onClick}
+      data-testid="unsafe-media-placeholder"
+      className={`w-full flex items-center justify-center rounded bg-[var(--bui-bg-surface,#18181b)] text-[var(--bui-fg-muted,#71717a)] text-xs ${className || 'h-24'}`}
+    >
+      <span>Media unavailable</span>
+    </div>
+  );
 }

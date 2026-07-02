@@ -4,7 +4,7 @@ dotenv.config();
 import express from 'express';
 import cors from 'cors';
 import { openai } from '@ai-sdk/openai';
-import { streamText, stepCountIs, convertToModelMessages } from 'ai';
+import { streamText, stepCountIs, convertToModelMessages, type ToolSet } from 'ai';
 import { Readable } from 'node:stream';
 import { randomUUID } from 'node:crypto';
 import {
@@ -22,9 +22,23 @@ import { db } from './db/index.js';
 import { threads, messages } from './db/schema.js';
 import { eq, desc } from 'drizzle-orm';
 
+// ⚠️ DEMO ONLY: These routes have NO authentication or ownership checks. Threads
+// and messages are global and any caller can read/overwrite them by id (IDOR).
+// Add a session/auth layer that scopes data to the authenticated user before
+// deploying anything like this to production.
+
 const app = express();
-app.use(cors());
+// Restrict CORS to the Vite dev origin. Override with CORS_ORIGIN (comma-separated
+// list) for other environments instead of allowing any origin.
+const corsOrigin = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json({ limit: '1mb' }));
+
+// Guardrail: cap the number of messages persisted per thread.
+const MAX_MESSAGES = 500;
 
 // ---------------------------------------------------------------------------
 // POST /api/chat — AI SDK v5 streaming
@@ -83,7 +97,7 @@ app.post('/api/chat', async (req, res) => {
     ? `\n\nCurrent UI tool state (updated by user interactions):\n${JSON.stringify(aggregatedStateContext, null, 2)}`
     : '';
 
-  const modelMessages = convertToModelMessages(cleanedMessages);
+  const modelMessages = await convertToModelMessages(cleanedMessages);
 
   const result = await streamText({
     model: openai('gpt-4o'),
@@ -107,6 +121,8 @@ When the user asks for something that involves multiple steps (e.g. "get weather
 4. Immediately proceed to the next pending task — do NOT stop, summarize, or ask the user
 5. Repeat until progress.done === progress.total — every task must be completed in a single response${stateContextBlock}`,
     messages: modelMessages,
+    // toAITool() returns a runtime-valid AI SDK tool; its hand-written return
+    // type is looser than ai v6's ToolSet, so we assert the assembled map.
     tools: {
       weather: weatherTool.toAITool(),
       search: searchTool.toAITool(),
@@ -124,7 +140,7 @@ When the user asks for something that involves multiple steps (e.g. "get weather
       media: mediaTool.toAITool(),
       code: codeTool.toAITool(),
       fileUpload: fileUploadTool.toAITool(),
-    },
+    } as ToolSet,
     stopWhen: stepCountIs(10),
   });
 
@@ -264,6 +280,19 @@ app.get('/api/threads/:id/messages', (req, res) => {
 app.post('/api/threads/:id/messages', async (req, res) => {
   const { id } = req.params;
   const { messages: msgs } = req.body as { messages: any[] };
+
+  if (!Array.isArray(msgs)) {
+    return res.status(400).json({ error: 'messages must be an array' });
+  }
+  if (msgs.length > MAX_MESSAGES) {
+    return res.status(400).json({ error: `Too many messages (max ${MAX_MESSAGES})` });
+  }
+
+  // Thread must exist before we replace its messages.
+  const thread = db.select().from(threads).where(eq(threads.id, id)).get();
+  if (!thread) {
+    return res.status(404).json({ error: 'Thread not found' });
+  }
 
   // Replace all messages for this thread
   db.delete(messages).where(eq(messages.threadId, id)).run();

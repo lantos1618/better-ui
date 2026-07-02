@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, Copy } from 'lucide-react';
 
 export interface CodeBlockViewProps {
@@ -126,22 +126,83 @@ export function CodeBlockView({
           )}
         </button>
       </div>
-      <pre className="p-4 overflow-x-auto text-sm leading-relaxed">
-        <code className="text-[var(--bui-fg-secondary,#a1a1aa)]">
-          {showLineNumbers
-            ? lines.map((line, i) => (
-                <div key={i} className="flex">
-                  <span className="text-[var(--bui-fg-faint,#52525b)] select-none w-8 shrink-0 text-right mr-4 font-mono text-xs leading-relaxed">
-                    {i + 1}
-                  </span>
-                  <span>{line}</span>
-                </div>
-              ))
-            : code
-          }
-        </code>
-      </pre>
+      <CodeContent code={code} language={language} lines={lines} showLineNumbers={showLineNumbers} />
     </div>
+  );
+}
+
+/**
+ * Renders the code body with lazy syntax highlighting via `shiki`.
+ *
+ * Highlighting is loaded on demand (dynamic import) to keep it out of the
+ * initial bundle. While it loads, on error, or for an unknown language, we fall
+ * back to plain text. Line numbers are rendered with the plain-text path so
+ * they remain aligned; highlighted output is only used when line numbers are
+ * off. The single `dangerouslySetInnerHTML` consumes shiki's own escaped HTML.
+ */
+function CodeContent({
+  code,
+  language,
+  lines,
+  showLineNumbers,
+}: {
+  code: string;
+  language?: string;
+  lines: string[];
+  showLineNumbers: boolean;
+}) {
+  const [html, setHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // Highlighting requires a language hint; skip if none provided.
+    if (!language) {
+      setHtml(null);
+      return;
+    }
+    setHtml(null);
+    import('shiki')
+      .then(({ codeToHtml }) =>
+        codeToHtml(code, { lang: language, theme: 'github-dark' })
+      )
+      .then((out) => {
+        if (!cancelled) setHtml(out);
+      })
+      .catch(() => {
+        // Unknown language / load failure => keep plain-text fallback.
+        if (!cancelled) setHtml(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [code, language]);
+
+  // Use highlighted output only when we don't need per-line numbering, since
+  // shiki emits a single block that we can't easily interleave with numbers.
+  if (html && !showLineNumbers) {
+    return (
+      <div
+        className="bui-shiki p-4 overflow-x-auto text-sm leading-relaxed"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+
+  return (
+    <pre className="p-4 overflow-x-auto text-sm leading-relaxed">
+      <code className="text-[var(--bui-fg-secondary,#a1a1aa)]">
+        {showLineNumbers
+          ? lines.map((line, i) => (
+              <div key={i} className="flex">
+                <span className="text-[var(--bui-fg-faint,#52525b)] select-none w-8 shrink-0 text-right mr-4 font-mono text-xs leading-relaxed">
+                  {i + 1}
+                </span>
+                <span>{line}</span>
+              </div>
+            ))
+          : code}
+      </code>
+    </pre>
   );
 }
 
